@@ -1317,6 +1317,62 @@ export default function App({ onNavegar, onAbrirPartida }) {
     }, 4000);
   };
 
+
+  // Conexao
+  const [conexaoAberta, setConexaoAberta] = useState(false);
+  const [conexaoModo, setConexaoModo] = useState('ao_vivo');
+  const [conexaoCasa, setConexaoCasa] = useState('bet365');
+  const [conexaoJanela, setConexaoJanela] = useState('10');
+  const [conexaoCanal, setConexaoCanal] = useState('qualquer');
+  const [conexaoHistorico, setConexaoHistorico] = useState('nao');
+  const [conexaoNovaVersao, setConexaoNovaVersao] = useState('nao');
+  const [conexaoDominioBet365, setConexaoDominioBet365] = useState('.com');
+
+  // Hook: traz partidas filtradas pelo backend (esporte + modo + busca)
+  const filtrosBackend = useMemo(() => ({
+    esporte: esporteAtivo,
+    modo: conexaoModo,
+    busca,
+  }), [esporteAtivo, conexaoModo, busca]);
+
+  const { partidas: partidasBackend, loading } = usePartidasLive(filtrosBackend);
+
+  // Filtros finos client-side (drilling no objeto - difícil de paginar no backend)
+  const partidasFiltradas = useMemo(() => {
+    return partidasBackend.filter((p) => {
+      if (torneio !== 'todos' && p.liga !== torneio) return false;
+
+      if (partidasMin) {
+        const matchHist = (p.historico || '').match(/^(\d+)/);
+        const numPartidas = matchHist ? parseInt(matchHist[1], 10) : 0;
+        if (numPartidas < parseInt(partidasMin, 10)) return false;
+      }
+
+      if (oddMin) {
+        const oddMinNum = parseFloat(oddMin);
+        const temOdd = p.mercados.some((m) =>
+          m.linhas.some((l) => l.odd !== null && l.odd >= oddMinNum)
+        );
+        if (!temOdd) return false;
+      }
+
+      if (probMin) {
+        const probMinNum = parseFloat(probMin);
+        const temProb = p.mercados.some((m) =>
+          m.linhas.some((l) => l.total >= probMinNum)
+        );
+        if (!temProb) return false;
+      }
+
+      if (mercadosSel.length > 0) {
+        const temMercado = p.mercados.some((m) => mercadosSel.includes(m.nome));
+        if (!temMercado) return false;
+      }
+
+      return true;
+    });
+  }, [partidasBackend, torneio, partidasMin, oddMin, probMin, mercadosSel]);
+
   // Simula notificacoes periodicamente (demo)
   // 🔌 BACKEND: substituir por websocket real escutando eventos
   useEffect(() => {
@@ -1352,16 +1408,6 @@ export default function App({ onNavegar, onAbrirPartida }) {
     }, 30000); // a cada 30s pra nao incomodar
     return () => clearInterval(interval);
   }, [loading, conexao]);
-
-  // Conexao
-  const [conexaoAberta, setConexaoAberta] = useState(false);
-  const [conexaoModo, setConexaoModo] = useState('ao_vivo');
-  const [conexaoCasa, setConexaoCasa] = useState('bet365');
-  const [conexaoJanela, setConexaoJanela] = useState('10');
-  const [conexaoCanal, setConexaoCanal] = useState('qualquer');
-  const [conexaoHistorico, setConexaoHistorico] = useState('nao');
-  const [conexaoNovaVersao, setConexaoNovaVersao] = useState('nao');
-  const [conexaoDominioBet365, setConexaoDominioBet365] = useState('.com');
 
   // Lista de torneios extraida dos mocks - filtrada pelo esporte ativo
   const torneiosDisponiveis = useMemo(() => {
@@ -1424,50 +1470,6 @@ export default function App({ onNavegar, onAbrirPartida }) {
 
   const normaliza = (s) => (s || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
-  // Hook: traz partidas filtradas pelo backend (esporte + modo + busca)
-  const filtrosBackend = useMemo(() => ({
-    esporte: esporteAtivo,
-    modo: conexaoModo,
-    busca,
-  }), [esporteAtivo, conexaoModo, busca]);
-
-  const { partidas: partidasBackend, loading } = usePartidasLive(filtrosBackend);
-
-  // Filtros finos client-side (drilling no objeto - difícil de paginar no backend)
-  const partidasFiltradas = useMemo(() => {
-    return partidasBackend.filter((p) => {
-      if (torneio !== 'todos' && p.liga !== torneio) return false;
-
-      if (partidasMin) {
-        const matchHist = (p.historico || '').match(/^(\d+)/);
-        const numPartidas = matchHist ? parseInt(matchHist[1], 10) : 0;
-        if (numPartidas < parseInt(partidasMin, 10)) return false;
-      }
-
-      if (oddMin) {
-        const oddMinNum = parseFloat(oddMin);
-        const temOdd = p.mercados.some((m) =>
-          m.linhas.some((l) => l.odd !== null && l.odd >= oddMinNum)
-        );
-        if (!temOdd) return false;
-      }
-
-      if (probMin) {
-        const probMinNum = parseFloat(probMin);
-        const temProb = p.mercados.some((m) =>
-          m.linhas.some((l) => l.total >= probMinNum)
-        );
-        if (!temProb) return false;
-      }
-
-      if (mercadosSel.length > 0) {
-        const temMercado = p.mercados.some((m) => mercadosSel.includes(m.nome));
-        if (!temMercado) return false;
-      }
-
-      return true;
-    });
-  }, [partidasBackend, torneio, partidasMin, oddMin, probMin, mercadosSel]);
 
   const themeVars = {
     '--mike-bg': '#0b0f1a',
