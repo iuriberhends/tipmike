@@ -1393,6 +1393,12 @@ export default function App({ onNavegar, onAbrirPartida }) {
                           torneio !== 'todos' || mercadosSel.length > 0 ||
                           conexaoModo !== 'ao_vivo';
 
+  // Stake nao filtra partidas - eh usado APENAS pra calcular retorno potencial
+  // (display nos cards futuro: "Aposta R$10 com odd 2.50 = R$25 retorno")
+  const algumFiltroAtivo = status !== 'todos' || oddMin || probMin || partidasMin ||
+                          torneio !== 'todos' || mercadosSel.length > 0 ||
+                          conexaoModo !== 'ao_vivo';
+
   const limparFiltros = () => {
     setStatus('todos');
     setOddMin('');
@@ -1436,17 +1442,14 @@ export default function App({ onNavegar, onAbrirPartida }) {
   // Filtros finos client-side (drilling no objeto - difícil de paginar no backend)
   const partidasFiltradas = useMemo(() => {
     return partidasBackend.filter((p) => {
-      // Filtro de torneio
       if (torneio !== 'todos' && p.liga !== torneio) return false;
 
-      // Filtro de partidas mínimas (extrai numero do historico)
       if (partidasMin) {
         const matchHist = (p.historico || '').match(/^(\d+)/);
         const numPartidas = matchHist ? parseInt(matchHist[1], 10) : 0;
         if (numPartidas < parseInt(partidasMin, 10)) return false;
       }
 
-      // Filtro de odd minima (verifica se algum mercado tem odd >= filtro)
       if (oddMin) {
         const oddMinNum = parseFloat(oddMin);
         const temOdd = p.mercados.some((m) =>
@@ -1455,7 +1458,6 @@ export default function App({ onNavegar, onAbrirPartida }) {
         if (!temOdd) return false;
       }
 
-      // Filtro de probabilidade minima (Total >= filtro)
       if (probMin) {
         const probMinNum = parseFloat(probMin);
         const temProb = p.mercados.some((m) =>
@@ -1464,7 +1466,6 @@ export default function App({ onNavegar, onAbrirPartida }) {
         if (!temProb) return false;
       }
 
-      // Filtro de mercados selecionados
       if (mercadosSel.length > 0) {
         const temMercado = p.mercados.some((m) => mercadosSel.includes(m.nome));
         if (!temMercado) return false;
