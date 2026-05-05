@@ -28,24 +28,9 @@ const T = {
   orange:    '#f59e0b',
 };
 
-// ============================================================
-// MOCK DATA — gerador deterministico baseado nos jogadores selecionados
-//
-// ARQUITETURA (pensada pra trocar por backend real depois):
-//   gerarPerfilJogador(nome) -> perfil estavel de UM jogador
-//                               (vira query no MikeDB no futuro)
-//   gerarDados(jog1, jog2)  -> combina os dois perfis pra confronto
-//
-// Cada mercado tem dados POR PERIODO (FT/HT/1Q/2Q/3Q/4Q):
-//   data.over_under_match = { FT: [...], HT: [...], 1Q: [...] ... }
-//   data.hc_asian = { FT: [...], HT: [...] ... }
-//   data.ou_jogador_a = { FT: [...], HT: [...] }
-// ============================================================
-
 const PERIODS = ['FT', 'HT', '1Q', '2Q', '3Q', '4Q'];
-const PERIODS_JOGADOR = ['FT', 'HT'];  // Over/Under jogador so tem FT e HT
+const PERIODS_JOGADOR = ['FT', 'HT'];
 
-// Hash deterministico simples
 function hashStr(s) {
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) {
@@ -55,7 +40,6 @@ function hashStr(s) {
   return h;
 }
 
-// Gerador pseudo-aleatorio seedado
 function seeded(seed) {
   let state = seed >>> 0;
   return () => {
@@ -64,7 +48,6 @@ function seeded(seed) {
   };
 }
 
-// Times NBA2K reais
 const TIMES_NBA2K = [
   'PHI 76ers', 'BOS Celtics', 'CLE Cavaliers', 'SAC Kings', 'MIA Heat',
   'LA Lakers', 'LA Clippers', 'IND Pacers', 'OKC Thunder', 'MEM Grizzlies',
@@ -74,27 +57,13 @@ const TIMES_NBA2K = [
   'NO Pelicans', 'PHX Suns', 'POR Trail Blazers', 'SAS Spurs', 'UTA Jazz',
 ];
 
-// ============================================================
-// PERFIL DE UM JOGADOR (estavel - mesmo nome sempre retorna mesmos numeros)
-// Quando o backend chegar, troca esta funcao por uma query no MikeDB.
-// ============================================================
 function gerarPerfilJogador(nome) {
   const seed = hashStr(nome);
   const r = seeded(seed);
-
-  // "Pre-compute" valores aleatorios estaveis pra usar varias vezes sem desordem
   const r1 = r(), r2 = r(), r3 = r(), r4 = r(), r5 = r();
-
-  // Taxa de vitoria geral (0.42 - 0.62)
   const winRate = 0.42 + r1 * 0.20;
-
-  // Media de pontos FT POR JOGADOR (40-55)
-  // No eBasket NBA2K, cada jogador faz ~45-50 pontos no FT
-  // Total do confronto fica ~90-100 pontos (Valencia 50 + Bangkok 42 = 92)
   const mediaFT = 40 + r2 * 15;
-
-  // Distribuicao por periodo (HT eh ~50%+1, quartos sao ~25%)
-  const variancaQ = (r3 - 0.5) * 2; // -1 a 1
+  const variancaQ = (r3 - 0.5) * 2;
   const mediaPorPeriodo = {
     FT: mediaFT,
     HT: mediaFT * 0.5 + 1.5 + variancaQ * 0.5,
@@ -103,8 +72,6 @@ function gerarPerfilJogador(nome) {
     '3Q': mediaFT * 0.25 - variancaQ * 0.4,
     '4Q': mediaFT * 0.25 + variancaQ * 0.2,
   };
-
-  // Taxa de vitoria por periodo (FT = winRate, outros derivam com ruido)
   const wrPorPeriodo = {
     FT: winRate * 100,
     HT: winRate * 100 - 4 + r4 * 2,
@@ -113,20 +80,14 @@ function gerarPerfilJogador(nome) {
     '3Q': winRate * 100 - 8 + r() * 2,
     '4Q': winRate * 100 - 8 + r() * 2,
   };
-
-  // Tabela de times - cada jogador enfrentou entre 18-28 times (subset dos 30)
-  // Numeros estaveis (mesmo seed sempre gera mesma tabela)
   const r2nd = seeded(seed + 999);
-  const qtdTimes = 18 + Math.floor(r2nd() * 11);  // 18-28
-  // Embaralhar os times (Fisher-Yates determinístico) e pegar os primeiros qtdTimes
+  const qtdTimes = 18 + Math.floor(r2nd() * 11);
   const timesEmbaralhados = [...TIMES_NBA2K];
   for (let i = timesEmbaralhados.length - 1; i > 0; i--) {
     const j = Math.floor(r2nd() * (i + 1));
     [timesEmbaralhados[i], timesEmbaralhados[j]] = [timesEmbaralhados[j], timesEmbaralhados[i]];
   }
   const timesUsados = timesEmbaralhados.slice(0, qtdTimes);
-
-  // Numero de partidas por time (decai - time mais usado tem mais partidas)
   const tabelaTimes = timesUsados.map((time, i) => {
     const partidas = Math.max(8, 95 - i * 4 - Math.floor(r2nd() * 6));
     const v = Math.round(partidas * (winRate - 0.05 + r2nd() * 0.15));
@@ -135,30 +96,18 @@ function gerarPerfilJogador(nome) {
     const pc = Math.round(v * 45 + d * 50 + r2nd() * 200);
     const dif = pp - pc;
     return {
-      team: time,
-      partidas, V: v, D: d, E: 0, pp, pc,
+      team: time, partidas, V: v, D: d, E: 0, pp, pc,
       dif: dif >= 0 ? `+${dif}` : `${dif}`,
-      difNum: dif,  // numerico pra sort
+      difNum: dif,
       wr: Math.round((v / partidas) * 1000) / 10,
     };
   });
-
-  // Time mais usado: o primeiro da tabelaTimes (que decai por uso)
-  // Isso garante que o teamPref SEMPRE existe na tabela do jogador
   const teamPref = tabelaTimes[0].team;
-
-  // Comeback (% viradas apos perder o HT)
   const comeback = 12 + r() * 18;
-
-  // Resultados das ultimas 5 partidas (com info pra tooltip)
-  // Cada item: { resultado: 'V'|'D', placarA, placarB, oponenteNome, oponenteTime, data }
-  // Numeros gerados de forma estavel (mesmo seed, mesmo perfil = mesmas 5 ultimas)
   const last5Names = ['Janis','Aurik','Dimon','Slava','Mihail','Boris','Igor','Vlad','Pavel','Stefan'];
-  // Base de data eh deslocada pelo seed pra cada jogador ter datas distintas no last5
-  const offsetHorasPorJogador = (seed % 96);  // 0-95h de offset
+  const offsetHorasPorJogador = (seed % 96);
   const baseDateLast5 = new Date(2026, 4, 3, 23, 30);
   baseDateLast5.setHours(baseDateLast5.getHours() - offsetHorasPorJogador);
-
   const last5 = Array.from({ length: 5 }, (_, i) => {
     const ri = seeded(seed + 5000 + i * 17);
     const venceu = ri() < winRate;
@@ -170,288 +119,120 @@ function gerarPerfilJogador(nome) {
     const dt = new Date(baseDateLast5);
     dt.setHours(dt.getHours() - i * 8 - Math.floor(ri() * 4));
     const dateStr = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}, ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
-    // Garantir que oponenteTime != teamPref (faria parecer bug)
     let oponenteTime = TIMES_NBA2K[(seed + i * 7) % TIMES_NBA2K.length];
-    if (oponenteTime === teamPref) {
-      oponenteTime = TIMES_NBA2K[(seed + i * 7 + 13) % TIMES_NBA2K.length];
-    }
-    return {
-      resultado: venceu ? 'V' : 'D',
-      placarA: pA,
-      placarB: pB,
-      oponenteNome: last5Names[(seed + i) % last5Names.length],
-      oponenteTime,
-      data: dateStr,
-    };
+    if (oponenteTime === teamPref) oponenteTime = TIMES_NBA2K[(seed + i * 7 + 13) % TIMES_NBA2K.length];
+    return { resultado: venceu ? 'V' : 'D', placarA: pA, placarB: pB, oponenteNome: last5Names[(seed + i) % last5Names.length], oponenteTime, data: dateStr };
   });
-
-  return {
-    nome,
-    seed,
-    winRate,
-    mediaFT,
-    mediaPorPeriodo,
-    wrPorPeriodo,
-    teamPref,
-    tabelaTimes,
-    comeback: Math.round(comeback * 100) / 100,
-    last5,
-  };
+  return { nome, seed, winRate, mediaFT, mediaPorPeriodo, wrPorPeriodo, teamPref, tabelaTimes, comeback: Math.round(comeback * 100) / 100, last5 };
 }
 
-// ============================================================
-// FILTROS - Configuracao de janelas
-// ============================================================
-// Mapa: janela -> multiplicador (relativas) ou numero absoluto
 const JANELA_MULTI = {
-  'Todas':            1.0,
-  'Última hora':      0.005,
-  'Últimas 8 horas':  0.04,
-  'Últimas 24 horas': 0.10,
-  'Últimos 7 dias':   0.30,
-  'Últimas 30 dias':  0.60,
-  'Últimas 60 dias':  0.85,
-  'Últimos 90 dias':  0.95,
-  '5': 5, '10': 10, '15': 15, '20': 20, '25': 25, '30': 30,
-  '40': 40, '50': 50, '100': 100, '200': 200,
+  'Todas': 1.0, 'Última hora': 0.005, 'Últimas 8 horas': 0.04, 'Últimas 24 horas': 0.10,
+  'Últimos 7 dias': 0.30, 'Últimas 30 dias': 0.60, 'Últimas 60 dias': 0.85, 'Últimos 90 dias': 0.95,
+  '5': 5, '10': 10, '15': 15, '20': 20, '25': 25, '30': 30, '40': 40, '50': 50, '100': 100, '200': 200,
 };
 const JANELAS_ABSOLUTAS = ['5','10','15','20','25','30','40','50','100','200'];
 
-// Defaults de filtros (usados quando nao passados ou pra detectar "ativos")
 const FILTROS_DEFAULT = {
-  janela: 'Todas',
-  versao: 'Todas as versões',
-  horaInicio: '00:00',
-  horaFim: '24:00',
-  campeonatos: ['Adriatic League'],
-  timeA: null,
-  timeB: null,
+  janela: 'Todas', versao: 'Todas as versões', horaInicio: '00:00', horaFim: '24:00',
+  campeonatos: ['Adriatic League'], timeA: null, timeB: null,
 };
 
-// ============================================================
-// CONTEXTO: APLICA FILTROS NOS PERFIS E PRODUZ ESTADO DERIVADO
-//
-// Esta eh a funcao que vira "buscar do MikeDB" no backend real.
-// Tudo daqui pra frente eh derivacao matematica do contexto.
-// ============================================================
 function aplicarFiltros(perfilA, perfilB, filtros, modoSolo) {
   const f = { ...FILTROS_DEFAULT, ...filtros };
-
-  // Seed do contexto (perfilA + perfilB + filtros) - tudo deterministico
   const seedConfronto = (perfilA.seed ^ perfilB.seed) >>> 0;
-  const seedFiltro = hashStr(JSON.stringify({
-    j: f.janela, v: f.versao, hi: f.horaInicio, hf: f.horaFim,
-    c: [...f.campeonatos].sort().join('|'),
-    tA: f.timeA, tB: f.timeB,
-  }));
+  const seedFiltro = hashStr(JSON.stringify({ j: f.janela, v: f.versao, hi: f.horaInicio, hf: f.horaFim, c: [...f.campeonatos].sort().join('|'), tA: f.timeA, tB: f.timeB }));
   const seedCtx = (seedConfronto ^ seedFiltro) >>> 0;
   const rng = seeded(seedCtx);
-
-  // ---------- TOTAL DE PARTIDAS ----------
-  // Base: confronto h2h tem ~40-120 partidas, modo solo tem ~800-1300
   const totalBase = modoSolo ? 800 + (perfilA.seed % 500) : 40 + (seedConfronto % 80);
-
-  // Calcular horas filtradas (usado em multiplos lugares)
   const horasInicio = parseInt(f.horaInicio.split(':')[0], 10);
   const horasFim    = parseInt(f.horaFim.split(':')[0], 10);
   const horasFiltradas = Math.max(1, horasFim - horasInicio);
-
-  // Sem campeonato selecionado: total = 0 (estado vazio valido)
-  if (f.campeonatos.length === 0) {
-    return contextoVazio(perfilA, perfilB, f, modoSolo, seedCtx);
-  }
-
-  let total;
-  let janelaPedida = null;  // pra mostrar "200 (76 disponíveis)" se pediu mais que tem
-
+  if (f.campeonatos.length === 0) return contextoVazio(perfilA, perfilB, f, modoSolo, seedCtx);
+  let total, janelaPedida = null;
   if (JANELAS_ABSOLUTAS.includes(f.janela)) {
-    // Numero absoluto: respeita exatamente, capa em totalBase
     janelaPedida = JANELA_MULTI[f.janela];
     total = Math.min(janelaPedida, totalBase);
   } else {
-    // Janela relativa: aplica multiplicadores
     total = Math.max(1, Math.round(totalBase * JANELA_MULTI[f.janela]));
-    if (horasFiltradas < 24) {
-      total = Math.max(1, Math.round(total * (horasFiltradas / 24)));
-    }
-    if (f.versao === 'Última versão') {
-      total = Math.max(1, Math.round(total * 0.25));
-    }
+    if (horasFiltradas < 24) total = Math.max(1, Math.round(total * (horasFiltradas / 24)));
+    if (f.versao === 'Última versão') total = Math.max(1, Math.round(total * 0.25));
   }
-
-  // ---------- FILTRO DE TIME ----------
-  // Se o usuario selecionou um time especifico (timeA ou timeB),
-  // filtra pra mostrar apenas partidas onde aquele jogador usou aquele time
-  //
-  // timeA: time que o jogador A usa (sempre da tabelaTimes do A)
-  // timeB modo confronto: time que o jogador B usa (tabelaTimes do B)
-  // timeB modo solo: time do adversario (qualquer dos 30 times) - filtra "Valencia vs DAL"
   let totalAjustadoTime = total;
   if (f.timeA) {
     const timeAObj = perfilA.tabelaTimes.find(t => t.team === f.timeA);
     if (timeAObj) {
-      // Proporcao de partidas com esse time vs total de partidas do jogador
       const totalPartidasA = perfilA.tabelaTimes.reduce((s, t) => s + t.partidas, 0);
-      const proporcao = timeAObj.partidas / totalPartidasA;
-      totalAjustadoTime = Math.max(1, Math.round(totalAjustadoTime * proporcao));
+      totalAjustadoTime = Math.max(1, Math.round(totalAjustadoTime * (timeAObj.partidas / totalPartidasA)));
     }
   }
   if (f.timeB) {
     if (!modoSolo) {
-      // Modo confronto: usa tabelaTimes do jogador B
       const timeBObj = perfilB.tabelaTimes.find(t => t.team === f.timeB);
       if (timeBObj) {
         const totalPartidasB = perfilB.tabelaTimes.reduce((s, t) => s + t.partidas, 0);
-        const proporcao = timeBObj.partidas / totalPartidasB;
-        totalAjustadoTime = Math.max(1, Math.round(totalAjustadoTime * proporcao));
+        totalAjustadoTime = Math.max(1, Math.round(totalAjustadoTime * (timeBObj.partidas / totalPartidasB)));
       }
     } else {
-      // Modo solo: timeB eh o time do adversario (qualquer)
-      // Proporcao deterministica baseada no hash do time (uns times sao mais comuns que outros)
       const seedTimeB = hashStr(f.timeB);
-      const proporcao = 0.025 + (seedTimeB % 100) / 1000;  // 2.5% - 12.5% (varia por time)
-      totalAjustadoTime = Math.max(1, Math.round(totalAjustadoTime * proporcao));
+      totalAjustadoTime = Math.max(1, Math.round(totalAjustadoTime * (0.025 + (seedTimeB % 100) / 1000)));
     }
   }
   total = totalAjustadoTime;
-
-  // ---------- VARIANCIA DA AMOSTRA ----------
-  // Amostra pequena = mais variancia nos numeros (incerteza estatistica)
-  // Eh aplicada nas medias e wrs DOS JOGADORES
   let variancia;
-  if (total <= 5)        variancia = 4.0;
-  else if (total <= 10)  variancia = 3.0;
-  else if (total <= 20)  variancia = 2.0;
-  else if (total <= 50)  variancia = 1.2;
+  if (total <= 5) variancia = 4.0;
+  else if (total <= 10) variancia = 3.0;
+  else if (total <= 20) variancia = 2.0;
+  else if (total <= 50) variancia = 1.2;
   else if (total <= 100) variancia = 0.7;
-  else                   variancia = 0.4;
-
-  // Versao nova adiciona um POUCO de variancia (mas nao multiplica de novo)
+  else variancia = 0.4;
   if (f.versao === 'Última versão') variancia += 1.0;
-
-  // ---------- MEDIAS POR PERIODO (filtradas) ----------
-  // Cada periodo tem seu proprio offset deterministico
-  const aplicarOffset = (base, idx) => {
-    const offset = (rng() - 0.5) * variancia * 2;
-    // Cap minimo: 50% da base (nao deixa medias absurdamente baixas)
-    return Math.max(base * 0.5, base + offset);
-  };
-
-  const mediaA = {};
-  const mediaB = {};
-  PERIODS.forEach((per, idx) => {
-    mediaA[per] = aplicarOffset(perfilA.mediaPorPeriodo[per], idx);
-    mediaB[per] = aplicarOffset(perfilB.mediaPorPeriodo[per], idx);
-  });
-
-  // ---------- WIN RATE POR PERIODO (filtradas) ----------
-  // Variancia maior em wr (eh em pontos percentuais, ate 10pp em amostra pequena)
-  const aplicarOffsetWr = (base) => {
-    const offset = (rng() - 0.5) * variancia * 3;
-    return Math.max(5, Math.min(95, base + offset));
-  };
-
-  const wrA = {};
-  const wrB = {};
+  const aplicarOffset = (base) => Math.max(base * 0.5, base + (rng() - 0.5) * variancia * 2);
+  const aplicarOffsetWr = (base) => Math.max(5, Math.min(95, base + (rng() - 0.5) * variancia * 3));
+  const mediaA = {}, mediaB = {}, wrA = {}, wrB = {};
   PERIODS.forEach(per => {
+    mediaA[per] = aplicarOffset(perfilA.mediaPorPeriodo[per]);
+    mediaB[per] = aplicarOffset(perfilB.mediaPorPeriodo[per]);
     wrA[per] = aplicarOffsetWr(perfilA.wrPorPeriodo[per]);
     wrB[per] = aplicarOffsetWr(perfilB.wrPorPeriodo[per]);
   });
-
-  // ---------- VITORIAS NO CONFRONTO ----------
-  // Combinar wrA[FT] e wrB[FT] -> ratioA (probabilidade A vencer)
   const ratioA = wrA.FT / (wrA.FT + wrB.FT);
   const winsA = Math.round(total * ratioA);
   const winsB = total - winsA;
-
-  // ---------- TIMES DOS JOGADORES (resolve colisao + aplica filtro) ----------
-  // Se usuario selecionou um time especifico no dropdown, usa esse.
-  // Senao, usa teamPref (time mais usado pelo jogador).
   let teamA = f.timeA || perfilA.teamPref;
   let teamB = f.timeB || perfilB.teamPref;
-  // Resolver colisao (so quando nao tem filtro de time setado e os dois batem)
   if (!modoSolo && !f.timeA && !f.timeB && teamA === teamB) {
     const outroTime = perfilB.tabelaTimes.find(t => t.team !== teamA);
     if (outroTime) teamB = outroTime.team;
   }
-
-  return {
-    perfilA, perfilB, modoSolo,
-    filtros: f, seedCtx,
-    rng: seeded(seedCtx),  // RNG fresca pra derivacoes (nao reutilizar a do total)
-    totalBase, total, janelaPedida, horasFiltradas, variancia,
-    mediaA, mediaB, wrA, wrB,
-    ratioA, winsA, winsB,
-    teamA, teamB,
-    vazio: false,
-  };
+  return { perfilA, perfilB, modoSolo, filtros: f, seedCtx, rng: seeded(seedCtx), totalBase, total, janelaPedida, horasFiltradas, variancia, mediaA, mediaB, wrA, wrB, ratioA, winsA, winsB, teamA, teamB, vazio: false };
 }
 
-// Contexto vazio (campeonatos = [], total = 0)
 function contextoVazio(perfilA, perfilB, filtros, modoSolo, seedCtx) {
-  // Resolver colisao mesmo no contexto vazio (cabecalho continua mostrando jogadores)
-  let teamA = perfilA.teamPref;
-  let teamB = perfilB.teamPref;
-  if (!modoSolo && teamA === teamB) {
-    const outroTime = perfilB.tabelaTimes.find(t => t.team !== teamA);
-    if (outroTime) teamB = outroTime.team;
-  }
-
-  return {
-    perfilA, perfilB, modoSolo, filtros, seedCtx,
-    rng: seeded(seedCtx),
-    totalBase: 0, total: 0, janelaPedida: null, horasFiltradas: 24, variancia: 0,
-    mediaA: Object.fromEntries(PERIODS.map(p => [p, 0])),
-    mediaB: Object.fromEntries(PERIODS.map(p => [p, 0])),
-    wrA: Object.fromEntries(PERIODS.map(p => [p, 50])),
-    wrB: Object.fromEntries(PERIODS.map(p => [p, 50])),
-    ratioA: 0.5, winsA: 0, winsB: 0,
-    teamA, teamB: modoSolo ? null : teamB,
-    vazio: true,
-  };
+  let teamA = perfilA.teamPref, teamB = perfilB.teamPref;
+  if (!modoSolo && teamA === teamB) { const o = perfilB.tabelaTimes.find(t => t.team !== teamA); if (o) teamB = o.team; }
+  return { perfilA, perfilB, modoSolo, filtros, seedCtx, rng: seeded(seedCtx), totalBase: 0, total: 0, janelaPedida: null, horasFiltradas: 24, variancia: 0, mediaA: Object.fromEntries(PERIODS.map(p => [p, 0])), mediaB: Object.fromEntries(PERIODS.map(p => [p, 0])), wrA: Object.fromEntries(PERIODS.map(p => [p, 50])), wrB: Object.fromEntries(PERIODS.map(p => [p, 50])), ratioA: 0.5, winsA: 0, winsB: 0, teamA, teamB: modoSolo ? null : teamB, vazio: true };
 }
 
-// ============================================================
-// DERIVACOES (puras: contexto -> dataset)
-// ============================================================
-
-// Resumo do confronto (ultimas N partidas, % vitoria, etc)
 function derivarMatchupSummary(ctx) {
   const { total, winsA, winsB, ratioA, rng } = ctx;
-  // last_n: ate 10 partidas, com cap em total disponivel
   const n = Math.min(10, total);
   const lastN = Array.from({ length: n }, () => rng() < ratioA ? 'a' : 'b');
-  return {
-    wins_a: winsA,
-    wins_b: winsB,
-    total,
-    pct_a: total > 0 ? Math.round((winsA / total) * 10000) / 100 : 0,
-    pct_b: total > 0 ? Math.round((winsB / total) * 10000) / 100 : 0,
-    last_n: lastN,
-  };
+  return { wins_a: winsA, wins_b: winsB, total, pct_a: total > 0 ? Math.round((winsA / total) * 10000) / 100 : 0, pct_b: total > 0 ? Math.round((winsB / total) * 10000) / 100 : 0, last_n: lastN };
 }
 
-// Cards do topo (Maior placar, Maior diferenca, Sequencia, Media)
-// Derivam dos dados REAIS do historico pra ser consistente com a UI
 function derivarCards(ctx) {
-  const { perfilA, perfilB, modoSolo, mediaA, mediaB, winsA, winsB, total, seedCtx, ratioA } = ctx;
-  if (total === 0) {
-    return [
-      { label: 'Maior diferença',     value: '—', extra: null, extraColor: null, sub: 'Sem partidas',  icon: 'diff' },
-      { label: 'Maior placar',        value: '—', extra: null, extraColor: null, sub: 'Sem partidas',  icon: 'plus' },
-      { label: 'Sequência de Vitórias', value: '—', extra: null, extraColor: null, sub: 'Sem partidas', icon: 'flame' },
-      { label: 'Média de Pontos',     value: '—', extra: null, extraColor: null, sub: 'Sem partidas',  icon: 'chart' },
-    ];
-  }
-
-  // Simular as primeiras N partidas do historico pra extrair maximos consistentes
-  // (mesma logica do derivarHistorico, mas so calcula o que precisa)
+  const { perfilA, perfilB, modoSolo, mediaA, mediaB, total, seedCtx, ratioA } = ctx;
+  if (total === 0) return [
+    { label: 'Maior diferença', value: '—', extra: null, extraColor: null, sub: 'Sem partidas', icon: 'diff' },
+    { label: 'Maior placar', value: '—', extra: null, extraColor: null, sub: 'Sem partidas', icon: 'plus' },
+    { label: 'Sequência de Vitórias', value: '—', extra: null, extraColor: null, sub: 'Sem partidas', icon: 'flame' },
+    { label: 'Média de Pontos', value: '—', extra: null, extraColor: null, sub: 'Sem partidas', icon: 'chart' },
+  ];
   const qtdSim = Math.min(100, total);
   let maiorDiffNum = 0, maiorDiffStr = '', maiorDiffVencedor = 'a', maiorDiffDias = 1;
   let maiorPlacarNum = 0, maiorPlacarStr = '', maiorPlacarVencedor = 'a', maiorPlacarDias = 1;
-  let seqAtual = 0, seqAtualLado = null;
-  let seqMax = 0, seqMaxLado = 'a';
-
+  let seqAtual = 0, seqAtualLado = null, seqMax = 0, seqMaxLado = 'a';
   for (let i = 0; i < qtdSim; i++) {
     const r = seeded(seedCtx + i * 53);
     const aScore = Math.max(20, Math.round(mediaA.FT + (r() - 0.5) * 20));
@@ -460,451 +241,241 @@ function derivarCards(ctx) {
     let aFinal = aScore, bFinal = bScore;
     if (vencedor === 'a' && aScore <= bScore) aFinal = bScore + 1 + Math.floor(r() * 5);
     else if (vencedor === 'b' && bScore <= aScore) bFinal = aScore + 1 + Math.floor(r() * 5);
-
     const diff = Math.abs(aFinal - bFinal);
     const totalPlacar = aFinal + bFinal;
-
-    if (diff > maiorDiffNum) {
-      maiorDiffNum = diff;
-      maiorDiffStr = `${Math.max(aFinal, bFinal)}-${Math.min(aFinal, bFinal)}`;
-      maiorDiffVencedor = vencedor;
-      maiorDiffDias = Math.floor(i / 48) + 1;  // ~48 partidas/dia (30min cada)
-    }
-    if (totalPlacar > maiorPlacarNum) {
-      maiorPlacarNum = totalPlacar;
-      maiorPlacarStr = `${aFinal + bFinal}`;
-      maiorPlacarVencedor = vencedor;
-      maiorPlacarDias = Math.floor(i / 48) + 1;
-    }
-    // Sequencia: contar V/D consecutivos
-    if (vencedor === seqAtualLado) {
-      seqAtual++;
-    } else {
-      seqAtualLado = vencedor;
-      seqAtual = 1;
-    }
-    if (seqAtual > seqMax) {
-      seqMax = seqAtual;
-      seqMaxLado = seqAtualLado;
-    }
+    if (diff > maiorDiffNum) { maiorDiffNum = diff; maiorDiffStr = `${Math.max(aFinal, bFinal)}-${Math.min(aFinal, bFinal)}`; maiorDiffVencedor = vencedor; maiorDiffDias = Math.floor(i / 48) + 1; }
+    if (totalPlacar > maiorPlacarNum) { maiorPlacarNum = totalPlacar; maiorPlacarStr = `${aFinal + bFinal}`; maiorPlacarVencedor = vencedor; maiorPlacarDias = Math.floor(i / 48) + 1; }
+    if (vencedor === seqAtualLado) { seqAtual++; } else { seqAtualLado = vencedor; seqAtual = 1; }
+    if (seqAtual > seqMax) { seqMax = seqAtual; seqMaxLado = seqAtualLado; }
   }
-
   const nomeVencedorDiff = maiorDiffVencedor === 'a' ? perfilA.nome : (modoSolo ? 'Oponentes' : perfilB.nome);
-  const corVencedorDiff  = maiorDiffVencedor === 'a' ? T.accent : T.accent2;
+  const corVencedorDiff = maiorDiffVencedor === 'a' ? T.accent : T.accent2;
   const nomeVencedorPlacar = maiorPlacarVencedor === 'a' ? perfilA.nome : (modoSolo ? 'Oponentes' : perfilB.nome);
-  const corVencedorPlacar  = maiorPlacarVencedor === 'a' ? T.accent : T.accent2;
+  const corVencedorPlacar = maiorPlacarVencedor === 'a' ? T.accent : T.accent2;
   const nomeVencedorSeq = seqMaxLado === 'a' ? perfilA.nome : (modoSolo ? 'Oponentes' : perfilB.nome);
-  const corVencedorSeq  = seqMaxLado === 'a' ? T.accent : T.accent2;
-
+  const corVencedorSeq = seqMaxLado === 'a' ? T.accent : T.accent2;
   return [
-    { label: 'Maior diferença',     value: maiorDiffStr, extra: nomeVencedorDiff, extraColor: corVencedorDiff, sub: `${maiorDiffDias} dia${maiorDiffDias > 1 ? 's' : ''} atrás`, icon: 'diff' },
-    { label: 'Maior placar',        value: maiorPlacarStr, extra: nomeVencedorPlacar, extraColor: corVencedorPlacar, sub: `${maiorPlacarDias} dia${maiorPlacarDias > 1 ? 's' : ''} atrás`, icon: 'plus' },
+    { label: 'Maior diferença', value: maiorDiffStr, extra: nomeVencedorDiff, extraColor: corVencedorDiff, sub: `${maiorDiffDias} dia${maiorDiffDias > 1 ? 's' : ''} atrás`, icon: 'diff' },
+    { label: 'Maior placar', value: maiorPlacarStr, extra: nomeVencedorPlacar, extraColor: corVencedorPlacar, sub: `${maiorPlacarDias} dia${maiorPlacarDias > 1 ? 's' : ''} atrás`, icon: 'plus' },
     { label: 'Sequência de Vitórias', value: `${seqMax} jogo${seqMax > 1 ? 's' : ''}`, extra: nomeVencedorSeq, extraColor: corVencedorSeq, sub: null, icon: 'flame' },
-    { label: 'Média de Pontos',     value: `${(mediaA.FT + mediaB.FT).toFixed(2)} pontos`, extra: null, extraColor: null, sub: 'Todas as Partidas', icon: 'chart' },
+    { label: 'Média de Pontos', value: `${(mediaA.FT + mediaB.FT).toFixed(2)} pontos`, extra: null, extraColor: null, sub: 'Todas as Partidas', icon: 'chart' },
   ];
 }
 
-// Over/Under PARTIDA (dados por periodo)
-// Faixa de linhas: media * 0.55 ate media * 1.65 (igual TipManager)
 function derivarOverUnderPartida(ctx) {
   const { mediaA, mediaB, total, seedCtx } = ctx;
   if (total === 0) return Object.fromEntries(PERIODS.map(p => [p, { Over: [], Under: [] }]));
-
   const result = {};
   PERIODS.forEach((per, perIdx) => {
     const r = seeded(seedCtx + perIdx * 17);
     const mediaTotal = mediaA[per] + mediaB[per];
-    const linhaMin = Math.floor(mediaTotal * 0.55);
-    const linhaMax = Math.floor(mediaTotal * 1.65);
-    const qtd = Math.max(1, linhaMax - linhaMin + 1);
-
-    const linhas = Array.from({ length: qtd }, (_, i) => {
-      const linhaNum = linhaMin + i;
-      const linha = linhaNum + 0.5;
-      const dist = mediaTotal - linha;
-      // Sigmoide suave (k=0.25): ~99% nas baixas, ~50% perto da media, ~1% nas altas
-      const pctOver = 100 / (1 + Math.exp(-dist * 0.25));
-      const ruido = (r() - 0.5) * 1.5;
-      const finalOver = Math.max(0.5, Math.min(99.5, pctOver + ruido));
+    const linhaMin = Math.floor(mediaTotal * 0.55), linhaMax = Math.floor(mediaTotal * 1.65);
+    const linhas = Array.from({ length: Math.max(1, linhaMax - linhaMin + 1) }, (_, i) => {
+      const linhaNum = linhaMin + i, linha = linhaNum + 0.5;
+      const pctOver = 100 / (1 + Math.exp(-(mediaTotal - linha) * 0.25));
+      const finalOver = Math.max(0.5, Math.min(99.5, pctOver + (r() - 0.5) * 1.5));
       return { linhaNum, finalOver };
     });
-
-    result[per] = {
-      Over: linhas.map(l => ({ line: `${l.linhaNum}.5`, pct: l.finalOver })),
-      Under: linhas.map(l => ({ line: `${l.linhaNum}.5`, pct: 100 - l.finalOver })),
-    };
+    result[per] = { Over: linhas.map(l => ({ line: `${l.linhaNum}.5`, pct: l.finalOver })), Under: linhas.map(l => ({ line: `${l.linhaNum}.5`, pct: 100 - l.finalOver })) };
   });
   return result;
 }
 
-// Handicap Asiatico (dados por periodo)
 function derivarHandicap(ctx) {
   const { mediaA, mediaB, wrA, wrB, total, seedCtx } = ctx;
   if (total === 0) return Object.fromEntries(PERIODS.map(p => [p, []]));
-
   const result = {};
   PERIODS.forEach((per, perIdx) => {
     const r = seeded(seedCtx + perIdx * 23);
-    // Margem media de pontos (diferenca esperada quando A vence)
-    const margemA = Math.abs(mediaA[per] - mediaB[per]) + 3;
-    const margemB = Math.abs(mediaB[per] - mediaA[per]) + 3;
-
+    const margemA = Math.abs(mediaA[per] - mediaB[per]) + 3, margemB = Math.abs(mediaB[per] - mediaA[per]) + 3;
     result[per] = Array.from({ length: 12 }, (_, i) => {
-      const linhaNum = i + 1;
-      const linha = linhaNum + 0.5;
-      // sigmoid: A com hc +X.5 ganha melhor conforme X cresce
-      const distA = linha - margemA * 0.5;
-      const aPlusFromHc = 100 / (1 + Math.exp(-distA * 0.35));
-      const aPlus  = Math.max(2, Math.min(98, wrA[per] + aPlusFromHc * 0.5 + (r() - 0.5) * 3));
+      const linhaNum = i + 1, linha = linhaNum + 0.5;
+      const aPlusFromHc = 100 / (1 + Math.exp(-(linha - margemA * 0.5) * 0.35));
+      const aPlus = Math.max(2, Math.min(98, wrA[per] + aPlusFromHc * 0.5 + (r() - 0.5) * 3));
       const aMinus = Math.max(2, Math.min(98, 100 - aPlus + (r() - 0.5) * 2));
-
-      const distB = linha - margemB * 0.5;
-      const bPlusFromHc = 100 / (1 + Math.exp(-distB * 0.35));
-      const bPlus  = Math.max(2, Math.min(98, wrB[per] + bPlusFromHc * 0.5 + (r() - 0.5) * 3));
+      const bPlusFromHc = 100 / (1 + Math.exp(-(linha - margemB * 0.5) * 0.35));
+      const bPlus = Math.max(2, Math.min(98, wrB[per] + bPlusFromHc * 0.5 + (r() - 0.5) * 3));
       const bMinus = Math.max(2, Math.min(98, 100 - bPlus + (r() - 0.5) * 2));
-
       return { line: `${linha}`, a_plus: aPlus, a_minus: aMinus, b_plus: bPlus, b_minus: bMinus };
     });
   });
   return result;
 }
 
-// Over/Under JOGADOR (so FT e HT)
 function derivarOverUnderJogador(ctx, lado) {
   const { total, seedCtx } = ctx;
   const media = lado === 'a' ? ctx.mediaA : ctx.mediaB;
   if (total === 0) return Object.fromEntries(PERIODS_JOGADOR.map(p => [p, { Over: [], Under: [] }]));
-
   const result = {};
   PERIODS_JOGADOR.forEach((per, perIdx) => {
     const r = seeded(seedCtx + perIdx * 41 + (lado === 'a' ? 0 : 100000));
-    const mediaJog = media[per];
-    const linhaMin = Math.floor(mediaJog * 0.55);
-    const linhaMax = Math.floor(mediaJog * 1.65);
-    const qtd = Math.max(1, linhaMax - linhaMin + 1);
-
-    const linhas = Array.from({ length: qtd }, (_, i) => {
-      const linhaNum = linhaMin + i;
-      const linha = linhaNum + 0.5;
-      const dist = mediaJog - linha;
-      const pctOver = 100 / (1 + Math.exp(-dist * 0.3));
-      const ruido = (r() - 0.5) * 1.8;
-      const finalOver = Math.max(0.5, Math.min(99.5, pctOver + ruido));
+    const mediaJog = media[per], linhaMin = Math.floor(mediaJog * 0.55), linhaMax = Math.floor(mediaJog * 1.65);
+    const linhas = Array.from({ length: Math.max(1, linhaMax - linhaMin + 1) }, (_, i) => {
+      const linhaNum = linhaMin + i, linha = linhaNum + 0.5;
+      const finalOver = Math.max(0.5, Math.min(99.5, 100 / (1 + Math.exp(-(mediaJog - linha) * 0.3)) + (r() - 0.5) * 1.8));
       return { linhaNum, finalOver };
     });
-
-    result[per] = {
-      Over: linhas.map(l => ({ line: `${l.linhaNum}.5`, pct: l.finalOver })),
-      Under: linhas.map(l => ({ line: `${l.linhaNum}.5`, pct: 100 - l.finalOver })),
-    };
+    result[per] = { Over: linhas.map(l => ({ line: `${l.linhaNum}.5`, pct: l.finalOver })), Under: linhas.map(l => ({ line: `${l.linhaNum}.5`, pct: 100 - l.finalOver })) };
   });
   return result;
 }
 
-// Pontos por periodo + quebras analiticas
 function derivarPontosPeriodo(ctx) {
   const { mediaA, mediaB, total, seedCtx, modoSolo } = ctx;
   if (total === 0) return [];
   const r = seeded(seedCtx + 7777);
-
-  // Quebras: cada uma multiplica a media FT por um fator, com ruido pequeno deterministico
-  // Resultados sao seeded pelo ctx, entao mudam com filtros
-  const fatorComRuido = (base, ruidoMax) => base + (r() - 0.5) * ruidoMax;
-
+  const fR = (base, ruidoMax) => base + (r() - 0.5) * ruidoMax;
   const linhas = [
-    // Periodos basicos (medias diretas, ja filtradas)
     ...PERIODS.map(per => ({ period: per, a: mediaA[per], b: mediaB[per] })),
-    // Quebras analiticas
-    { period: 'Após vencer HT',   a: mediaA.FT * fatorComRuido(1.06, 0.04), b: mediaB.FT * fatorComRuido(1.06, 0.04) },
-    { period: 'Após perder HT',   a: mediaA.FT * fatorComRuido(0.94, 0.04), b: mediaB.FT * fatorComRuido(0.94, 0.04) },
-    { period: 'Como mandante',    a: mediaA.FT * fatorComRuido(1.03, 0.04), b: mediaB.FT * fatorComRuido(1.03, 0.04) },
-    { period: 'Como visitante',   a: mediaA.FT * fatorComRuido(0.97, 0.04), b: mediaB.FT * fatorComRuido(0.97, 0.04) },
-    { period: 'Últimas 5',        a: mediaA.FT + (r() - 0.5) * 5,           b: mediaB.FT + (r() - 0.5) * 5 },
-    { period: 'Últimas 10',       a: mediaA.FT + (r() - 0.5) * 3,           b: mediaB.FT + (r() - 0.5) * 3 },
+    { period: 'Após vencer HT', a: mediaA.FT * fR(1.06, 0.04), b: mediaB.FT * fR(1.06, 0.04) },
+    { period: 'Após perder HT', a: mediaA.FT * fR(0.94, 0.04), b: mediaB.FT * fR(0.94, 0.04) },
+    { period: 'Como mandante', a: mediaA.FT * fR(1.03, 0.04), b: mediaB.FT * fR(1.03, 0.04) },
+    { period: 'Como visitante', a: mediaA.FT * fR(0.97, 0.04), b: mediaB.FT * fR(0.97, 0.04) },
+    { period: 'Últimas 5', a: mediaA.FT + (r() - 0.5) * 5, b: mediaB.FT + (r() - 0.5) * 5 },
+    { period: 'Últimas 10', a: mediaA.FT + (r() - 0.5) * 3, b: mediaB.FT + (r() - 0.5) * 3 },
   ];
-
-  // "Confronto direto" so faz sentido em modo confronto (1 vs 1)
-  if (!modoSolo) {
-    linhas.push({ period: 'Confronto direto', a: mediaA.FT + (r() - 0.5) * 4, b: mediaB.FT + (r() - 0.5) * 4 });
-  }
-
+  if (!modoSolo) linhas.push({ period: 'Confronto direto', a: mediaA.FT + (r() - 0.5) * 4, b: mediaB.FT + (r() - 0.5) * 4 });
   return linhas;
 }
 
-// Estatisticas da partida (% vitoria por periodo + quebras)
 function derivarStatsPartida(ctx) {
   const { winsA, winsB, total, seedCtx, wrA, wrB } = ctx;
   if (total === 0) return [];
   const r = seeded(seedCtx + 8888);
-  const ftPctA = (winsA / total) * 100;
-  const ftPctB = (winsB / total) * 100;
-
-  // Empates sao raros em eBasket NBA2K (sem regra de empate em jogos competitivos)
-  // Mas ha algumas em quartos isolados. Usar valor pequeno e proporcional ao periodo
+  const ftPctA = (winsA / total) * 100, ftPctB = (winsB / total) * 100;
   const empatePeriodo = (i) => i === 0 ? 0 : Math.min(8, 2 + i);
-
   return [
-    // Periodos basicos: usar wrA/wrB ja calculados (refletem perfil real do jogador)
-    ...PERIODS.map((per, i) => ({
-      period: per,
-      a: wrA[per],
-      b: wrB[per],
-      draw: empatePeriodo(i),
-    })),
-    // Quebras (ajustes baseados em padroes reais do basquete)
+    ...PERIODS.map((per, i) => ({ period: per, a: wrA[per], b: wrB[per], draw: empatePeriodo(i) })),
     { period: 'Após vencer 1Q', a: Math.min(95, ftPctA + 12 + r() * 4), b: Math.min(95, ftPctB + 12 + r() * 4), draw: 0 },
-    { period: 'Após perder 1Q', a: Math.max(5, ftPctA - 15 + r() * 5),  b: Math.max(5, ftPctB - 15 + r() * 5),  draw: 0 },
+    { period: 'Após perder 1Q', a: Math.max(5, ftPctA - 15 + r() * 5), b: Math.max(5, ftPctB - 15 + r() * 5), draw: 0 },
     { period: 'Após vencer HT', a: Math.min(95, ftPctA + 18 + r() * 4), b: Math.min(95, ftPctB + 18 + r() * 4), draw: 0 },
-    { period: 'Após perder HT', a: Math.max(5, ftPctA - 18 + r() * 5),  b: Math.max(5, ftPctB - 18 + r() * 5),  draw: 0 },
-    { period: 'Últimas 5',      a: Math.max(5, Math.min(95, ftPctA + (r() - 0.5) * 25)), b: Math.max(5, Math.min(95, ftPctB + (r() - 0.5) * 25)), draw: 0 },
-    { period: 'Últimas 10',     a: Math.max(5, Math.min(95, ftPctA + (r() - 0.5) * 15)), b: Math.max(5, Math.min(95, ftPctB + (r() - 0.5) * 15)), draw: 0 },
-    { period: 'Como favorito',  a: Math.min(95, ftPctA + 8 + r() * 3),  b: Math.min(95, ftPctB + 8 + r() * 3),  draw: 0 },
-    { period: 'Como azarão',    a: Math.max(5, ftPctA - 12 + r() * 4),  b: Math.max(5, ftPctB - 12 + r() * 4),  draw: 0 },
+    { period: 'Após perder HT', a: Math.max(5, ftPctA - 18 + r() * 5), b: Math.max(5, ftPctB - 18 + r() * 5), draw: 0 },
+    { period: 'Últimas 5', a: Math.max(5, Math.min(95, ftPctA + (r() - 0.5) * 25)), b: Math.max(5, Math.min(95, ftPctB + (r() - 0.5) * 25)), draw: 0 },
+    { period: 'Últimas 10', a: Math.max(5, Math.min(95, ftPctA + (r() - 0.5) * 15)), b: Math.max(5, Math.min(95, ftPctB + (r() - 0.5) * 15)), draw: 0 },
+    { period: 'Como favorito', a: Math.min(95, ftPctA + 8 + r() * 3), b: Math.min(95, ftPctB + 8 + r() * 3), draw: 0 },
+    { period: 'Como azarão', a: Math.max(5, ftPctA - 12 + r() * 4), b: Math.max(5, ftPctB - 12 + r() * 4), draw: 0 },
   ];
 }
 
-// Media nas ultimas N partidas (so mostra opcoes <= total disponivel)
 function derivarMediaUltimas(ctx) {
   const { mediaA, mediaB, total, seedCtx } = ctx;
   if (total === 0) return [];
-
-  const ftA = mediaA.FT, ftB = mediaB.FT;
-  const htA = mediaA.HT, htB = mediaB.HT;
-
-  const linha = (label, fa, fb, ha, hb) => ({
-    label,
-    a: fa.toFixed(2), a_ht: ha.toFixed(2),
-    b: fb.toFixed(2), b_ht: hb.toFixed(2),
-    total: (fa + fb).toFixed(2), total_ht: (ha + hb).toFixed(2),
-  });
-
+  const ftA = mediaA.FT, ftB = mediaB.FT, htA = mediaA.HT, htB = mediaB.HT;
+  const linha = (label, fa, fb, ha, hb) => ({ label, a: fa.toFixed(2), a_ht: ha.toFixed(2), b: fb.toFixed(2), b_ht: hb.toFixed(2), total: (fa + fb).toFixed(2), total_ht: (ha + hb).toFixed(2) });
   const linhas = [linha('Todas as Partidas', ftA, ftB, htA, htB)];
-
-  // Pontos: 5, 10, 15, 20, 25, 30, 40, 50, 100
-  // Mostra so se total >= n (nao faz sentido "100 ultimas" se so tem 30)
   [5, 10, 15, 20, 25, 30, 40, 50, 100].forEach(n => {
-    if (n > total) return;  // skip
+    if (n > total) return;
     const r = seeded(seedCtx + n * 7);
-    const fa = ftA + (r() - 0.4) * 3;
-    const fb = ftB + (r() - 0.4) * 3;
-    const ha = htA + (r() - 0.4) * 2;
-    const hb = htB + (r() - 0.4) * 2;
-    linhas.push(linha(`${n} últimas`, fa, fb, ha, hb));
+    linhas.push(linha(`${n} últimas`, ftA + (r() - 0.4) * 3, ftB + (r() - 0.4) * 3, htA + (r() - 0.4) * 2, htB + (r() - 0.4) * 2));
   });
   return linhas;
 }
 
-// Distribuicao diaria de partidas
-// Quantidade de dias proporcional ao total (mais partidas = mais dias)
 function derivarDistribuicao(ctx) {
   const { total, seedCtx, ratioA } = ctx;
   if (total === 0) return [];
-
-  // Quantos dias de historia mostrar: ate 30, mas proporcional ao total
   const qtdDias = Math.min(30, Math.max(7, Math.ceil(total / 4)));
-  // Partidas por dia, calibrado pra somar ~total
   const partidasPorDia = total / qtdDias;
-
   return Array.from({ length: qtdDias }, (_, i) => {
     const r = seeded(seedCtx + i * 31);
-    // Variar em torno da media (poisson-like)
     const totalDia = Math.max(1, Math.round(partidasPorDia + (r() - 0.5) * partidasPorDia));
     const a = Math.round(totalDia * ratioA + (r() - 0.5) * 1.5);
-    const drawCount = r() < 0.15 ? 1 : 0;  // empate raro em eBasket
+    const drawCount = r() < 0.15 ? 1 : 0;
     const b = Math.max(0, totalDia - a - drawCount);
-    // Data: ultimos qtdDias dias
-    const dt = new Date(2026, 4, 3);  // 03/05/2026 base
+    const dt = new Date(2026, 4, 3);
     dt.setDate(dt.getDate() - (qtdDias - 1 - i));
-    return {
-      day: `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}`,
-      dateFull: dt,
-      a: Math.max(0, a),
-      draw: drawCount,
-      b: Math.max(0, b),
-    };
+    return { day: `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}`, dateFull: dt, a: Math.max(0, a), draw: drawCount, b: Math.max(0, b) };
   });
 }
 
-// Media movel: pontos consecutivos mostrando evolucao da media
-// Quantidade proporcional ao total (max 60 pontos)
 function derivarMediaMovel(ctx) {
   const { mediaA, mediaB, total, seedCtx } = ctx;
   if (total === 0) return [];
-  const ftA = mediaA.FT, ftB = mediaB.FT;
-  const qtd = Math.min(60, Math.max(10, total));
-
-  // Amplitude da onda eh proporcional a media (em vez de fixa em 8/7)
-  // Senao em medias baixas (filtro restritivo) os valores podem ficar negativos
-  const ampA = Math.max(2, ftA * 0.15);
-  const ampB = Math.max(2, ftB * 0.15);
-  const ampTotal = Math.max(4, (ftA + ftB) * 0.12);
-
+  const ftA = mediaA.FT, ftB = mediaB.FT, qtd = Math.min(60, Math.max(10, total));
+  const ampA = Math.max(2, ftA * 0.15), ampB = Math.max(2, ftB * 0.15), ampTotal = Math.max(4, (ftA + ftB) * 0.12);
   return Array.from({ length: qtd }, (_, i) => {
     const r = seeded(seedCtx + i * 41);
-    return {
-      x: i,
-      a:     Math.max(1, ftA + Math.sin(i * 0.2) * ampA + (r() - 0.5) * 3),
-      b:     Math.max(1, ftB + Math.cos(i * 0.18) * ampB + (r() - 0.5) * 3),
-      total: Math.max(2, ftA + ftB + Math.sin(i * 0.2) * ampTotal + (r() - 0.5) * 4),
-    };
+    return { x: i, a: Math.max(1, ftA + Math.sin(i * 0.2) * ampA + (r() - 0.5) * 3), b: Math.max(1, ftB + Math.cos(i * 0.18) * ampB + (r() - 0.5) * 3), total: Math.max(2, ftA + ftB + Math.sin(i * 0.2) * ampTotal + (r() - 0.5) * 4) };
   });
 }
 
-// Historico de partidas (lista cronologica)
-// Quantidade = total (todas as partidas filtradas)
 function derivarHistorico(ctx) {
   const { perfilA, perfilB, modoSolo, total, seedCtx, mediaA, mediaB, ratioA, teamA, teamB, filtros } = ctx;
   if (total === 0) return [];
-
-  // Cap visual: nao adianta gerar 800 partidas que ninguem vai ver
-  // Paginacao ja cobre essa quantidade. Backend real seria query LIMIT.
   const qtd = Math.min(100, total);
-
   const opponents = ['Belgrade','Mumbai','Moscow','Athens','Dublin','Tokyo','Paris','Madrid','Rome','Lisbon'];
-  const baseDate = new Date(2026, 4, 3, 23, 30);  // 03/05/2026 23:30
-
+  const baseDate = new Date(2026, 4, 3, 23, 30);
   return Array.from({ length: qtd }, (_, i) => {
     const r = seeded(seedCtx + i * 53);
-    // Placar baseado nas medias filtradas com variancia
     const aScore = Math.max(20, Math.round(mediaA.FT + (r() - 0.5) * 20));
     const bScore = Math.max(20, Math.round(mediaB.FT + (r() - 0.5) * 20));
-    // Quem venceu? Determinado pela ratio + ruido
     const vencedor = r() < ratioA ? 'a' : 'b';
-    // Garantir consistencia: vencedor tem maior placar
     let aFinal = aScore, bFinal = bScore;
-    if (vencedor === 'a' && aScore <= bScore) {
-      aFinal = bScore + 1 + Math.floor(r() * 5);
-    } else if (vencedor === 'b' && bScore <= aScore) {
-      bFinal = aScore + 1 + Math.floor(r() * 5);
-    }
-
+    if (vencedor === 'a' && aScore <= bScore) aFinal = bScore + 1 + Math.floor(r() * 5);
+    else if (vencedor === 'b' && bScore <= aScore) bFinal = aScore + 1 + Math.floor(r() * 5);
     const dt = new Date(baseDate);
     dt.setMinutes(dt.getMinutes() - i * 30);
     const dateStr = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}, ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
-
-    // Time do lado B no historico:
-    // - Se filtrou timeB: usa esse time SEMPRE (todas as partidas mostram esse adversario)
-    // - Modo solo sem filtro: time aleatorio (cada partida foi contra um time diferente)
-    // - Modo confronto sem filtro: usa teamB do confronto
     let bTeamPartida;
-    if (filtros.timeB) {
-      bTeamPartida = filtros.timeB;
-    } else if (modoSolo) {
-      bTeamPartida = TIMES_NBA2K[(perfilA.seed + i * 11) % TIMES_NBA2K.length];
-    } else {
-      bTeamPartida = teamB;
-    }
-
-    return {
-      date: dateStr,
-      a_team: teamA,  // Sempre o time filtrado (ou teamPref do A)
-      b_team: bTeamPartida,
-      a_score: aFinal, b_score: bFinal,
-      a_name: perfilA.nome,
-      b_name: modoSolo ? opponents[i % opponents.length] : perfilB.nome,
-      a_ht: Math.floor(aFinal * 0.5),
-      b_ht: Math.floor(bFinal * 0.5),
-      vencedor,
-    };
+    if (filtros.timeB) bTeamPartida = filtros.timeB;
+    else if (modoSolo) bTeamPartida = TIMES_NBA2K[(perfilA.seed + i * 11) % TIMES_NBA2K.length];
+    else bTeamPartida = teamB;
+    return { date: dateStr, a_team: teamA, b_team: bTeamPartida, a_score: aFinal, b_score: bFinal, a_name: perfilA.nome, b_name: modoSolo ? opponents[i % opponents.length] : perfilB.nome, a_ht: Math.floor(aFinal * 0.5), b_ht: Math.floor(bFinal * 0.5), vencedor };
   });
 }
 
-// Tabela de times por jogador (pega da tabela do perfil, ja estavel)
-// Filtros nao afetam a tabela de times por enquanto (eh uma agregacao de longo prazo)
 function derivarTimes(ctx, lado) {
   const { perfilA, perfilB, total } = ctx;
   if (total === 0) return [];
   return lado === 'a' ? perfilA.tabelaTimes : perfilB.tabelaTimes;
 }
 
-// Lista de times "disponiveis" pro dropdown do lado B
-// Modo confronto: a tabela de times do jogador B (mesmo que derivarTimes)
-// Modo solo: TODOS os 30 times NBA2K (Valencia jogou contra todos, em algum momento)
-//            com numero estimado de partidas pra ordenar
 function derivarTimesAdversarios(ctx) {
   const { modoSolo, perfilA, perfilB, total } = ctx;
   if (total === 0) return [];
-
-  if (!modoSolo) {
-    return perfilB.tabelaTimes;
-  }
-
-  // Modo solo: gerar lista deterministica de partidas vs cada time da NBA
-  // (proporcao do hash do nome do time, igual aplicarFiltros usa)
+  if (!modoSolo) return perfilB.tabelaTimes;
   const r = seeded(perfilA.seed + 7777);
-  return TIMES_NBA2K.map((time, i) => {
+  return TIMES_NBA2K.map((time) => {
     const seedTime = hashStr(time);
     const proporcao = 0.025 + (seedTime % 100) / 1000;
     const partidas = Math.max(5, Math.round(total * proporcao));
     const wr = perfilA.winRate + (r() - 0.5) * 0.15;
-    return {
-      team: time,
-      partidas,
-      wr: Math.round(Math.max(20, Math.min(80, wr * 100)) * 10) / 10,
-    };
+    return { team: time, partidas, wr: Math.round(Math.max(20, Math.min(80, wr * 100)) * 10) / 10 };
   }).sort((a, b) => b.partidas - a.partidas);
 }
 
-// ============================================================
-// gerarDados: ponto de entrada (compoe tudo)
-// ============================================================
 function gerarDados(nomeA, nomeB, filtros = {}) {
   const modoSolo = !nomeB;
   const perfilA = gerarPerfilJogador(nomeA);
   const perfilB = gerarPerfilJogador(modoSolo ? `${nomeA}_oponentes` : nomeB);
-
   const ctx = aplicarFiltros(perfilA, perfilB, filtros, modoSolo);
-
   return {
-    modoSolo,
-    vazio: ctx.vazio,
-    total: ctx.total,
-    janelaPedida: ctx.janelaPedida,  // pra UI mostrar "200 (76 disponíveis)"
+    modoSolo, vazio: ctx.vazio, total: ctx.total, janelaPedida: ctx.janelaPedida,
     player_a: { name: perfilA.nome, team: ctx.teamA, color: T.accent, last5: perfilA.last5 },
-    player_b: {
-      name: modoSolo ? 'Oponentes' : perfilB.nome,
-      team: modoSolo ? null : ctx.teamB,
-      color: T.accent2,
-      last5: modoSolo ? null : perfilB.last5,
-    },
-    matchup_summary:    derivarMatchupSummary(ctx),
-    cards:              derivarCards(ctx),
-    over_under_match:   derivarOverUnderPartida(ctx),
-    hc_asian:           derivarHandicap(ctx),
-    ou_jogador_a:       derivarOverUnderJogador(ctx, 'a'),
-    ou_jogador_b:       derivarOverUnderJogador(ctx, 'b'),
-    pontos_periodo:     derivarPontosPeriodo(ctx),
-    stats_partida:      derivarStatsPartida(ctx),
-    comeback_a:         perfilA.comeback,
-    comeback_b:         perfilB.comeback,
-    times_a:            derivarTimes(ctx, 'a'),
-    times_b:            derivarTimes(ctx, 'b'),
-    times_b_disponiveis: derivarTimesAdversarios(ctx),  // lista pra dropdown lado B
-    media_ultimas:      derivarMediaUltimas(ctx),
-    distribuicao:       derivarDistribuicao(ctx),
-    media_movel:        derivarMediaMovel(ctx),
-    historico:          derivarHistorico(ctx),
+    player_b: { name: modoSolo ? 'Oponentes' : perfilB.nome, team: modoSolo ? null : ctx.teamB, color: T.accent2, last5: modoSolo ? null : perfilB.last5 },
+    matchup_summary: derivarMatchupSummary(ctx),
+    cards: derivarCards(ctx),
+    over_under_match: derivarOverUnderPartida(ctx),
+    hc_asian: derivarHandicap(ctx),
+    ou_jogador_a: derivarOverUnderJogador(ctx, 'a'),
+    ou_jogador_b: derivarOverUnderJogador(ctx, 'b'),
+    pontos_periodo: derivarPontosPeriodo(ctx),
+    stats_partida: derivarStatsPartida(ctx),
+    comeback_a: perfilA.comeback,
+    comeback_b: perfilB.comeback,
+    times_a: derivarTimes(ctx, 'a'),
+    times_b: derivarTimes(ctx, 'b'),
+    times_b_disponiveis: derivarTimesAdversarios(ctx),
+    media_ultimas: derivarMediaUltimas(ctx),
+    distribuicao: derivarDistribuicao(ctx),
+    media_movel: derivarMediaMovel(ctx),
+    historico: derivarHistorico(ctx),
   };
 }
 
-
 // ============================================================
-// API CLIENT + HOOK (plug-and-play)
-//
-// 🔌 BACKEND: ver lib/BACKEND.md no projeto principal.
-//   GET /partidas/individual?jogA=&jogB=&filtros=...
-//   Retorna o mesmo formato de gerarDados() acima.
-//
-// MikeDB (PostgreSQL) terá tabela ticks (23 colunas) + h2h_matches
-// agregando histórico por par jogA|jogB. O backend faz:
-//   1. Consulta h2h_matches WHERE jogador_a=A AND jogador_b=B
-//   2. Aplica filtros (campeonatos, janela, versao, hora, time)
-//   3. Agrega derivações (matchup, OU, HC, distribuição, etc)
-//
-// Hoje USE_MOCK=true usa gerarDados() determinístico (seeded por
-// hashStr do nome) pra demo. Em prod o hook continua igual.
+// API CLIENT + HOOK
 // ============================================================
-
 const USE_MOCK_PARTIDA = true;
 const MOCK_LATENCY_PARTIDA = { min: 100, max: 300 };
 
@@ -914,7 +485,6 @@ function simularLatenciaPartida() {
 }
 
 const mockResponsesPartida = {
-  // 🔌 BACKEND: GET /partidas/individual?jogA=&jogB=&filtros=
   '/partidas/individual': ({ jogA, jogB, filtros }) => {
     if (!jogA) throw new Error('jogA é obrigatório');
     return gerarDados(jogA, jogB || null, filtros || {});
@@ -928,112 +498,65 @@ async function apiGetPartida(endpoint, params) {
     if (!handler) throw new Error(`[MOCK] Endpoint não implementado: GET ${endpoint}`);
     return handler(params || {});
   }
-  const qs = new URLSearchParams({
-    jogA: params.jogA,
-    jogB: params.jogB || '',
-    filtros: JSON.stringify(params.filtros || {}),
-  }).toString();
+  const qs = new URLSearchParams({ jogA: params.jogA, jogB: params.jogB || '', filtros: JSON.stringify(params.filtros || {}) }).toString();
   const res = await fetch(`${endpoint}?${qs}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
 
-// Hook: dados completos da análise de partida individual
 function useDadosPartida(jogA, jogB, filtros) {
   const [state, setState] = useState({ data: null, loading: true, error: null });
   const lastReqRef = useRef(0);
   const filtrosKey = JSON.stringify(filtros);
-
   const fetchData = useCallback(async () => {
     if (!jogA) { setState({ data: null, loading: false, error: null }); return; }
     const reqId = ++lastReqRef.current;
     setState(s => ({ ...s, loading: true, error: null }));
     try {
       const data = await apiGetPartida('/partidas/individual', { jogA, jogB, filtros });
-      if (reqId === lastReqRef.current) {
-        setState({ data, loading: false, error: null });
-      }
+      if (reqId === lastReqRef.current) setState({ data, loading: false, error: null });
     } catch (error) {
-      if (reqId === lastReqRef.current) {
-        setState({ data: null, loading: false, error });
-      }
+      if (reqId === lastReqRef.current) setState({ data: null, loading: false, error });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jogA, jogB, filtrosKey]);
-
   useEffect(() => { fetchData(); }, [fetchData]);
-
   return { data: state.data, loading: state.loading, error: state.error, refetch: fetchData };
 }
-
 
 // ============================================================
 // COMPONENTES PRIMITIVOS
 // ============================================================
 
 function Pill({ children, active = false, onClick, size = 'md' }) {
-  const sizes = {
-    sm: 'px-2 py-1 text-xs',
-    md: 'px-3 py-1.5 text-sm',
-  };
+  const sizes = { sm: 'px-2 py-1 text-xs', md: 'px-3 py-1.5 text-sm' };
   return (
-    <button
-      onClick={onClick}
-      className={`${sizes[size]} rounded-full font-medium border transition-colors whitespace-nowrap`}
-      style={{
-        background: active ? T.accent : 'rgba(255,255,255,0.04)',
-        color: active ? '#04130c' : T.fg,
-        borderColor: active ? T.accent : T.borderLight,
-      }}
-    >
+    <button onClick={onClick} className={`${sizes[size]} rounded-full font-medium border transition-colors whitespace-nowrap`}
+      style={{ background: active ? T.accent : 'rgba(255,255,255,0.04)', color: active ? '#04130c' : T.fg, borderColor: active ? T.accent : T.borderLight }}>
       {children}
     </button>
   );
 }
 
 function MikeButton({ children, onClick, variant = 'outline', icon: Icon, fullWidth = false, className = '' }) {
-  const variants = {
-    primary: { bg: T.accent, color: '#04130c', border: T.accent },
-    outline: { bg: 'transparent', color: T.fg, border: T.border },
-    ghost:   { bg: 'rgba(255,255,255,0.03)', color: T.fg, border: T.borderLight },
-  };
+  const variants = { primary: { bg: T.accent, color: '#04130c', border: T.accent }, outline: { bg: 'transparent', color: T.fg, border: T.border }, ghost: { bg: 'rgba(255,255,255,0.03)', color: T.fg, border: T.borderLight } };
   const v = variants[variant];
   return (
-    <button
-      onClick={onClick}
-      className={`inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-md text-sm font-medium transition-all hover:opacity-90 ${fullWidth ? 'w-full' : ''} ${className}`}
-      style={{ background: v.bg, color: v.color, border: `1px solid ${v.border}` }}
-    >
-      {Icon && <Icon size={15} />}
-      {children}
+    <button onClick={onClick} className={`inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-md text-sm font-medium transition-all hover:opacity-90 ${fullWidth ? 'w-full' : ''} ${className}`}
+      style={{ background: v.bg, color: v.color, border: `1px solid ${v.border}` }}>
+      {Icon && <Icon size={15} />}{children}
     </button>
   );
 }
 
 function Card({ children, className = '', style = {} }) {
-  return (
-    <div
-      className={`rounded-lg ${className}`}
-      style={{
-        background: T.bg2,
-        border: `1px solid ${T.border}`,
-        ...style,
-      }}
-    >
-      {children}
-    </div>
-  );
+  return <div className={`rounded-lg ${className}`} style={{ background: T.bg2, border: `1px solid ${T.border}`, ...style }}>{children}</div>;
 }
 
 function SectionHeader({ children, right }) {
   return (
-    <div
-      className="flex items-center justify-between px-5 py-3.5 border-b"
-      style={{ borderColor: T.border, background: 'rgba(255,255,255,0.015)' }}
-    >
-      <h3 className="text-[13px] font-semibold tracking-wide" style={{ color: T.fg }}>
-        {children}
-      </h3>
+    <div className="flex items-center justify-between px-5 py-3.5 border-b" style={{ borderColor: T.border, background: 'rgba(255,255,255,0.015)' }}>
+      <h3 className="text-[13px] font-semibold tracking-wide" style={{ color: T.fg }}>{children}</h3>
       {right && <div className="flex items-center gap-2">{right}</div>}
     </div>
   );
@@ -1049,22 +572,12 @@ function PlayerLegend({ name, color }) {
 }
 
 function TabGroup({ tabs, value, onChange, size = 'md' }) {
-  const sizes = {
-    sm: 'h-8 text-xs px-3',
-    md: 'h-9 text-sm px-3.5',
-  };
+  const sizes = { sm: 'h-8 text-xs px-3', md: 'h-9 text-sm px-3.5' };
   return (
     <div className="flex gap-1.5">
       {tabs.map(t => (
-        <button
-          key={t}
-          onClick={() => onChange(t)}
-          className={`${sizes[size]} rounded-md font-semibold transition-colors`}
-          style={{
-            background: value === t ? T.accent : 'rgba(255,255,255,0.04)',
-            color: value === t ? '#04130c' : T.fgDim,
-          }}
-        >
+        <button key={t} onClick={() => onChange(t)} className={`${sizes[size]} rounded-md font-semibold transition-colors`}
+          style={{ background: value === t ? T.accent : 'rgba(255,255,255,0.04)', color: value === t ? '#04130c' : T.fgDim }}>
           {t}
         </button>
       ))}
@@ -1076,15 +589,8 @@ function ToggleOverUnder({ value, onChange }) {
   return (
     <div className="inline-flex rounded-md overflow-hidden" style={{ border: `1px solid ${T.borderLight}` }}>
       {['Over', 'Under'].map(v => (
-        <button
-          key={v}
-          onClick={() => onChange(v)}
-          className="px-3.5 h-7 text-xs font-semibold transition-colors"
-          style={{
-            background: value === v ? 'rgba(16,185,129,0.15)' : 'transparent',
-            color: value === v ? T.accent : T.fgDim,
-          }}
-        >
+        <button key={v} onClick={() => onChange(v)} className="px-3.5 h-7 text-xs font-semibold transition-colors"
+          style={{ background: value === v ? 'rgba(16,185,129,0.15)' : 'transparent', color: value === v ? T.accent : T.fgDim }}>
           {v}
         </button>
       ))}
@@ -1099,32 +605,20 @@ function ToggleOverUnder({ value, onChange }) {
 function Header({ onNavegar } = {}) {
   return (
     <header className="sticky top-0 z-20" style={{ background: 'rgba(11,15,26,0.92)', backdropFilter: 'blur(8px)', borderBottom: `1px solid ${T.border}` }}>
-      {/* Top bar */}
       <div className="flex items-center justify-between px-6 py-2.5">
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => onNavegar?.('today')}
-            className="flex items-center gap-2 hover:opacity-80 transition"
-            title="Voltar pro início"
-          >
+          <button onClick={() => onNavegar?.('today')} className="flex items-center gap-2 hover:opacity-80 transition" title="Voltar pro início">
             <div className="w-7 h-7 rounded grid place-items-center font-bold text-base" style={{ background: T.accent, color: '#04130c' }}>M</div>
             <span className="font-bold tracking-wider text-sm" style={{ color: T.fg }}>TIPMIKE</span>
           </button>
           <button className="inline-flex items-center gap-2 px-3 h-9 rounded-md text-sm" style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${T.borderLight}`, color: T.fg }}>
-            <Activity size={14} />
-            eSports
-            <ChevronDown size={14} />
+            <Activity size={14} />eSports<ChevronDown size={14} />
           </button>
         </div>
-
         <div className="flex items-center gap-2">
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: T.fgDim }} />
-            <input
-              placeholder="Buscar..."
-              className="h-9 pl-9 pr-3 rounded-md text-sm outline-none w-64"
-              style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${T.borderLight}`, color: T.fg }}
-            />
+            <input placeholder="Buscar..." className="h-9 pl-9 pr-3 rounded-md text-sm outline-none w-64" style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${T.borderLight}`, color: T.fg }} />
           </div>
           <button className="relative w-9 h-9 rounded-md grid place-items-center" style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${T.borderLight}` }}>
             <Bell size={16} style={{ color: T.fgDim }} />
@@ -1144,38 +638,23 @@ function Header({ onNavegar } = {}) {
           </div>
         </div>
       </div>
-
-      {/* Nav */}
       <nav className="flex items-center gap-1 px-6 pb-2">
         {[
-          { id: 'today',       icon: Home, label: 'Início' },
-          { id: 'live',        icon: PlayCircle, label: 'Ao Vivo' },
+          { id: 'today', icon: Home, label: 'Início' },
+          { id: 'live', icon: PlayCircle, label: 'Ao Vivo' },
           { id: 'marketplace', icon: Store, label: 'Mercado de Bots' },
-          { id: 'bots',        icon: Bot, label: 'Bots' },
-          { id: 'tables',      icon: Table2, label: 'Tabelas' },
-          { id: 'stats',       icon: BarChart3, label: 'Estatísticas', badge: 'NOVO' },
-          { id: 'extras',      icon: MoreHorizontal, label: 'Extras' },
+          { id: 'bots', icon: Bot, label: 'Bots' },
+          { id: 'tables', icon: Table2, label: 'Tabelas' },
+          { id: 'stats', icon: BarChart3, label: 'Estatísticas', badge: 'NOVO' },
+          { id: 'extras', icon: MoreHorizontal, label: 'Extras' },
         ].map(({ id, icon: Icon, label, badge }, i) => {
-          // Em modo standalone, "Estatísticas" fica ativa pra dar contexto
-          // Em modo orquestrador, nenhuma fica ativa (essa não é tela de menu)
           const active = !onNavegar && label === 'Estatísticas';
           return (
-            <button
-              key={i}
-              onClick={() => onNavegar?.(id)}
+            <button key={i} onClick={() => onNavegar?.(id)}
               className="relative inline-flex items-center gap-2 px-3 h-9 rounded-md text-[13px] font-medium transition-colors hover:bg-white/5"
-              style={{
-                color: active ? T.accent : T.fgDim,
-                background: active ? 'rgba(16,185,129,0.10)' : 'transparent',
-              }}
-            >
-              <Icon size={15} />
-              {label}
-              {badge && (
-                <span className="absolute -top-1 right-1 px-1.5 py-0.5 rounded text-[9px] font-bold" style={{ background: T.orange, color: '#0b0f1a' }}>
-                  {badge}
-                </span>
-              )}
+              style={{ color: active ? T.accent : T.fgDim, background: active ? 'rgba(16,185,129,0.10)' : 'transparent' }}>
+              <Icon size={15} />{label}
+              {badge && <span className="absolute -top-1 right-1 px-1.5 py-0.5 rounded text-[9px] font-bold" style={{ background: T.orange, color: '#0b0f1a' }}>{badge}</span>}
             </button>
           );
         })}
@@ -1185,7 +664,7 @@ function Header({ onNavegar } = {}) {
 }
 
 // ============================================================
-// HERO CARD (jogadores + donuts + ÚLTIMAS 10)
+// HERO CARD
 // ============================================================
 
 function Donut({ value, total, color, size = 130, strokeWidth = 11 }) {
@@ -1194,26 +673,11 @@ function Donut({ value, total, color, size = 130, strokeWidth = 11 }) {
   const safeTotal = total > 0 ? total : 1;
   const offset = circ - (value / safeTotal) * circ;
   const pct = total > 0 ? ((value / total) * 100).toFixed(2) : '0.00';
-
   return (
     <div className="relative grid place-items-center" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="rotate-[-90deg]">
-        <circle
-          cx={size/2} cy={size/2} r={radius}
-          fill="none"
-          stroke="rgba(255,255,255,0.07)"
-          strokeWidth={strokeWidth}
-        />
-        <circle
-          cx={size/2} cy={size/2} r={radius}
-          fill="none"
-          stroke={color}
-          strokeWidth={strokeWidth}
-          strokeDasharray={circ}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
-          style={{ transition: 'stroke-dashoffset 0.8s cubic-bezier(0.22, 1, 0.36, 1)' }}
-        />
+        <circle cx={size/2} cy={size/2} r={radius} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={strokeWidth} />
+        <circle cx={size/2} cy={size/2} r={radius} fill="none" stroke={color} strokeWidth={strokeWidth} strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round" style={{ transition: 'stroke-dashoffset 0.8s cubic-bezier(0.22, 1, 0.36, 1)' }} />
       </svg>
       <div className="absolute inset-0 grid place-items-center text-center">
         <div>
@@ -1225,88 +689,42 @@ function Donut({ value, total, color, size = 130, strokeWidth = 11 }) {
   );
 }
 
-// Dropdown de time pra cada jogador (mostra lista dos times que o jogador ja jogou)
 function TeamDropdown({ value, options, onChange, color, placeholderLabel, align = 'left' }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
-
   useEffect(() => {
-    function handle(e) {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    }
+    function handle(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
     if (open) document.addEventListener('mousedown', handle);
     return () => document.removeEventListener('mousedown', handle);
   }, [open]);
-
-  // Ordena por partidas (mais usado primeiro)
   const sorted = [...(options || [])].sort((a, b) => b.partidas - a.partidas);
-
   return (
     <div className="relative inline-block" ref={ref}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="inline-flex items-center gap-1.5 px-2.5 h-7 rounded-md text-xs transition-colors"
-        style={{
-          background: open ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)',
-          border: `1px solid ${open ? T.accent : T.borderLight}`,
-          color: T.fg,
-        }}
-      >
+      <button onClick={() => setOpen(o => !o)} className="inline-flex items-center gap-1.5 px-2.5 h-7 rounded-md text-xs transition-colors"
+        style={{ background: open ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${open ? T.accent : T.borderLight}`, color: T.fg }}>
         <Users size={12} />
-        {placeholderLabel && (
-          <span style={{ color: T.fgDim }}>{placeholderLabel}</span>
-        )}
+        {placeholderLabel && <span style={{ color: T.fgDim }}>{placeholderLabel}</span>}
         {value}
-        <ChevronDown size={12} style={{
-          transform: open ? 'rotate(180deg)' : 'none',
-          transition: 'transform 180ms',
-        }} />
+        <ChevronDown size={12} style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 180ms' }} />
       </button>
       {open && (
-        <div
-          className={`absolute top-full mt-1 rounded-md overflow-hidden z-20 ${align === 'right' ? 'right-0' : 'left-0'}`}
-          style={{
-            background: T.bg2,
-            border: `1px solid ${T.border}`,
-            boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-            animation: 'fadeIn 180ms cubic-bezier(0.22, 1, 0.36, 1)',
-            minWidth: 220,
-            maxHeight: 300,
-            overflowY: 'auto',
-          }}
-        >
-          {/* Opcao "Todos os times" - reseta filtro */}
-          <button
-            onClick={() => { onChange(null); setOpen(false); }}
+        <div className={`absolute top-full mt-1 rounded-md overflow-hidden z-20 ${align === 'right' ? 'right-0' : 'left-0'}`}
+          style={{ background: T.bg2, border: `1px solid ${T.border}`, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', animation: 'fadeIn 180ms cubic-bezier(0.22, 1, 0.36, 1)', minWidth: 220, maxHeight: 300, overflowY: 'auto' }}>
+          <button onClick={() => { onChange(null); setOpen(false); }}
             className="w-full px-3 py-2 text-xs text-left transition-colors hover:bg-white/5 flex items-center justify-between gap-3"
-            style={{
-              color: !value || value === 'Todos' ? color : T.fg,
-              background: !value ? 'rgba(16,185,129,0.06)' : 'transparent',
-              borderBottom: `1px solid ${T.borderLight}`,
-            }}
-          >
+            style={{ color: !value || value === 'Todos' ? color : T.fg, background: !value ? 'rgba(16,185,129,0.06)' : 'transparent', borderBottom: `1px solid ${T.borderLight}` }}>
             <span className="font-medium">Todos os times</span>
-            <span className="text-[10px]" style={{ color: T.fgDim }}>
-              {sorted.reduce((s, t) => s + t.partidas, 0)} partidas
-            </span>
+            <span className="text-[10px]" style={{ color: T.fgDim }}>{sorted.reduce((s, t) => s + t.partidas, 0)} partidas</span>
           </button>
           {sorted.map(t => (
-            <button
-              key={t.team}
-              onClick={() => { onChange(t.team); setOpen(false); }}
+            <button key={t.team} onClick={() => { onChange(t.team); setOpen(false); }}
               className="w-full px-3 py-2 text-xs text-left transition-colors hover:bg-white/5 flex items-center justify-between gap-3"
-              style={{
-                color: t.team === value ? color : T.fg,
-                background: t.team === value ? 'rgba(16,185,129,0.06)' : 'transparent',
-              }}
-            >
+              style={{ color: t.team === value ? color : T.fg, background: t.team === value ? 'rgba(16,185,129,0.06)' : 'transparent' }}>
               <span className="inline-flex items-center gap-1.5">
                 {t.team === value && <span className="w-1 h-1 rounded-full" style={{ background: color }} />}
                 {t.team}
               </span>
-              <span className="text-[10px]" style={{ color: T.fgDim }}>
-                {t.partidas}j • {t.wr}%
-              </span>
+              <span className="text-[10px]" style={{ color: T.fgDim }}>{t.partidas}j • {t.wr}%</span>
             </button>
           ))}
         </div>
@@ -1315,76 +733,28 @@ function TeamDropdown({ value, options, onChange, color, placeholderLabel, align
   );
 }
 
-// Quadrinhos V/D das ultimas 5 partidas, com tooltip ao hover
-// last5: array de { resultado, placarA, placarB, oponenteNome, oponenteTime, data }
-// align: 'left' ou 'right' - controla pra que lado o tooltip abre
 function Last5Badges({ last5, align = 'left', playerColor }) {
   const [hoverIdx, setHoverIdx] = useState(null);
-
   if (!last5 || last5.length === 0) return null;
-
-  // Compatibilidade: se vier no formato antigo (string 'V'/'D'), nao mostra tooltip
   const isObjeto = typeof last5[0] === 'object';
-
   return (
     <div className={`flex gap-1 ${align === 'right' ? 'justify-end' : ''}`}>
       {last5.map((r, i) => {
         const resultado = isObjeto ? r.resultado : r;
         return (
           <div key={i} className="relative">
-            <span
-              className="w-5 h-5 grid place-items-center rounded-sm text-[10px] font-bold cursor-default transition-transform"
-              style={{
-                background: resultado === 'V' ? T.accent : T.red,
-                color: '#04130c',
-                transform: hoverIdx === i ? 'scale(1.15)' : 'scale(1)',
-              }}
-              onMouseEnter={() => setHoverIdx(i)}
-              onMouseLeave={() => setHoverIdx(null)}
-            >
+            <span className="w-5 h-5 grid place-items-center rounded-sm text-[10px] font-bold cursor-default transition-transform"
+              style={{ background: resultado === 'V' ? T.accent : T.red, color: '#04130c', transform: hoverIdx === i ? 'scale(1.15)' : 'scale(1)' }}
+              onMouseEnter={() => setHoverIdx(i)} onMouseLeave={() => setHoverIdx(null)}>
               {resultado}
             </span>
-
-            {/* Tooltip */}
             {isObjeto && hoverIdx === i && (
-              <div
-                className="absolute pointer-events-none z-30 rounded-md px-3 py-2.5"
-                style={{
-                  bottom: 'calc(100% + 8px)',
-                  [align === 'right' ? 'right' : 'left']: 0,
-                  background: 'rgba(11,15,26,0.98)',
-                  border: `1px solid ${T.border}`,
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
-                  minWidth: 180,
-                  animation: 'fadeIn 120ms cubic-bezier(0.22, 1, 0.36, 1)',
-                }}
-              >
-                {/* Placar grande */}
-                <div className="text-base font-bold mb-1" style={{ color: T.fg }}>
-                  {r.placarA} x {r.placarB}
-                </div>
-                {/* Adversario */}
-                <div className="text-xs mb-0.5" style={{ color: T.fgDim }}>
-                  vs {r.oponenteNome} ({r.oponenteTime})
-                </div>
-                {/* Data */}
-                <div className="text-[11px]" style={{ color: T.fgDimmer }}>
-                  {r.data}
-                </div>
-
-                {/* Setinha apontando pro badge */}
-                <div
-                  className="absolute"
-                  style={{
-                    top: '100%',
-                    [align === 'right' ? 'right' : 'left']: 8,
-                    width: 0,
-                    height: 0,
-                    borderLeft: '5px solid transparent',
-                    borderRight: '5px solid transparent',
-                    borderTop: `5px solid ${T.border}`,
-                  }}
-                />
+              <div className="absolute pointer-events-none z-30 rounded-md px-3 py-2.5"
+                style={{ bottom: 'calc(100% + 8px)', [align === 'right' ? 'right' : 'left']: 0, background: 'rgba(11,15,26,0.98)', border: `1px solid ${T.border}`, boxShadow: '0 8px 24px rgba(0,0,0,0.6)', minWidth: 180, animation: 'fadeIn 120ms cubic-bezier(0.22, 1, 0.36, 1)' }}>
+                <div className="text-base font-bold mb-1" style={{ color: T.fg }}>{r.placarA} x {r.placarB}</div>
+                <div className="text-xs mb-0.5" style={{ color: T.fgDim }}>vs {r.oponenteNome} ({r.oponenteTime})</div>
+                <div className="text-[11px]" style={{ color: T.fgDimmer }}>{r.data}</div>
+                <div className="absolute" style={{ top: '100%', [align === 'right' ? 'right' : 'left']: 8, width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: `5px solid ${T.border}` }} />
               </div>
             )}
           </div>
@@ -1396,88 +766,44 @@ function Last5Badges({ last5, align = 'left', playerColor }) {
 
 function HeroCard({ data, onAlterar, onFiltros, filtrosAtivos = 0, timeASelecionado, timeBSelecionado, onChangeTimeA, onChangeTimeB }) {
   const a = data.player_a, b = data.player_b, m = data.matchup_summary;
-
   return (
     <Card className="overflow-hidden">
-      {/* Banner background sutil */}
-      <div className="relative px-7 pt-6 pb-4" style={{
-        background: 'radial-gradient(ellipse at center, rgba(16,185,129,0.04) 0%, transparent 60%)',
-      }}>
-        {/* Linha topo: nomes */}
+      <div className="relative px-7 pt-6 pb-4" style={{ background: 'radial-gradient(ellipse at center, rgba(16,185,129,0.04) 0%, transparent 60%)' }}>
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-2xl font-bold tracking-tight" style={{ color: a.color }}>{a.name}</h2>
               <ExternalLink size={14} style={{ color: a.color, opacity: 0.6 }} />
             </div>
-            <div className="mt-2">
-              <TeamDropdown
-                value={a.team}
-                options={data.times_a}
-                onChange={onChangeTimeA}
-                color={a.color}
-              />
-            </div>
-            <div className="mt-2">
-              <Last5Badges last5={a.last5} align="left" playerColor={a.color} />
-            </div>
+            <div className="mt-2"><TeamDropdown value={a.team} options={data.times_a} onChange={onChangeTimeA} color={a.color} /></div>
+            <div className="mt-2"><Last5Badges last5={a.last5} align="left" playerColor={a.color} /></div>
           </div>
-
           <div className="text-center pt-2">
             <div className="text-lg font-light tracking-[0.3em]" style={{ color: T.fgDimmer }}>VS</div>
           </div>
-
           <div className="text-right">
             <div className="flex items-center gap-2 justify-end">
               <ExternalLink size={14} style={{ color: b.color, opacity: 0.6 }} />
               <h2 className="text-2xl font-bold tracking-tight" style={{ color: b.color }}>{b.name}</h2>
             </div>
-            {/* Dropdown de time:
-                - Modo confronto: time que o jogador B usa (b.team existe)
-                - Modo solo: time do adversario (b.team eh null mas mostra "vs [time]") */}
             <div className="mt-2 flex justify-end">
               {data.modoSolo ? (
-                <TeamDropdown
-                  value={timeBSelecionado || 'Todos os times'}
-                  options={data.times_b_disponiveis}
-                  onChange={onChangeTimeB}
-                  color={b.color}
-                  placeholderLabel="vs"
-                  align="right"
-                />
+                <TeamDropdown value={timeBSelecionado || 'Todos os times'} options={data.times_b_disponiveis} onChange={onChangeTimeB} color={b.color} placeholderLabel="vs" align="right" />
               ) : b.team ? (
-                <TeamDropdown
-                  value={b.team}
-                  options={data.times_b}
-                  onChange={onChangeTimeB}
-                  color={b.color}
-                  align="right"
-                />
+                <TeamDropdown value={b.team} options={data.times_b} onChange={onChangeTimeB} color={b.color} align="right" />
               ) : null}
             </div>
-            {b.last5 && (
-              <div className="mt-2 flex justify-end">
-                <Last5Badges last5={b.last5} align="right" playerColor={b.color} />
-              </div>
-            )}
+            {b.last5 && <div className="mt-2 flex justify-end"><Last5Badges last5={b.last5} align="right" playerColor={b.color} /></div>}
           </div>
         </div>
-
-        {/* ULTIMAS N PARTIDAS */}
         {m.last_n.length > 0 && (
           <div className="mt-6 flex flex-col items-center">
-            <div className="text-[10px] tracking-[0.3em] font-semibold mb-2" style={{ color: T.fgDimmer }}>
-              ÚLTIMAS {m.last_n.length} PARTIDA{m.last_n.length !== 1 ? 'S' : ''}
-            </div>
+            <div className="text-[10px] tracking-[0.3em] font-semibold mb-2" style={{ color: T.fgDimmer }}>ÚLTIMAS {m.last_n.length} PARTIDA{m.last_n.length !== 1 ? 'S' : ''}</div>
             <div className="flex gap-2">
-              {m.last_n.map((r, i) => (
-                <span key={i} className="w-2.5 h-2.5 rounded-full" style={{ background: r === 'a' ? a.color : b.color, boxShadow: `0 0 8px ${r === 'a' ? a.color : b.color}40` }} />
-              ))}
+              {m.last_n.map((r, i) => <span key={i} className="w-2.5 h-2.5 rounded-full" style={{ background: r === 'a' ? a.color : b.color, boxShadow: `0 0 8px ${r === 'a' ? a.color : b.color}40` }} />)}
             </div>
           </div>
         )}
-
-        {/* DONUTS */}
         <div className="mt-4 flex items-center justify-center gap-10">
           <Donut value={m.wins_a} total={m.total} color={a.color} size={140} />
           <div className="text-center">
@@ -1487,15 +813,11 @@ function HeroCard({ data, onAlterar, onFiltros, filtrosAtivos = 0, timeASelecion
           <Donut value={m.wins_b} total={m.total} color={b.color} size={140} />
         </div>
       </div>
-
-      {/* Footer hero - liga + acoes */}
       <div className="flex items-center justify-between px-5 py-3 border-t" style={{ borderColor: T.border, background: 'rgba(0,0,0,0.2)' }}>
         <div className="flex items-center gap-3">
           <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md text-xs" style={{ color: T.fg }}>
-            <Trophy size={13} style={{ color: T.yellow }} />
-            Adriatic League
+            <Trophy size={13} style={{ color: T.yellow }} />Adriatic League
           </div>
-          {/* Aviso quando usuario pediu mais partidas do que existem */}
           {data.janelaPedida && data.janelaPedida > data.total && (
             <div className="inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded" style={{ color: T.yellow, background: 'rgba(245,158,11,0.08)', border: `1px solid rgba(245,158,11,0.2)` }}>
               Pedidas: {data.janelaPedida} • Disponíveis: {data.total}
@@ -1503,31 +825,10 @@ function HeroCard({ data, onAlterar, onFiltros, filtrosAtivos = 0, timeASelecion
           )}
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={onFiltros}
-            className="relative inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-md text-sm font-medium transition-all hover:opacity-90"
-            style={{
-              background: filtrosAtivos > 0 ? 'rgba(16,185,129,0.10)' : 'rgba(255,255,255,0.03)',
-              color: T.fg,
-              border: `1px solid ${filtrosAtivos > 0 ? T.accent : T.borderLight}`,
-            }}
-          >
-            <Filter size={15} />
-            Filtros
-            {filtrosAtivos > 0 && (
-              <span
-                className="ml-1 inline-flex items-center justify-center text-[10px] font-bold rounded-full"
-                style={{
-                  background: T.accent,
-                  color: '#04130c',
-                  minWidth: 18,
-                  height: 18,
-                  padding: '0 5px',
-                }}
-              >
-                {filtrosAtivos}
-              </span>
-            )}
+          <button onClick={onFiltros} className="relative inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-md text-sm font-medium transition-all hover:opacity-90"
+            style={{ background: filtrosAtivos > 0 ? 'rgba(16,185,129,0.10)' : 'rgba(255,255,255,0.03)', color: T.fg, border: `1px solid ${filtrosAtivos > 0 ? T.accent : T.borderLight}` }}>
+            <Filter size={15} />Filtros
+            {filtrosAtivos > 0 && <span className="ml-1 inline-flex items-center justify-center text-[10px] font-bold rounded-full" style={{ background: T.accent, color: '#04130c', minWidth: 18, height: 18, padding: '0 5px' }}>{filtrosAtivos}</span>}
           </button>
           <MikeButton variant="ghost" icon={ArrowLeftRight} onClick={onAlterar}>Alterar Jogadores</MikeButton>
         </div>
@@ -1549,9 +850,7 @@ function StatsCardRow({ data }) {
         return (
           <Card key={i} className="px-4 py-3.5">
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-7 h-7 rounded-md grid place-items-center" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                <Icon size={14} style={{ color: T.fgDim }} />
-              </div>
+              <div className="w-7 h-7 rounded-md grid place-items-center" style={{ background: 'rgba(255,255,255,0.04)' }}><Icon size={14} style={{ color: T.fgDim }} /></div>
               <div className="text-[11px]" style={{ color: T.fgDim }}>{c.label}</div>
               {c.sub && <div className="text-[10px] ml-auto" style={{ color: T.fgDimmer }}>{c.sub}</div>}
             </div>
@@ -1578,28 +877,12 @@ function StatsCardRow({ data }) {
 function OverUnderPartida({ data }) {
   const [tab, setTab] = useState('FT');
   const [mode, setMode] = useState('Over');
-  // Filtra dados pelo periodo + modo (Over/Under) selecionados
   const linhas = (data.over_under_match[tab] && data.over_under_match[tab][mode]) || [];
-
-  if (data.total === 0) {
-    return (
-      <Card>
-        <SectionHeader>Over/Under (Partida)</SectionHeader>
-        <div className="px-5 py-12 text-center text-sm" style={{ color: T.fgDim }}>
-          Sem partidas para os filtros aplicados
-        </div>
-      </Card>
-    );
-  }
-
+  if (data.total === 0) return <Card><SectionHeader>Over/Under (Partida)</SectionHeader><div className="px-5 py-12 text-center text-sm" style={{ color: T.fgDim }}>Sem partidas para os filtros aplicados</div></Card>;
   return (
     <Card>
-      <SectionHeader right={<ToggleOverUnder value={mode} onChange={setMode} />}>
-        Over/Under (Partida)
-      </SectionHeader>
-      <div className="px-5 py-3 border-b" style={{ borderColor: T.border }}>
-        <TabGroup tabs={['FT','HT','1Q','2Q','3Q','4Q']} value={tab} onChange={setTab} size="sm" />
-      </div>
+      <SectionHeader right={<ToggleOverUnder value={mode} onChange={setMode} />}>Over/Under (Partida)</SectionHeader>
+      <div className="px-5 py-3 border-b" style={{ borderColor: T.border }}><TabGroup tabs={['FT','HT','1Q','2Q','3Q','4Q']} value={tab} onChange={setTab} size="sm" /></div>
       <div className="p-5">
         <div className="overflow-y-auto pr-2 mike-scroll" style={{ maxHeight: 280 }}>
           {linhas.map((row, i) => (
@@ -1621,28 +904,20 @@ function OverUnderPartida({ data }) {
 // HANDICAP ASIATICO
 // ============================================================
 
+function HCCell({ value }) {
+  const color = value >= 60 ? T.accent : value >= 50 ? T.yellow : value >= 40 ? T.orange : T.red;
+  return <div className="text-center text-[13px] font-mono font-semibold" style={{ color }}>{value.toFixed(2)}%</div>;
+}
+
 function HandicapAsiatico({ data }) {
   const [tab, setTab] = useState('FT');
   const a = data.player_a, b = data.player_b;
   const linhas = (data.hc_asian && data.hc_asian[tab]) || [];
-
-  if (data.total === 0) {
-    return (
-      <Card>
-        <SectionHeader>Handicap Asiático</SectionHeader>
-        <div className="px-5 py-12 text-center text-sm" style={{ color: T.fgDim }}>
-          Sem partidas para os filtros aplicados
-        </div>
-      </Card>
-    );
-  }
-
+  if (data.total === 0) return <Card><SectionHeader>Handicap Asiático</SectionHeader><div className="px-5 py-12 text-center text-sm" style={{ color: T.fgDim }}>Sem partidas para os filtros aplicados</div></Card>;
   return (
     <Card>
       <SectionHeader>Handicap Asiático</SectionHeader>
-      <div className="px-5 py-3 border-b" style={{ borderColor: T.border }}>
-        <TabGroup tabs={['FT','HT','1Q','2Q','3Q','4Q']} value={tab} onChange={setTab} size="sm" />
-      </div>
+      <div className="px-5 py-3 border-b" style={{ borderColor: T.border }}><TabGroup tabs={['FT','HT','1Q','2Q','3Q','4Q']} value={tab} onChange={setTab} size="sm" /></div>
       <div className="p-5">
         <div className="grid gap-2 mb-3" style={{ gridTemplateColumns: '60px 1fr 1fr' }}>
           <div className="text-[11px]" style={{ color: T.fgDim }}>Linhas</div>
@@ -1650,35 +925,19 @@ function HandicapAsiatico({ data }) {
           <div className="text-center"><PlayerLegend name={b.name} color={b.color} /></div>
         </div>
         <div className="grid gap-1.5 mb-2" style={{ gridTemplateColumns: '60px 1fr 1fr 1fr 1fr' }}>
-          <div />
-          <div className="text-center text-[10px] font-semibold" style={{ color: T.fgDimmer }}>+</div>
-          <div className="text-center text-[10px] font-semibold" style={{ color: T.fgDimmer }}>−</div>
-          <div className="text-center text-[10px] font-semibold" style={{ color: T.fgDimmer }}>+</div>
-          <div className="text-center text-[10px] font-semibold" style={{ color: T.fgDimmer }}>−</div>
+          <div />{['+ ','− ','+ ','− '].map((s, i) => <div key={i} className="text-center text-[10px] font-semibold" style={{ color: T.fgDimmer }}>{s}</div>)}
         </div>
         <div className="overflow-y-auto pr-1 mike-scroll" style={{ maxHeight: 240 }}>
           {linhas.map((row, i) => (
             <div key={`${tab}-${i}`} className="grid gap-1.5 py-1.5 items-center mike-row-hover rounded px-2 -mx-2"
-                 style={{ gridTemplateColumns: '60px 1fr 1fr 1fr 1fr', borderTop: i > 0 ? `1px solid ${T.borderLight}` : 'none' }}>
+              style={{ gridTemplateColumns: '60px 1fr 1fr 1fr 1fr', borderTop: i > 0 ? `1px solid ${T.borderLight}` : 'none' }}>
               <div className="text-sm font-semibold" style={{ color: T.fg }}>{row.line}</div>
-              <HCCell value={row.a_plus} />
-              <HCCell value={row.a_minus} />
-              <HCCell value={row.b_plus} />
-              <HCCell value={row.b_minus} />
+              <HCCell value={row.a_plus} /><HCCell value={row.a_minus} /><HCCell value={row.b_plus} /><HCCell value={row.b_minus} />
             </div>
           ))}
         </div>
       </div>
     </Card>
-  );
-}
-
-function HCCell({ value }) {
-  const color = value >= 60 ? T.accent : value >= 50 ? T.yellow : value >= 40 ? T.orange : T.red;
-  return (
-    <div className="text-center text-[13px] font-mono font-semibold" style={{ color }}>
-      {value.toFixed(2)}%
-    </div>
   );
 }
 
@@ -1689,32 +948,19 @@ function HCCell({ value }) {
 function OverUnderJogador({ player, data }) {
   const [tab, setTab] = useState('FT');
   const [mode, setMode] = useState('Over');
-  // data aqui ja eh ouJogadorA ou ouJogadorB (estrutura: { FT: {Over,Under}, HT: {Over,Under} })
   const linhas = (data && data[tab] && data[tab][mode]) || [];
-
-  if (!linhas || linhas.length === 0) {
-    return (
-      <Card>
-        <SectionHeader>
-          <span>Over/Under (Jogador)</span>
-          <span className="ml-2"><PlayerLegend name={player.name} color={player.color} /></span>
-        </SectionHeader>
-        <div className="px-5 py-12 text-center text-sm" style={{ color: T.fgDim }}>
-          Sem partidas para os filtros aplicados
-        </div>
-      </Card>
-    );
-  }
-
+  if (!linhas || linhas.length === 0) return (
+    <Card>
+      <SectionHeader><span>Over/Under (Jogador)</span><span className="ml-2"><PlayerLegend name={player.name} color={player.color} /></span></SectionHeader>
+      <div className="px-5 py-12 text-center text-sm" style={{ color: T.fgDim }}>Sem partidas para os filtros aplicados</div>
+    </Card>
+  );
   return (
     <Card>
       <SectionHeader right={<ToggleOverUnder value={mode} onChange={setMode} />}>
-        <span>Over/Under (Jogador)</span>
-        <span className="ml-2"><PlayerLegend name={player.name} color={player.color} /></span>
+        <span>Over/Under (Jogador)</span><span className="ml-2"><PlayerLegend name={player.name} color={player.color} /></span>
       </SectionHeader>
-      <div className="px-5 py-3 border-b" style={{ borderColor: T.border }}>
-        <TabGroup tabs={['FT','HT']} value={tab} onChange={setTab} size="sm" />
-      </div>
+      <div className="px-5 py-3 border-b" style={{ borderColor: T.border }}><TabGroup tabs={['FT','HT']} value={tab} onChange={setTab} size="sm" /></div>
       <div className="p-5">
         <div className="overflow-y-auto pr-2 mike-scroll" style={{ maxHeight: 240 }}>
           {linhas.map((row, i) => (
@@ -1738,18 +984,7 @@ function OverUnderJogador({ player, data }) {
 
 function MediaPontos({ data }) {
   const a = data.player_a, b = data.player_b;
-
-  if (!data.pontos_periodo || data.pontos_periodo.length === 0) {
-    return (
-      <Card>
-        <SectionHeader>Média de pontos por período</SectionHeader>
-        <div className="px-5 py-12 text-center text-sm" style={{ color: T.fgDim }}>
-          Sem partidas para os filtros aplicados
-        </div>
-      </Card>
-    );
-  }
-
+  if (!data.pontos_periodo || data.pontos_periodo.length === 0) return <Card><SectionHeader>Média de pontos por período</SectionHeader><div className="px-5 py-12 text-center text-sm" style={{ color: T.fgDim }}>Sem partidas para os filtros aplicados</div></Card>;
   return (
     <Card>
       <SectionHeader>Média de pontos por período</SectionHeader>
@@ -1779,18 +1014,7 @@ function MediaPontos({ data }) {
 
 function EstatisticasPartida({ data }) {
   const a = data.player_a, b = data.player_b;
-
-  if (!data.stats_partida || data.stats_partida.length === 0) {
-    return (
-      <Card>
-        <SectionHeader>Estatísticas da Partida</SectionHeader>
-        <div className="px-5 py-12 text-center text-sm" style={{ color: T.fgDim }}>
-          Sem partidas para os filtros aplicados
-        </div>
-      </Card>
-    );
-  }
-
+  if (!data.stats_partida || data.stats_partida.length === 0) return <Card><SectionHeader>Estatísticas da Partida</SectionHeader><div className="px-5 py-12 text-center text-sm" style={{ color: T.fgDim }}>Sem partidas para os filtros aplicados</div></Card>;
   return (
     <Card>
       <SectionHeader>Estatísticas da Partida</SectionHeader>
@@ -1805,9 +1029,7 @@ function EstatisticasPartida({ data }) {
             <div key={i} className="py-2.5 px-2 -mx-2 rounded border-t mike-row-hover" style={{ borderColor: T.borderLight }}>
               <div className="flex items-center justify-between mb-1">
                 <span className="text-sm font-bold" style={{ color: a.color }}>{row.a.toFixed(2)}%</span>
-                <span className="text-[11px] font-medium" style={{ color: T.fgDim }}>
-                  {row.period}{row.draw > 0 && <span style={{ color: T.fgDimmer, marginLeft: 6 }}>{row.draw.toFixed(2)}%</span>}
-                </span>
+                <span className="text-[11px] font-medium" style={{ color: T.fgDim }}>{row.period}{row.draw > 0 && <span style={{ color: T.fgDimmer, marginLeft: 6 }}>{row.draw.toFixed(2)}%</span>}</span>
                 <span className="text-sm font-bold" style={{ color: b.color }}>{row.b.toFixed(2)}%</span>
               </div>
               <div className="flex h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)' }}>
@@ -1819,7 +1041,6 @@ function EstatisticasPartida({ data }) {
           ))}
         </div>
       </div>
-      {/* Comeback - fixo fora do scroll */}
       <div className="mx-5 mt-2 pt-4 grid grid-cols-2 gap-4 border-t" style={{ borderColor: T.border }}>
         <div>
           <div className="text-[11px] mb-1" style={{ color: T.fgDim }}>Viradas após perder o HT</div>
@@ -1842,89 +1063,45 @@ function AnaliseTimes({ player, data }) {
   const [pageSize, setPageSize] = useState(5);
   const [page, setPage] = useState(0);
   const [pageSizeOpen, setPageSizeOpen] = useState(false);
-  const [sortBy, setSortBy] = useState('partidas');  // coluna ativa de sort
-  const [sortDir, setSortDir] = useState('desc');    // 'asc' ou 'desc'
+  const [sortBy, setSortBy] = useState('partidas');
+  const [sortDir, setSortDir] = useState('desc');
   const pageSizeRef = useRef(null);
-
-  // Reseta pagina quando os dados mudam (troca de jogador ou filtro)
   useEffect(() => { setPage(0); }, [data]);
-
-  // Fecha dropdown ao clicar fora
   useEffect(() => {
-    function handle(e) {
-      if (pageSizeRef.current && !pageSizeRef.current.contains(e.target)) setPageSizeOpen(false);
-    }
+    function handle(e) { if (pageSizeRef.current && !pageSizeRef.current.contains(e.target)) setPageSizeOpen(false); }
     if (pageSizeOpen) document.addEventListener('mousedown', handle);
     return () => document.removeEventListener('mousedown', handle);
   }, [pageSizeOpen]);
-
-  // Estado vazio
-  if (!data || data.length === 0) {
-    return (
-      <Card>
-        <SectionHeader right={<PlayerLegend name={player.name} color={player.color} />}>
-          Análise de Times
-        </SectionHeader>
-        <div className="px-5 py-12 text-center text-sm" style={{ color: T.fgDim }}>
-          Sem partidas para os filtros aplicados
-        </div>
-      </Card>
-    );
-  }
-
-  // Mapeamento das colunas pro campo do objeto + se aceita sort
+  if (!data || data.length === 0) return <Card><SectionHeader right={<PlayerLegend name={player.name} color={player.color} />}>Análise de Times</SectionHeader><div className="px-5 py-12 text-center text-sm" style={{ color: T.fgDim }}>Sem partidas para os filtros aplicados</div></Card>;
   const colunas = [
-    { label: 'Time',             key: 'team',     sortable: true,  type: 'string' },
-    { label: 'Partidas',         key: 'partidas', sortable: true,  type: 'number' },
-    { label: 'Vitórias',         key: 'V',        sortable: true,  type: 'number' },
-    { label: 'Derrotas',         key: 'D',        sortable: true,  type: 'number' },
-    { label: 'Empates',          key: 'E',        sortable: true,  type: 'number' },
-    { label: 'Pontos Pró',       key: 'pp',       sortable: true,  type: 'number' },
-    { label: 'Pontos Contra',    key: 'pc',       sortable: true,  type: 'number' },
-    { label: 'Dif. Pontos',      key: 'difNum',   sortable: true,  type: 'number' },
-    { label: 'Taxa de Vitória',  key: 'wr',       sortable: true,  type: 'number' },
+    { label: 'Time', key: 'team', sortable: true, type: 'string' },
+    { label: 'Partidas', key: 'partidas', sortable: true, type: 'number' },
+    { label: 'Vitórias', key: 'V', sortable: true, type: 'number' },
+    { label: 'Derrotas', key: 'D', sortable: true, type: 'number' },
+    { label: 'Empates', key: 'E', sortable: true, type: 'number' },
+    { label: 'Pontos Pró', key: 'pp', sortable: true, type: 'number' },
+    { label: 'Pontos Contra', key: 'pc', sortable: true, type: 'number' },
+    { label: 'Dif. Pontos', key: 'difNum', sortable: true, type: 'number' },
+    { label: 'Taxa de Vitória', key: 'wr', sortable: true, type: 'number' },
   ];
-
-  // Ordenar dados conforme sortBy/sortDir
   const sorted = [...data].sort((a, b) => {
     const va = a[sortBy], vb = b[sortBy];
-    let cmp;
-    if (typeof va === 'string') cmp = va.localeCompare(vb);
-    else cmp = va - vb;
+    const cmp = typeof va === 'string' ? va.localeCompare(vb) : va - vb;
     return sortDir === 'asc' ? cmp : -cmp;
   });
-
-  // Paginar
   const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const pageAtual = Math.max(0, Math.min(page, totalPages - 1));
-  const inicio = pageAtual * pageSize;
-  const fim = Math.min(inicio + pageSize, sorted.length);
+  const inicio = pageAtual * pageSize, fim = Math.min(inicio + pageSize, sorted.length);
   const pageData = sorted.slice(inicio, fim);
-
   const handleSort = (key) => {
-    if (sortBy === key) {
-      // Mesma coluna: inverte direcao
-      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
-    } else {
-      // Nova coluna: numericas comecam desc, strings asc
-      const col = colunas.find(c => c.key === key);
-      setSortBy(key);
-      setSortDir(col?.type === 'string' ? 'asc' : 'desc');
-    }
+    if (sortBy === key) { setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); }
+    else { const col = colunas.find(c => c.key === key); setSortBy(key); setSortDir(col?.type === 'string' ? 'asc' : 'desc'); }
     setPage(0);
   };
-
-  const changePageSize = (n) => {
-    setPageSize(n);
-    setPage(0);
-    setPageSizeOpen(false);
-  };
-
+  const changePageSize = (n) => { setPageSize(n); setPage(0); setPageSizeOpen(false); };
   return (
     <Card>
-      <SectionHeader right={<PlayerLegend name={player.name} color={player.color} />}>
-        Análise de Times
-      </SectionHeader>
+      <SectionHeader right={<PlayerLegend name={player.name} color={player.color} />}>Análise de Times</SectionHeader>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
@@ -1932,28 +1109,13 @@ function AnaliseTimes({ player, data }) {
               {colunas.map((col) => {
                 const ativo = sortBy === col.key;
                 return (
-                  <th
-                    key={col.key}
-                    className="px-2 py-2.5 text-left font-medium select-none"
-                    onClick={() => col.sortable && handleSort(col.key)}
-                    style={{ cursor: col.sortable ? 'pointer' : 'default' }}
-                  >
-                    <span className="inline-flex items-center gap-1 hover:opacity-80 transition-opacity"
-                          style={{ color: ativo ? T.fg : T.fgDim }}>
+                  <th key={col.key} className="px-2 py-2.5 text-left font-medium select-none" onClick={() => col.sortable && handleSort(col.key)} style={{ cursor: col.sortable ? 'pointer' : 'default' }}>
+                    <span className="inline-flex items-center gap-1 hover:opacity-80 transition-opacity" style={{ color: ativo ? T.fg : T.fgDim }}>
                       {col.label}
-                      {col.sortable && (
-                        <span className="inline-flex flex-col" style={{ lineHeight: 0.6 }}>
-                          <ChevronUp size={9} style={{
-                            color: ativo && sortDir === 'asc' ? T.accent : T.fgDimmer,
-                            opacity: ativo && sortDir === 'asc' ? 1 : 0.5,
-                          }} />
-                          <ChevronDown size={9} style={{
-                            color: ativo && sortDir === 'desc' ? T.accent : T.fgDimmer,
-                            opacity: ativo && sortDir === 'desc' ? 1 : 0.5,
-                            marginTop: -2,
-                          }} />
-                        </span>
-                      )}
+                      {col.sortable && <span className="inline-flex flex-col" style={{ lineHeight: 0.6 }}>
+                        <ChevronUp size={9} style={{ color: ativo && sortDir === 'asc' ? T.accent : T.fgDimmer, opacity: ativo && sortDir === 'asc' ? 1 : 0.5 }} />
+                        <ChevronDown size={9} style={{ color: ativo && sortDir === 'desc' ? T.accent : T.fgDimmer, opacity: ativo && sortDir === 'desc' ? 1 : 0.5, marginTop: -2 }} />
+                      </span>}
                     </span>
                   </th>
                 );
@@ -1962,14 +1124,8 @@ function AnaliseTimes({ player, data }) {
           </thead>
           <tbody>
             {pageData.map((r, i) => (
-              <tr key={`${r.team}-${i}`} className="border-t mike-row-hover"
-                  style={{ borderColor: T.borderLight }}>
-                <td className="px-2 py-2.5">
-                  <span className="inline-flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: player.color }} />
-                    <span style={{ color: T.fg }}>{r.team}</span>
-                  </span>
-                </td>
+              <tr key={`${r.team}-${i}`} className="border-t mike-row-hover" style={{ borderColor: T.borderLight }}>
+                <td className="px-2 py-2.5"><span className="inline-flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full" style={{ background: player.color }} /><span style={{ color: T.fg }}>{r.team}</span></span></td>
                 <td className="px-2 py-2.5 font-mono" style={{ color: T.fg }}>{r.partidas}</td>
                 <td className="px-2 py-2.5 font-mono font-semibold" style={{ color: T.green }}>{r.V}</td>
                 <td className="px-2 py-2.5 font-mono font-semibold" style={{ color: T.red }}>{r.D}</td>
@@ -1980,97 +1136,28 @@ function AnaliseTimes({ player, data }) {
                 <td className="px-2 py-2.5 font-mono font-semibold" style={{ color: T.fg }}>{r.wr}%</td>
               </tr>
             ))}
-            {/* Linhas vazias pra manter altura constante */}
             {pageData.length < pageSize && Array.from({ length: pageSize - pageData.length }).map((_, i) => (
-              <tr key={`empty-${i}`} className="border-t" style={{ borderColor: T.borderLight }}>
-                {colunas.map((_, j) => <td key={j} className="px-2 py-2.5">&nbsp;</td>)}
-              </tr>
+              <tr key={`empty-${i}`} className="border-t" style={{ borderColor: T.borderLight }}>{colunas.map((_, j) => <td key={j} className="px-2 py-2.5">&nbsp;</td>)}</tr>
             ))}
           </tbody>
         </table>
       </div>
-
       <div className="flex items-center justify-between px-5 py-3 border-t" style={{ borderColor: T.border }}>
-        {/* Dropdown de pageSize */}
         <div className="relative" ref={pageSizeRef}>
-          <button
-            onClick={() => setPageSizeOpen(o => !o)}
-            className="inline-flex items-center gap-1.5 px-2.5 h-7 rounded-md text-xs transition-colors"
-            style={{
-              background: pageSizeOpen ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)',
-              border: `1px solid ${pageSizeOpen ? T.accent : T.borderLight}`,
-              color: T.fg,
-            }}
-          >
-            {pageSize} Linhas
-            <ChevronDown size={12} style={{
-              color: T.fgDim,
-              transform: pageSizeOpen ? 'rotate(180deg)' : 'none',
-              transition: 'transform 180ms',
-            }} />
+          <button onClick={() => setPageSizeOpen(o => !o)} className="inline-flex items-center gap-1.5 px-2.5 h-7 rounded-md text-xs transition-colors"
+            style={{ background: pageSizeOpen ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${pageSizeOpen ? T.accent : T.borderLight}`, color: T.fg }}>
+            {pageSize} Linhas<ChevronDown size={12} style={{ color: T.fgDim, transform: pageSizeOpen ? 'rotate(180deg)' : 'none', transition: 'transform 180ms' }} />
           </button>
           {pageSizeOpen && (
-            <div
-              className="absolute left-0 bottom-full mb-1 rounded-md overflow-hidden"
-              style={{
-                background: T.bg2,
-                border: `1px solid ${T.border}`,
-                boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-                animation: 'fadeIn 180ms cubic-bezier(0.22, 1, 0.36, 1)',
-                minWidth: 100,
-              }}
-            >
-              {[5, 10, 20].map(n => (
-                <button
-                  key={n}
-                  onClick={() => changePageSize(n)}
-                  className="w-full px-3 py-1.5 text-xs text-left transition-colors hover:bg-white/5"
-                  style={{
-                    color: pageSize === n ? T.accent : T.fg,
-                    background: pageSize === n ? 'rgba(16,185,129,0.08)' : 'transparent',
-                  }}
-                >
-                  {n} Linhas
-                </button>
-              ))}
+            <div className="absolute left-0 bottom-full mb-1 rounded-md overflow-hidden" style={{ background: T.bg2, border: `1px solid ${T.border}`, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', animation: 'fadeIn 180ms cubic-bezier(0.22, 1, 0.36, 1)', minWidth: 100 }}>
+              {[5, 10, 20].map(n => <button key={n} onClick={() => changePageSize(n)} className="w-full px-3 py-1.5 text-xs text-left transition-colors hover:bg-white/5" style={{ color: pageSize === n ? T.accent : T.fg, background: pageSize === n ? 'rgba(16,185,129,0.08)' : 'transparent' }}>{n} Linhas</button>)}
             </div>
           )}
         </div>
-
-        {/* Range exibido */}
-        <div className="text-xs" style={{ color: T.fgDim }}>
-          Exibindo <span style={{ color: T.fg, fontWeight: 600 }}>{inicio + 1} - {fim}</span>
-          <span> ({sorted.length})</span>
-        </div>
-
-        {/* Setas paginacao */}
+        <div className="text-xs" style={{ color: T.fgDim }}>Exibindo <span style={{ color: T.fg, fontWeight: 600 }}>{inicio + 1} - {fim}</span> ({sorted.length})</div>
         <div className="flex gap-1">
-          <button
-            onClick={() => setPage(p => Math.max(0, p - 1))}
-            disabled={pageAtual === 0}
-            className="w-7 h-7 rounded grid place-items-center transition-colors"
-            style={{
-              border: `1px solid ${T.borderLight}`,
-              background: pageAtual === 0 ? 'transparent' : 'rgba(255,255,255,0.04)',
-              cursor: pageAtual === 0 ? 'not-allowed' : 'pointer',
-              opacity: pageAtual === 0 ? 0.4 : 1,
-            }}
-          >
-            <ChevronLeft size={12} style={{ color: T.fgDim }} />
-          </button>
-          <button
-            onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-            disabled={pageAtual >= totalPages - 1}
-            className="w-7 h-7 rounded grid place-items-center transition-colors"
-            style={{
-              background: pageAtual >= totalPages - 1 ? 'rgba(255,255,255,0.04)' : T.accent,
-              border: pageAtual >= totalPages - 1 ? `1px solid ${T.borderLight}` : 'none',
-              cursor: pageAtual >= totalPages - 1 ? 'not-allowed' : 'pointer',
-              opacity: pageAtual >= totalPages - 1 ? 0.4 : 1,
-            }}
-          >
-            <ChevronRight size={12} style={{ color: pageAtual >= totalPages - 1 ? T.fgDim : '#04130c' }} />
-          </button>
+          <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={pageAtual === 0} className="w-7 h-7 rounded grid place-items-center transition-colors" style={{ border: `1px solid ${T.borderLight}`, background: pageAtual === 0 ? 'transparent' : 'rgba(255,255,255,0.04)', cursor: pageAtual === 0 ? 'not-allowed' : 'pointer', opacity: pageAtual === 0 ? 0.4 : 1 }}><ChevronLeft size={12} style={{ color: T.fgDim }} /></button>
+          <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={pageAtual >= totalPages - 1} className="w-7 h-7 rounded grid place-items-center transition-colors" style={{ background: pageAtual >= totalPages - 1 ? 'rgba(255,255,255,0.04)' : T.accent, border: pageAtual >= totalPages - 1 ? `1px solid ${T.borderLight}` : 'none', cursor: pageAtual >= totalPages - 1 ? 'not-allowed' : 'pointer', opacity: pageAtual >= totalPages - 1 ? 0.4 : 1 }}><ChevronRight size={12} style={{ color: pageAtual >= totalPages - 1 ? T.fgDim : '#04130c' }} /></button>
         </div>
       </div>
     </Card>
@@ -2083,18 +1170,7 @@ function AnaliseTimes({ player, data }) {
 
 function MediaUltimas({ data }) {
   const a = data.player_a, b = data.player_b;
-
-  if (!data.media_ultimas || data.media_ultimas.length === 0) {
-    return (
-      <Card>
-        <SectionHeader>Média de pontos nas últimas partidas</SectionHeader>
-        <div className="px-5 py-12 text-center text-sm" style={{ color: T.fgDim }}>
-          Sem partidas para os filtros aplicados
-        </div>
-      </Card>
-    );
-  }
-
+  if (!data.media_ultimas || data.media_ultimas.length === 0) return <Card><SectionHeader>Média de pontos nas últimas partidas</SectionHeader><div className="px-5 py-12 text-center text-sm" style={{ color: T.fgDim }}>Sem partidas para os filtros aplicados</div></Card>;
   return (
     <Card>
       <SectionHeader>Média de pontos nas últimas partidas</SectionHeader>
@@ -2118,18 +1194,9 @@ function MediaUltimas({ data }) {
             {data.media_ultimas.map((row, i) => (
               <tr key={i} className="border-t mike-row-hover" style={{ borderColor: T.borderLight, background: i === 0 ? 'rgba(16,185,129,0.04)' : 'transparent' }}>
                 <td className="px-5 py-3" style={{ color: i === 0 ? T.accent : T.fg, fontWeight: i === 0 ? 600 : 400 }}>{row.label}</td>
-                <td className="px-5 py-3 text-center font-mono" style={{ color: a.color }}>
-                  <span className="font-bold">{row.a}</span>
-                  <span className="ml-1 text-xs" style={{ color: T.fgDim }}>({row.a_ht})</span>
-                </td>
-                <td className="px-5 py-3 text-center font-mono" style={{ color: b.color }}>
-                  <span className="font-bold">{row.b}</span>
-                  <span className="ml-1 text-xs" style={{ color: T.fgDim }}>({row.b_ht})</span>
-                </td>
-                <td className="px-5 py-3 text-center font-mono" style={{ color: T.fg }}>
-                  <span className="font-bold">{row.total}</span>
-                  <span className="ml-1 text-xs" style={{ color: T.fgDim }}>({row.total_ht})</span>
-                </td>
+                <td className="px-5 py-3 text-center font-mono" style={{ color: a.color }}><span className="font-bold">{row.a}</span><span className="ml-1 text-xs" style={{ color: T.fgDim }}>({row.a_ht})</span></td>
+                <td className="px-5 py-3 text-center font-mono" style={{ color: b.color }}><span className="font-bold">{row.b}</span><span className="ml-1 text-xs" style={{ color: T.fgDim }}>({row.b_ht})</span></td>
+                <td className="px-5 py-3 text-center font-mono" style={{ color: T.fg }}><span className="font-bold">{row.total}</span><span className="ml-1 text-xs" style={{ color: T.fgDim }}>({row.total_ht})</span></td>
               </tr>
             ))}
           </tbody>
@@ -2140,7 +1207,7 @@ function MediaUltimas({ data }) {
 }
 
 // ============================================================
-// DISTRIBUICAO DIARIA (bar chart stacked com tooltip)
+// DISTRIBUICAO DIARIA
 // ============================================================
 
 const MESES_PT = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
@@ -2150,166 +1217,53 @@ function DistribuicaoDiaria({ data }) {
   const [hoverIdx, setHoverIdx] = useState(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const containerRef = useRef(null);
-
-  // Estado vazio
-  if (!data.distribuicao || data.distribuicao.length === 0) {
-    return (
-      <Card>
-        <SectionHeader>Distribuição Diária de Partidas</SectionHeader>
-        <div className="px-5 py-12 text-center text-sm" style={{ color: T.fgDim }}>
-          Sem partidas para os filtros aplicados
-        </div>
-      </Card>
-    );
-  }
-
+  if (!data.distribuicao || data.distribuicao.length === 0) return <Card><SectionHeader>Distribuição Diária de Partidas</SectionHeader><div className="px-5 py-12 text-center text-sm" style={{ color: T.fgDim }}>Sem partidas para os filtros aplicados</div></Card>;
   const max = Math.max(...data.distribuicao.map(d => d.a + d.b + (d.draw || 0)), 1);
   const W = 980, H = 220, padX = 30, padBottom = 28;
   const barW = (W - padX * 2) / data.distribuicao.length;
-
-  // Formata data tipo "11 OUT 2026"
-  const formatDate = (dt) => {
-    if (!dt) return '';
-    return `${String(dt.getDate()).padStart(2, '0')} ${MESES_PT[dt.getMonth()]} ${dt.getFullYear()}`;
-  };
-
+  const formatDate = (dt) => dt ? `${String(dt.getDate()).padStart(2, '0')} ${MESES_PT[dt.getMonth()]} ${dt.getFullYear()}` : '';
   const handleMouseMove = (e, idx) => {
     if (containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
-      // Compensar scroll horizontal do container (overflow-x-auto)
-      setTooltipPos({
-        x: e.clientX - rect.left + containerRef.current.scrollLeft,
-        y: e.clientY - rect.top + containerRef.current.scrollTop,
-      });
+      setTooltipPos({ x: e.clientX - rect.left + containerRef.current.scrollLeft, y: e.clientY - rect.top + containerRef.current.scrollTop });
     }
     setHoverIdx(idx);
   };
-
   const dHover = hoverIdx !== null ? data.distribuicao[hoverIdx] : null;
   const totalHover = dHover ? dHover.a + (dHover.draw || 0) + dHover.b : 0;
-
   return (
     <Card>
-      <SectionHeader right={
-        <div className="flex items-center gap-2">
-          <PlayerLegend name={a.name} color={a.color} />
-          <PlayerLegend name={b.name} color={b.color} />
-        </div>
-      }>
-        Distribuição Diária de Partidas
-      </SectionHeader>
+      <SectionHeader right={<div className="flex items-center gap-2"><PlayerLegend name={a.name} color={a.color} /><PlayerLegend name={b.name} color={b.color} /></div>}>Distribuição Diária de Partidas</SectionHeader>
       <div className="p-5 overflow-x-auto relative" ref={containerRef}>
-        <svg
-          width={W} height={H + padBottom}
-          style={{ display: 'block' }}
-          onMouseLeave={() => setHoverIdx(null)}
-        >
+        <svg width={W} height={H + padBottom} style={{ display: 'block' }} onMouseLeave={() => setHoverIdx(null)}>
           {data.distribuicao.map((d, i) => {
-            const x = padX + i * barW + 1;
-            const w = barW - 2;
+            const x = padX + i * barW + 1, w = barW - 2;
             const drawCount = d.draw || 0;
-            const aH = (d.a / max) * H;
-            const drawH = (drawCount / max) * H;
-            const bH = (d.b / max) * H;
+            const aH = (d.a / max) * H, drawH = (drawCount / max) * H, bH = (d.b / max) * H;
             const isHover = hoverIdx === i;
             const opacity = hoverIdx === null || isHover ? 1 : 0.4;
-
             return (
               <g key={i} style={{ transition: 'opacity 200ms', opacity }}>
-                {/* Hitbox transparente cobrindo toda a barra (capta hover ate o topo) */}
-                <rect
-                  x={x - 1} y={0} width={w + 2} height={H}
-                  fill="transparent"
-                  style={{ cursor: 'pointer' }}
-                  onMouseMove={(e) => handleMouseMove(e, i)}
-                />
-                {/* Bangkok (azul) - fica embaixo */}
-                <rect x={x} y={H - bH} width={w} height={bH} fill={b.color}
-                      style={{ pointerEvents: 'none' }} />
-                {/* Draw (cinza) - fica no meio */}
-                {drawH > 0 && (
-                  <rect x={x} y={H - bH - drawH} width={w} height={drawH} fill={T.fgDimmer}
-                        style={{ pointerEvents: 'none' }} />
-                )}
-                {/* Valencia (verde) - fica no topo */}
-                <rect x={x} y={H - bH - drawH - aH} width={w} height={aH} fill={a.color}
-                      style={{ pointerEvents: 'none' }} />
-                <text
-                  x={x + barW / 2 - 1}
-                  y={H + 18}
-                  fontSize="9"
-                  fill={isHover ? T.fg : T.fgDimmer}
-                  fontWeight={isHover ? 600 : 400}
-                  textAnchor="middle"
-                  style={{ pointerEvents: 'none', transition: 'fill 200ms' }}
-                >
-                  {d.day}
-                </text>
+                <rect x={x - 1} y={0} width={w + 2} height={H} fill="transparent" style={{ cursor: 'pointer' }} onMouseMove={(e) => handleMouseMove(e, i)} />
+                <rect x={x} y={H - bH} width={w} height={bH} fill={b.color} style={{ pointerEvents: 'none' }} />
+                {drawH > 0 && <rect x={x} y={H - bH - drawH} width={w} height={drawH} fill={T.fgDimmer} style={{ pointerEvents: 'none' }} />}
+                <rect x={x} y={H - bH - drawH - aH} width={w} height={aH} fill={a.color} style={{ pointerEvents: 'none' }} />
+                <text x={x + barW / 2 - 1} y={H + 18} fontSize="9" fill={isHover ? T.fg : T.fgDimmer} fontWeight={isHover ? 600 : 400} textAnchor="middle" style={{ pointerEvents: 'none', transition: 'fill 200ms' }}>{d.day}</text>
               </g>
             );
           })}
         </svg>
-
-        {/* Tooltip */}
         {dHover && (
-          <div
-            className="absolute pointer-events-none rounded-md p-3"
-            style={{
-              left: Math.min(tooltipPos.x + 14, W - 200),
-              top: Math.max(tooltipPos.y - 10, 10),
-              background: 'rgba(11,15,26,0.96)',
-              border: `1px solid ${T.border}`,
-              boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
-              minWidth: 180,
-              zIndex: 20,
-              animation: 'fadeIn 120ms cubic-bezier(0.22, 1, 0.36, 1)',
-            }}
-          >
-            <div className="text-[10px] font-semibold tracking-wider mb-2 pb-2 border-b" style={{ color: T.fgDim, borderColor: T.borderLight }}>
-              {formatDate(dHover.dateFull)}
-            </div>
+          <div className="absolute pointer-events-none rounded-md p-3" style={{ left: Math.min(tooltipPos.x + 14, W - 200), top: Math.max(tooltipPos.y - 10, 10), background: 'rgba(11,15,26,0.96)', border: `1px solid ${T.border}`, boxShadow: '0 8px 24px rgba(0,0,0,0.6)', minWidth: 180, zIndex: 20, animation: 'fadeIn 120ms cubic-bezier(0.22, 1, 0.36, 1)' }}>
+            <div className="text-[10px] font-semibold tracking-wider mb-2 pb-2 border-b" style={{ color: T.fgDim, borderColor: T.borderLight }}>{formatDate(dHover.dateFull)}</div>
             <div className="space-y-1.5">
-              {/* Linha A */}
-              <div className="flex items-center justify-between gap-3 text-xs">
-                <span className="inline-flex items-center gap-1.5" style={{ color: T.fgDim }}>
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: a.color }} />
-                  <span className="uppercase tracking-wider text-[10px] font-semibold">{a.name}</span>
-                </span>
-                <span className="font-mono">
-                  <span className="font-bold" style={{ color: a.color }}>{dHover.a}</span>
-                  <span className="ml-1 text-[10px]" style={{ color: T.fgDim }}>
-                    ({totalHover > 0 ? ((dHover.a / totalHover) * 100).toFixed(1) : '0.0'}%)
-                  </span>
-                </span>
-              </div>
-              {/* Linha Draw */}
-              <div className="flex items-center justify-between gap-3 text-xs">
-                <span className="inline-flex items-center gap-1.5" style={{ color: T.fgDim }}>
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: T.fgDimmer }} />
-                  <span className="uppercase tracking-wider text-[10px] font-semibold">Empate</span>
-                </span>
-                <span className="font-mono">
-                  <span className="font-bold" style={{ color: T.fg }}>{dHover.draw || 0}</span>
-                  <span className="ml-1 text-[10px]" style={{ color: T.fgDim }}>
-                    ({totalHover > 0 ? (((dHover.draw || 0) / totalHover) * 100).toFixed(1) : '0.0'}%)
-                  </span>
-                </span>
-              </div>
-              {/* Linha B */}
-              <div className="flex items-center justify-between gap-3 text-xs">
-                <span className="inline-flex items-center gap-1.5" style={{ color: T.fgDim }}>
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: b.color }} />
-                  <span className="uppercase tracking-wider text-[10px] font-semibold">{b.name}</span>
-                </span>
-                <span className="font-mono">
-                  <span className="font-bold" style={{ color: b.color }}>{dHover.b}</span>
-                  <span className="ml-1 text-[10px]" style={{ color: T.fgDim }}>
-                    ({totalHover > 0 ? ((dHover.b / totalHover) * 100).toFixed(1) : '0.0'}%)
-                  </span>
-                </span>
-              </div>
+              {[{ name: a.name, color: a.color, val: dHover.a }, { name: 'Empate', color: T.fgDimmer, val: dHover.draw || 0 }, { name: b.name, color: b.color, val: dHover.b }].map((item, i) => (
+                <div key={i} className="flex items-center justify-between gap-3 text-xs">
+                  <span className="inline-flex items-center gap-1.5" style={{ color: T.fgDim }}><span className="w-1.5 h-1.5 rounded-full" style={{ background: item.color }} /><span className="uppercase tracking-wider text-[10px] font-semibold">{item.name}</span></span>
+                  <span className="font-mono"><span className="font-bold" style={{ color: item.color }}>{item.val}</span><span className="ml-1 text-[10px]" style={{ color: T.fgDim }}>({totalHover > 0 ? ((item.val / totalHover) * 100).toFixed(1) : '0.0'}%)</span></span>
+                </div>
+              ))}
             </div>
-            {/* Total */}
             <div className="mt-2 pt-2 border-t flex items-center justify-between text-xs" style={{ borderColor: T.borderLight }}>
               <span className="uppercase tracking-wider text-[10px] font-semibold" style={{ color: T.fg }}>Total</span>
               <span className="font-bold font-mono" style={{ color: T.fg }}>{totalHover}</span>
@@ -2322,7 +1276,7 @@ function DistribuicaoDiaria({ data }) {
 }
 
 // ============================================================
-// MEDIA MOVEL (line chart)
+// MEDIA MOVEL
 // ============================================================
 
 function MediaMovel({ data }) {
@@ -2331,160 +1285,69 @@ function MediaMovel({ data }) {
   const [hoverIdx, setHoverIdx] = useState(null);
   const containerRef = useRef(null);
   const svgRef = useRef(null);
-
-  // Estado vazio: sem dados
-  if (!serie || serie.length === 0) {
-    return (
-      <Card>
-        <SectionHeader>Média de pontos (Média Móvel)</SectionHeader>
-        <div className="px-5 py-12 text-center text-sm" style={{ color: T.fgDim }}>
-          Sem partidas para os filtros aplicados
-        </div>
-      </Card>
-    );
-  }
-
+  if (!serie || serie.length === 0) return <Card><SectionHeader>Média de pontos (Média Móvel)</SectionHeader><div className="px-5 py-12 text-center text-sm" style={{ color: T.fgDim }}>Sem partidas para os filtros aplicados</div></Card>;
   const W = 980, H = 220, padX = 40, padY = 20;
   const innerW = W - padX * 2, innerH = H - padY * 2;
-
   const allValues = serie.flatMap(d => [d.a, d.b, d.total]);
   const yMax = Math.max(...allValues) * 1.1, yMin = 0;
-
-  // Cor "Total" verde escuro (igual TipManager)
-  const totalColor = '#166534';
-  const totalDotColor = T.accent;  // dot continua claro pra ficar visivel
-
+  const totalColor = '#166534', totalDotColor = T.accent;
   const yToScreen = (v) => padY + innerH - ((v - yMin) / (yMax - yMin)) * innerH;
   const xToScreen = (i) => padX + (i / Math.max(1, serie.length - 1)) * innerW;
-
-  const path = (key) => {
-    return serie.map((d, i) => `${i === 0 ? 'M' : 'L'} ${xToScreen(i)} ${yToScreen(d[key])}`).join(' ');
-  };
-
-  // Gridlines
+  const path = (key) => serie.map((d, i) => `${i === 0 ? 'M' : 'L'} ${xToScreen(i)} ${yToScreen(d[key])}`).join(' ');
   const gridY = [30, 60, 90, 120].filter(v => v <= yMax);
-
   const handleMouseMove = (e) => {
     if (!svgRef.current) return;
     const rect = svgRef.current.getBoundingClientRect();
-    const xRel = e.clientX - rect.left;
-    // Mapear x da tela pro indice da serie
-    const ratio = (xRel - padX) / innerW;
+    const ratio = (e.clientX - rect.left - padX) / innerW;
     const idx = Math.round(ratio * (serie.length - 1));
-    if (idx >= 0 && idx < serie.length) {
-      setHoverIdx(idx);
-    } else {
-      setHoverIdx(null);
-    }
+    if (idx >= 0 && idx < serie.length) setHoverIdx(idx); else setHoverIdx(null);
   };
-
   const dHover = hoverIdx !== null ? serie[hoverIdx] : null;
   const xHover = hoverIdx !== null ? xToScreen(hoverIdx) : 0;
-
-  // Decide se tooltip vai à esquerda ou direita do cursor
   const tooltipOnRight = xHover < W / 2;
-
   return (
     <Card>
       <SectionHeader>Média de pontos (Média Móvel)</SectionHeader>
       <div className="p-5 overflow-x-auto relative" ref={containerRef}>
-        <svg
-          ref={svgRef}
-          width={W} height={H}
-          style={{ display: 'block', cursor: 'crosshair' }}
-          onMouseMove={handleMouseMove}
-          onMouseLeave={() => setHoverIdx(null)}
-        >
-          {/* Gridlines horizontais */}
+        <svg ref={svgRef} width={W} height={H} style={{ display: 'block', cursor: 'crosshair' }} onMouseMove={handleMouseMove} onMouseLeave={() => setHoverIdx(null)}>
           {gridY.map((g, i) => {
             const y = yToScreen(g);
-            return (
-              <g key={i}>
-                <line x1={padX} y1={y} x2={W - padX} y2={y} stroke={T.borderLight} strokeDasharray="2 4" />
-                <text x={padX - 8} y={y + 3} fontSize="10" fill={T.fgDimmer} textAnchor="end">{g}</text>
-              </g>
-            );
+            return <g key={i}><line x1={padX} y1={y} x2={W - padX} y2={y} stroke={T.borderLight} strokeDasharray="2 4" /><text x={padX - 8} y={y + 3} fontSize="10" fill={T.fgDimmer} textAnchor="end">{g}</text></g>;
           })}
-
-          {/* Linhas (Total embaixo, A e B em cima pra ficarem visiveis) */}
           <path d={path('total')} stroke={totalColor} strokeWidth="2" fill="none" />
           <path d={path('a')} stroke={a.color} strokeWidth="1.5" fill="none" />
           <path d={path('b')} stroke={b.color} strokeWidth="1.5" fill="none" />
-
-          {/* Linha guia vertical no hover */}
           {dHover && (
             <g style={{ pointerEvents: 'none' }}>
-              <line
-                x1={xHover} y1={padY}
-                x2={xHover} y2={padY + innerH}
-                stroke={T.fgDim} strokeWidth="1" opacity="0.5"
-              />
-              {/* Dots nos 3 pontos */}
+              <line x1={xHover} y1={padY} x2={xHover} y2={padY + innerH} stroke={T.fgDim} strokeWidth="1" opacity="0.5" />
               <circle cx={xHover} cy={yToScreen(dHover.total)} r="4" fill={totalDotColor} stroke={T.bg2} strokeWidth="2" />
-              <circle cx={xHover} cy={yToScreen(dHover.a)}     r="4" fill={a.color}       stroke={T.bg2} strokeWidth="2" />
-              <circle cx={xHover} cy={yToScreen(dHover.b)}     r="4" fill={b.color}       stroke={T.bg2} strokeWidth="2" />
+              <circle cx={xHover} cy={yToScreen(dHover.a)} r="4" fill={a.color} stroke={T.bg2} strokeWidth="2" />
+              <circle cx={xHover} cy={yToScreen(dHover.b)} r="4" fill={b.color} stroke={T.bg2} strokeWidth="2" />
             </g>
           )}
         </svg>
-
-        {/* Tooltip */}
         {dHover && (() => {
-          // Posicionar tooltip perto do ponto medio entre as 3 series no hover
-          // (clamp pra nao sair do gráfico)
           const yTotal = yToScreen(dHover.total);
           const yMid = (yTotal + yToScreen(dHover.a) + yToScreen(dHover.b)) / 3;
-          const tooltipH = 110;  // altura aproximada do tooltip
+          const tooltipH = 110;
           const topClamped = Math.max(8, Math.min(H - tooltipH - 8, yMid - tooltipH / 2));
           return (
-            <div
-              className="absolute pointer-events-none rounded-md p-2.5"
-              style={{
-                left: tooltipOnRight ? xHover + 16 : xHover - 180,
-                top: topClamped,
-                background: 'rgba(11,15,26,0.96)',
-                border: `1px solid ${T.border}`,
-                boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
-                minWidth: 170,
-                zIndex: 20,
-                animation: 'fadeIn 100ms cubic-bezier(0.22, 1, 0.36, 1)',
-              }}
-            >
-              <div className="text-[11px] mb-1.5" style={{ color: T.fgDim }}>
-                Janela de {hoverIdx + 5} partidas
-              </div>
-            <div className="space-y-1">
-              <div className="flex items-center justify-between gap-4 text-xs">
-                <span className="inline-flex items-center gap-1.5 font-semibold" style={{ color: T.fg }}>
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: totalDotColor }} />
-                  Total
-                </span>
-                <span className="font-mono font-bold" style={{ color: T.fg }}>{dHover.total.toFixed(2)}</span>
-              </div>
-              <div className="flex items-center justify-between gap-4 text-xs">
-                <span className="inline-flex items-center gap-1.5 font-semibold" style={{ color: a.color }}>
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: a.color }} />
-                  {a.name}
-                </span>
-                <span className="font-mono font-bold" style={{ color: a.color }}>{dHover.a.toFixed(2)}</span>
-              </div>
-              <div className="flex items-center justify-between gap-4 text-xs">
-                <span className="inline-flex items-center gap-1.5 font-semibold" style={{ color: b.color }}>
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: b.color }} />
-                  {b.name}
-                </span>
-                <span className="font-mono font-bold" style={{ color: b.color }}>{dHover.b.toFixed(2)}</span>
+            <div className="absolute pointer-events-none rounded-md p-2.5" style={{ left: tooltipOnRight ? xHover + 16 : xHover - 180, top: topClamped, background: 'rgba(11,15,26,0.96)', border: `1px solid ${T.border}`, boxShadow: '0 8px 24px rgba(0,0,0,0.6)', minWidth: 170, zIndex: 20, animation: 'fadeIn 100ms cubic-bezier(0.22, 1, 0.36, 1)' }}>
+              <div className="text-[11px] mb-1.5" style={{ color: T.fgDim }}>Janela de {hoverIdx + 5} partidas</div>
+              <div className="space-y-1">
+                {[{ label: 'Total', color: totalDotColor, val: dHover.total }, { label: a.name, color: a.color, val: dHover.a }, { label: b.name, color: b.color, val: dHover.b }].map((item, i) => (
+                  <div key={i} className="flex items-center justify-between gap-4 text-xs">
+                    <span className="inline-flex items-center gap-1.5 font-semibold" style={{ color: item.color }}><span className="w-1.5 h-1.5 rounded-full" style={{ background: item.color }} />{item.label}</span>
+                    <span className="font-mono font-bold" style={{ color: item.color }}>{item.val.toFixed(2)}</span>
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
           );
         })()}
       </div>
-
-      {/* Legenda no rodape (centralizada) */}
       <div className="flex items-center justify-center gap-2 px-5 pb-4">
-        <PlayerLegend name={a.name} color={a.color} />
-        <PlayerLegend name={b.name} color={b.color} />
-        <PlayerLegend name="Total" color={totalDotColor} />
+        <PlayerLegend name={a.name} color={a.color} /><PlayerLegend name={b.name} color={b.color} /><PlayerLegend name="Total" color={totalDotColor} />
       </div>
     </Card>
   );
@@ -2499,181 +1362,62 @@ function HistoricoPartidas({ data }) {
   const [page, setPage] = useState(0);
   const [pageSizeOpen, setPageSizeOpen] = useState(false);
   const pageSizeRef = useRef(null);
-
-  // Reseta pagina quando os dados mudam
   useEffect(() => { setPage(0); }, [data.historico]);
-
-  // Fecha dropdown ao clicar fora
   useEffect(() => {
-    function handle(e) {
-      if (pageSizeRef.current && !pageSizeRef.current.contains(e.target)) setPageSizeOpen(false);
-    }
+    function handle(e) { if (pageSizeRef.current && !pageSizeRef.current.contains(e.target)) setPageSizeOpen(false); }
     if (pageSizeOpen) document.addEventListener('mousedown', handle);
     return () => document.removeEventListener('mousedown', handle);
   }, [pageSizeOpen]);
-
-  // Estado vazio
-  if (!data.historico || data.historico.length === 0) {
-    return (
-      <Card>
-        <SectionHeader>Histórico de Partidas</SectionHeader>
-        <div className="px-5 py-12 text-center text-sm" style={{ color: T.fgDim }}>
-          Sem partidas para os filtros aplicados
-        </div>
-      </Card>
-    );
-  }
-
+  if (!data.historico || data.historico.length === 0) return <Card><SectionHeader>Histórico de Partidas</SectionHeader><div className="px-5 py-12 text-center text-sm" style={{ color: T.fgDim }}>Sem partidas para os filtros aplicados</div></Card>;
   const totalPages = Math.max(1, Math.ceil(data.historico.length / pageSize));
   const pageAtual = Math.max(0, Math.min(page, totalPages - 1));
-  const inicio = pageAtual * pageSize;
-  const fim = Math.min(inicio + pageSize, data.historico.length);
+  const inicio = pageAtual * pageSize, fim = Math.min(inicio + pageSize, data.historico.length);
   const pageData = data.historico.slice(inicio, fim);
-
-  const changePageSize = (n) => {
-    setPageSize(n);
-    setPage(0);
-    setPageSizeOpen(false);
-  };
-
+  const changePageSize = (n) => { setPageSize(n); setPage(0); setPageSizeOpen(false); };
   return (
     <Card>
       <SectionHeader>Histórico de Partidas</SectionHeader>
-      <div
-        className={pageSize > 5 ? 'overflow-y-auto mike-scroll' : ''}
-        style={pageSize > 5 ? { maxHeight: 5 * 73 } : {}}
-      >
+      <div className={pageSize > 5 ? 'overflow-y-auto mike-scroll' : ''} style={pageSize > 5 ? { maxHeight: 5 * 73 } : {}}>
         {pageData.map((m, i) => {
           const venceuA = m.vencedor === 'a';
           return (
-            <div key={`${inicio + i}`} className="grid items-center px-5 py-3.5 border-t mike-row-hover"
-                 style={{ gridTemplateColumns: '40px 1fr 160px 1fr 40px', borderColor: T.borderLight }}>
-              {/* V/D do A */}
-              <div className="grid place-items-center w-7 h-7 rounded text-xs font-bold"
-                   style={{ background: venceuA ? T.green : T.red, color: '#fff' }}>
-                {venceuA ? 'V' : 'D'}
-              </div>
-              {/* Lado A: nome + time */}
-              <div className="text-right pr-4">
-                <div className="text-sm font-semibold leading-tight" style={{ color: T.fg }}>{m.a_name}</div>
-                <div className="text-[11px] leading-tight" style={{ color: T.fgDim }}>{m.a_team}</div>
-              </div>
-              {/* Centro: data em cima, placar, HT */}
+            <div key={`${inicio + i}`} className="grid items-center px-5 py-3.5 border-t mike-row-hover" style={{ gridTemplateColumns: '40px 1fr 160px 1fr 40px', borderColor: T.borderLight }}>
+              <div className="grid place-items-center w-7 h-7 rounded text-xs font-bold" style={{ background: venceuA ? T.green : T.red, color: '#fff' }}>{venceuA ? 'V' : 'D'}</div>
+              <div className="text-right pr-4"><div className="text-sm font-semibold leading-tight" style={{ color: T.fg }}>{m.a_name}</div><div className="text-[11px] leading-tight" style={{ color: T.fgDim }}>{m.a_team}</div></div>
               <div className="text-center">
                 <div className="text-[11px] mb-1" style={{ color: T.fgDimmer }}>{m.date}</div>
                 <div className="inline-flex items-center gap-2 mb-1">
-                  <span className="px-2 py-0.5 rounded text-base font-bold min-w-[28px] text-center"
-                        style={{ background: venceuA ? `${T.accent}30` : `${T.red}30`, color: venceuA ? T.accent : T.red }}>
-                    {m.a_score}
-                  </span>
+                  <span className="px-2 py-0.5 rounded text-base font-bold min-w-[28px] text-center" style={{ background: venceuA ? `${T.accent}30` : `${T.red}30`, color: venceuA ? T.accent : T.red }}>{m.a_score}</span>
                   <span className="text-xs" style={{ color: T.fgDimmer }}>:</span>
-                  <span className="px-2 py-0.5 rounded text-base font-bold min-w-[28px] text-center"
-                        style={{ background: !venceuA ? `${T.accent}30` : `${T.red}30`, color: !venceuA ? T.accent : T.red }}>
-                    {m.b_score}
-                  </span>
+                  <span className="px-2 py-0.5 rounded text-base font-bold min-w-[28px] text-center" style={{ background: !venceuA ? `${T.accent}30` : `${T.red}30`, color: !venceuA ? T.accent : T.red }}>{m.b_score}</span>
                 </div>
                 <div className="text-[11px] font-mono" style={{ color: T.fgDim }}>HT {m.a_ht} : {m.b_ht}</div>
               </div>
-              {/* Lado B: nome + time (sem data, fica alinhado pelo nome) */}
-              <div className="text-left pl-4">
-                <div className="text-sm font-semibold leading-tight" style={{ color: T.fg }}>{m.b_name}</div>
-                <div className="text-[11px] leading-tight" style={{ color: T.fgDim }}>{m.b_team}</div>
-              </div>
-              {/* V/D do B */}
-              <div className="grid place-items-center w-7 h-7 rounded text-xs font-bold ml-auto"
-                   style={{ background: !venceuA ? T.green : T.red, color: '#fff' }}>
-                {!venceuA ? 'V' : 'D'}
-              </div>
+              <div className="text-left pl-4"><div className="text-sm font-semibold leading-tight" style={{ color: T.fg }}>{m.b_name}</div><div className="text-[11px] leading-tight" style={{ color: T.fgDim }}>{m.b_team}</div></div>
+              <div className="grid place-items-center w-7 h-7 rounded text-xs font-bold ml-auto" style={{ background: !venceuA ? T.green : T.red, color: '#fff' }}>{!venceuA ? 'V' : 'D'}</div>
             </div>
           );
         })}
-        {/* Linhas vazias pra manter altura constante (so quando pageSize=5, sem scroll) */}
         {pageSize === 5 && pageData.length < pageSize && Array.from({ length: pageSize - pageData.length }).map((_, i) => (
           <div key={`empty-${i}`} className="px-5 py-3.5 border-t" style={{ borderColor: T.borderLight, height: 73 }}>&nbsp;</div>
         ))}
       </div>
-
       <div className="flex items-center justify-between px-5 py-3 border-t" style={{ borderColor: T.border }}>
-        {/* Dropdown pageSize */}
         <div className="relative" ref={pageSizeRef}>
-          <button
-            onClick={() => setPageSizeOpen(o => !o)}
-            className="inline-flex items-center gap-1.5 px-2.5 h-7 rounded-md text-xs transition-colors"
-            style={{
-              background: pageSizeOpen ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)',
-              border: `1px solid ${pageSizeOpen ? T.accent : T.borderLight}`,
-              color: T.fg,
-            }}
-          >
-            {pageSize} Linhas
-            <ChevronDown size={12} style={{
-              color: T.fgDim,
-              transform: pageSizeOpen ? 'rotate(180deg)' : 'none',
-              transition: 'transform 180ms',
-            }} />
+          <button onClick={() => setPageSizeOpen(o => !o)} className="inline-flex items-center gap-1.5 px-2.5 h-7 rounded-md text-xs transition-colors"
+            style={{ background: pageSizeOpen ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${pageSizeOpen ? T.accent : T.borderLight}`, color: T.fg }}>
+            {pageSize} Linhas<ChevronDown size={12} style={{ color: T.fgDim, transform: pageSizeOpen ? 'rotate(180deg)' : 'none', transition: 'transform 180ms' }} />
           </button>
           {pageSizeOpen && (
-            <div
-              className="absolute left-0 bottom-full mb-1 rounded-md overflow-hidden"
-              style={{
-                background: T.bg2,
-                border: `1px solid ${T.border}`,
-                boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-                animation: 'fadeIn 180ms cubic-bezier(0.22, 1, 0.36, 1)',
-                minWidth: 100,
-              }}
-            >
-              {[5, 10, 20].map(n => (
-                <button
-                  key={n}
-                  onClick={() => changePageSize(n)}
-                  className="w-full px-3 py-1.5 text-xs text-left transition-colors hover:bg-white/5"
-                  style={{
-                    color: pageSize === n ? T.accent : T.fg,
-                    background: pageSize === n ? 'rgba(16,185,129,0.08)' : 'transparent',
-                  }}
-                >
-                  {n} Linhas
-                </button>
-              ))}
+            <div className="absolute left-0 bottom-full mb-1 rounded-md overflow-hidden" style={{ background: T.bg2, border: `1px solid ${T.border}`, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', animation: 'fadeIn 180ms cubic-bezier(0.22, 1, 0.36, 1)', minWidth: 100 }}>
+              {[5, 10, 20].map(n => <button key={n} onClick={() => changePageSize(n)} className="w-full px-3 py-1.5 text-xs text-left transition-colors hover:bg-white/5" style={{ color: pageSize === n ? T.accent : T.fg, background: pageSize === n ? 'rgba(16,185,129,0.08)' : 'transparent' }}>{n} Linhas</button>)}
             </div>
           )}
         </div>
-
-        {/* Range exibido */}
-        <div className="text-xs" style={{ color: T.fgDim }}>
-          Exibindo <span style={{ color: T.fg, fontWeight: 600 }}>{inicio + 1} - {fim}</span>
-          <span> ({data.historico.length})</span>
-        </div>
-
-        {/* Setas */}
+        <div className="text-xs" style={{ color: T.fgDim }}>Exibindo <span style={{ color: T.fg, fontWeight: 600 }}>{inicio + 1} - {fim}</span> ({data.historico.length})</div>
         <div className="flex gap-1">
-          <button
-            onClick={() => setPage(p => Math.max(0, p - 1))}
-            disabled={pageAtual === 0}
-            className="w-7 h-7 rounded grid place-items-center transition-colors"
-            style={{
-              border: `1px solid ${T.borderLight}`,
-              background: pageAtual === 0 ? 'transparent' : 'rgba(255,255,255,0.04)',
-              cursor: pageAtual === 0 ? 'not-allowed' : 'pointer',
-              opacity: pageAtual === 0 ? 0.4 : 1,
-            }}
-          >
-            <ChevronLeft size={12} style={{ color: T.fgDim }} />
-          </button>
-          <button
-            onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-            disabled={pageAtual >= totalPages - 1}
-            className="w-7 h-7 rounded grid place-items-center transition-colors"
-            style={{
-              background: pageAtual >= totalPages - 1 ? 'rgba(255,255,255,0.04)' : T.accent,
-              border: pageAtual >= totalPages - 1 ? `1px solid ${T.borderLight}` : 'none',
-              cursor: pageAtual >= totalPages - 1 ? 'not-allowed' : 'pointer',
-              opacity: pageAtual >= totalPages - 1 ? 0.4 : 1,
-            }}
-          >
-            <ChevronRight size={12} style={{ color: pageAtual >= totalPages - 1 ? T.fgDim : '#04130c' }} />
-          </button>
+          <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={pageAtual === 0} className="w-7 h-7 rounded grid place-items-center transition-colors" style={{ border: `1px solid ${T.borderLight}`, background: pageAtual === 0 ? 'transparent' : 'rgba(255,255,255,0.04)', cursor: pageAtual === 0 ? 'not-allowed' : 'pointer', opacity: pageAtual === 0 ? 0.4 : 1 }}><ChevronLeft size={12} style={{ color: T.fgDim }} /></button>
+          <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={pageAtual >= totalPages - 1} className="w-7 h-7 rounded grid place-items-center transition-colors" style={{ background: pageAtual >= totalPages - 1 ? 'rgba(255,255,255,0.04)' : T.accent, border: pageAtual >= totalPages - 1 ? `1px solid ${T.borderLight}` : 'none', cursor: pageAtual >= totalPages - 1 ? 'not-allowed' : 'pointer', opacity: pageAtual >= totalPages - 1 ? 0.4 : 1 }}><ChevronRight size={12} style={{ color: pageAtual >= totalPages - 1 ? T.fgDim : '#04130c' }} /></button>
         </div>
       </div>
     </Card>
@@ -2681,92 +1425,45 @@ function HistoricoPartidas({ data }) {
 }
 
 // ============================================================
-// HISTORICO DE CONFRONTOS (texto narrativo)
+// HISTORICO DE CONFRONTOS
 // ============================================================
 
 function HistoricoConfrontos({ data }) {
   const a = data.player_a, b = data.player_b, m = data.matchup_summary;
-
-  if (data.total === 0) {
-    return (
-      <Card>
-        <div className="flex items-center justify-between px-5 py-3.5 border-b" style={{ borderColor: T.border, background: 'rgba(255,255,255,0.015)' }}>
-          <div className="inline-flex items-center gap-2">
-            <Trophy size={14} style={{ color: T.yellow }} />
-            <span className="text-[13px] font-semibold" style={{ color: T.fg }}>
-              Histórico de Confrontos {a.name} vs {b.name}
-            </span>
-          </div>
-        </div>
-        <div className="px-5 py-12 text-center text-sm" style={{ color: T.fgDim }}>
-          Sem partidas para os filtros aplicados
-        </div>
-      </Card>
-    );
-  }
-
+  if (data.total === 0) return (
+    <Card>
+      <div className="flex items-center justify-between px-5 py-3.5 border-b" style={{ borderColor: T.border, background: 'rgba(255,255,255,0.015)' }}>
+        <div className="inline-flex items-center gap-2"><Trophy size={14} style={{ color: T.yellow }} /><span className="text-[13px] font-semibold" style={{ color: T.fg }}>Histórico de Confrontos {a.name} vs {b.name}</span></div>
+      </div>
+      <div className="px-5 py-12 text-center text-sm" style={{ color: T.fgDim }}>Sem partidas para os filtros aplicados</div>
+    </Card>
+  );
   return (
     <Card>
       <div className="flex items-center justify-between px-5 py-3.5 border-b" style={{ borderColor: T.border, background: 'rgba(255,255,255,0.015)' }}>
-        <div className="inline-flex items-center gap-2">
-          <Trophy size={14} style={{ color: T.yellow }} />
-          <span className="text-[13px] font-semibold" style={{ color: T.fg }}>
-            Histórico de Confrontos {a.name} vs {b.name}
-          </span>
-        </div>
-        <div className="inline-flex items-center gap-1.5 text-xs" style={{ color: T.fgDim }}>
-          <Activity size={12} />
-          3 de maio de 2026
-        </div>
+        <div className="inline-flex items-center gap-2"><Trophy size={14} style={{ color: T.yellow }} /><span className="text-[13px] font-semibold" style={{ color: T.fg }}>Histórico de Confrontos {a.name} vs {b.name}</span></div>
+        <div className="inline-flex items-center gap-1.5 text-xs" style={{ color: T.fgDim }}><Activity size={12} />3 de maio de 2026</div>
       </div>
       <div className="grid grid-cols-2 gap-6 p-6">
         <div>
-          <h4 className="inline-flex items-center gap-1.5 text-sm font-semibold mb-2" style={{ color: T.accent }}>
-            <Activity size={13} />
-            Visão Geral
-          </h4>
-          <p className="text-sm leading-relaxed" style={{ color: T.fgDim }}>
-            Análise histórica dos confrontos entre <strong style={{ color: a.color }}>{a.name}</strong> e
-            <strong style={{ color: b.color }}> {b.name}</strong>. A rivalidade inclui <strong style={{ color: T.fg }}>{m.total}</strong> partidas
-            em diversos torneios, com o encontro mais recente em 3 de maio de 2026.
-          </p>
-          <h4 className="inline-flex items-center gap-1.5 text-sm font-semibold mt-4 mb-2" style={{ color: T.accent }}>
-            <TrendingUp size={13} />
-            Performance
-          </h4>
-          <p className="text-sm leading-relaxed" style={{ color: T.fgDim }}>
-            No histórico de confrontos diretos, <strong style={{ color: a.color }}>{a.name}</strong> conquistou
-            <strong style={{ color: T.fg }}> {m.pct_a}%</strong> das vitórias, enquanto
-            <strong style={{ color: b.color }}> {b.name}</strong> mantém <strong style={{ color: T.fg }}>{m.pct_b}%</strong> de aproveitamento nos duelos.
-          </p>
+          <h4 className="inline-flex items-center gap-1.5 text-sm font-semibold mb-2" style={{ color: T.accent }}><Activity size={13} />Visão Geral</h4>
+          <p className="text-sm leading-relaxed" style={{ color: T.fgDim }}>Análise histórica dos confrontos entre <strong style={{ color: a.color }}>{a.name}</strong> e <strong style={{ color: b.color }}>{b.name}</strong>. A rivalidade inclui <strong style={{ color: T.fg }}>{m.total}</strong> partidas em diversos torneios, com o encontro mais recente em 3 de maio de 2026.</p>
+          <h4 className="inline-flex items-center gap-1.5 text-sm font-semibold mt-4 mb-2" style={{ color: T.accent }}><TrendingUp size={13} />Performance</h4>
+          <p className="text-sm leading-relaxed" style={{ color: T.fgDim }}>No histórico de confrontos diretos, <strong style={{ color: a.color }}>{a.name}</strong> conquistou <strong style={{ color: T.fg }}>{m.pct_a}%</strong> das vitórias, enquanto <strong style={{ color: b.color }}>{b.name}</strong> mantém <strong style={{ color: T.fg }}>{m.pct_b}%</strong> de aproveitamento nos duelos.</p>
         </div>
         <div>
-          <h4 className="inline-flex items-center gap-1.5 text-sm font-semibold mb-2" style={{ color: T.accent }}>
-            <BarChart size={13} />
-            Estatísticas Detalhadas
-          </h4>
-          <p className="text-sm leading-relaxed" style={{ color: T.fgDim }}>
-            Na análise do primeiro quarto, <strong style={{ color: a.color }}>{a.name}</strong> vence <strong style={{ color: T.fg }}>48.69%</strong> dos
-            quartos iniciais, enquanto conquista <strong style={{ color: T.fg }}>43.73%</strong> dos primeiros quartos.
-          </p>
-          <p className="text-sm leading-relaxed mt-3" style={{ color: T.fgDim }}>
-            Quando perde o primeiro quarto, <strong style={{ color: a.color }}>{a.name}</strong> demonstrou
-            <strong style={{ color: T.fg }}> {data.comeback_a}%</strong> de sucesso em recuperação,
-            comparado aos <strong style={{ color: T.fg }}>{data.comeback_b}%</strong> de performance de recuperação de <strong style={{ color: b.color }}>{b.name}</strong>.
-          </p>
+          <h4 className="inline-flex items-center gap-1.5 text-sm font-semibold mb-2" style={{ color: T.accent }}><BarChart size={13} />Estatísticas Detalhadas</h4>
+          <p className="text-sm leading-relaxed" style={{ color: T.fgDim }}>Na análise do primeiro quarto, <strong style={{ color: a.color }}>{a.name}</strong> vence <strong style={{ color: T.fg }}>48.69%</strong> dos quartos iniciais, enquanto conquista <strong style={{ color: T.fg }}>43.73%</strong> dos primeiros quartos.</p>
+          <p className="text-sm leading-relaxed mt-3" style={{ color: T.fgDim }}>Quando perde o primeiro quarto, <strong style={{ color: a.color }}>{a.name}</strong> demonstrou <strong style={{ color: T.fg }}>{data.comeback_a}%</strong> de sucesso em recuperação, comparado aos <strong style={{ color: T.fg }}>{data.comeback_b}%</strong> de performance de recuperação de <strong style={{ color: b.color }}>{b.name}</strong>.</p>
           <div className="mt-4 flex items-center gap-2 justify-end">
             {[Share2, Facebook, MessageCircle, Send, Twitter].map((Icon, i) => (
-              <button key={i} className="w-8 h-8 rounded grid place-items-center" style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${T.borderLight}` }}>
-                <Icon size={13} style={{ color: T.fgDim }} />
-              </button>
+              <button key={i} className="w-8 h-8 rounded grid place-items-center" style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${T.borderLight}` }}><Icon size={13} style={{ color: T.fgDim }} /></button>
             ))}
           </div>
         </div>
       </div>
       <div className="px-6 pb-5">
-        <div className="px-3 py-2 rounded text-xs italic" style={{ color: T.fgDimmer, background: 'rgba(255,255,255,0.02)' }}>
-          * Estatísticas baseadas em dados abrangentes de partidas de NBA 2K incluindo placares, períodos e métricas de performance.
-        </div>
+        <div className="px-3 py-2 rounded text-xs italic" style={{ color: T.fgDimmer, background: 'rgba(255,255,255,0.02)' }}>* Estatísticas baseadas em dados abrangentes de partidas de NBA 2K incluindo placares, períodos e métricas de performance.</div>
       </div>
     </Card>
   );
@@ -2791,137 +1488,63 @@ function Footer() {
           <div className="w-8 h-8 rounded grid place-items-center font-bold" style={{ background: T.accent, color: '#04130c' }}>M</div>
           <span className="font-bold tracking-wider" style={{ color: T.fg }}>TIPMIKE</span>
         </div>
-        <p className="text-xs max-w-md mx-auto" style={{ color: T.fgDim }}>
-          O TipMike é uma plataforma avançada de análise esportiva que oferece estatísticas detalhadas,
-          análises em tempo real e insights profundos para apostadores e entusiastas do esporte.
-        </p>
+        <p className="text-xs max-w-md mx-auto" style={{ color: T.fgDim }}>O TipMike é uma plataforma avançada de análise esportiva que oferece estatísticas detalhadas, análises em tempo real e insights profundos para apostadores e entusiastas do esporte.</p>
       </div>
       <div className="grid grid-cols-5 gap-6 px-6">
         {cols.map((c, i) => (
           <div key={i}>
             <div className="text-xs font-semibold mb-3" style={{ color: T.fg }}>{c.icon} {c.titulo}</div>
-            <ul className="space-y-1.5">
-              {c.items.map((item, j) => (
-                <li key={j} className="text-xs cursor-pointer hover:opacity-80" style={{ color: T.fgDim }}>{item}</li>
-              ))}
-            </ul>
+            <ul className="space-y-1.5">{c.items.map((item, j) => <li key={j} className="text-xs cursor-pointer hover:opacity-80" style={{ color: T.fgDim }}>{item}</li>)}</ul>
           </div>
         ))}
       </div>
-      <div className="mt-8 pt-5 text-center text-xs border-t" style={{ borderColor: T.border, color: T.fgDimmer }}>
-        © 2026 TipMike. Todos os direitos reservados.
-      </div>
+      <div className="mt-8 pt-5 text-center text-xs border-t" style={{ borderColor: T.border, color: T.fgDimmer }}>© 2026 TipMike. Todos os direitos reservados.</div>
     </footer>
   );
 }
 
 // ============================================================
-// DRAWER (base reutilizavel pros 2 modais)
+// DRAWERS
 // ============================================================
 
 function Drawer({ open, onClose, title, children, footer }) {
   if (!open) return null;
   return (
     <>
-      {/* Overlay */}
-      <div
-        onClick={onClose}
-        className="fixed inset-0 z-40"
-        style={{
-          background: 'rgba(0,0,0,0.6)',
-          animation: 'fadeIn 220ms cubic-bezier(0.22, 1, 0.36, 1)',
-        }}
-      />
-      {/* Drawer */}
-      <div
-        className="fixed top-0 right-0 bottom-0 z-50 flex flex-col"
-        style={{
-          width: 380,
-          background: T.bg2,
-          borderLeft: `1px solid ${T.border}`,
-          animation: 'slideInRight 280ms cubic-bezier(0.22, 1, 0.36, 1)',
-        }}
-      >
+      <div onClick={onClose} className="fixed inset-0 z-40" style={{ background: 'rgba(0,0,0,0.6)', animation: 'fadeIn 220ms cubic-bezier(0.22, 1, 0.36, 1)' }} />
+      <div className="fixed top-0 right-0 bottom-0 z-50 flex flex-col" style={{ width: 380, background: T.bg2, borderLeft: `1px solid ${T.border}`, animation: 'slideInRight 280ms cubic-bezier(0.22, 1, 0.36, 1)' }}>
         <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: T.border }}>
           <h2 className="text-base font-bold" style={{ color: T.fg }}>{title}</h2>
-          <button onClick={onClose} className="w-7 h-7 rounded grid place-items-center hover:opacity-70" style={{ color: T.fgDim }}>
-            <X size={16} />
-          </button>
+          <button onClick={onClose} className="w-7 h-7 rounded grid place-items-center hover:opacity-70" style={{ color: T.fgDim }}><X size={16} /></button>
         </div>
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {children}
-        </div>
-        {footer && (
-          <div className="border-t p-6" style={{ borderColor: T.border }}>
-            {footer}
-          </div>
-        )}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">{children}</div>
+        {footer && <div className="border-t p-6" style={{ borderColor: T.border }}>{footer}</div>}
       </div>
     </>
   );
 }
 
-// ============================================================
-// DRAWER FILTROS
-// ============================================================
-
-// Dropdown simples reutilizavel (sem busca) - pra "Versao do jogo", "Hora inicio/fim"
 function SimpleDropdown({ value, options, onChange, placeholder }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
-
   useEffect(() => {
-    function handle(e) {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    }
+    function handle(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
     if (open) document.addEventListener('mousedown', handle);
     return () => document.removeEventListener('mousedown', handle);
   }, [open]);
-
   return (
     <div className="relative" ref={ref}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="w-full inline-flex items-center justify-between px-3 h-9 rounded-md text-sm transition-colors"
-        style={{
-          background: open ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)',
-          border: `1px solid ${open ? T.accent : T.borderLight}`,
-          color: value ? T.fg : T.fgDim,
-        }}
-      >
+      <button onClick={() => setOpen(o => !o)} className="w-full inline-flex items-center justify-between px-3 h-9 rounded-md text-sm transition-colors"
+        style={{ background: open ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${open ? T.accent : T.borderLight}`, color: value ? T.fg : T.fgDim }}>
         <span className="truncate">{value || placeholder}</span>
-        <ChevronDown size={14} style={{
-          color: T.fgDim,
-          transform: open ? 'rotate(180deg)' : 'none',
-          transition: 'transform 180ms',
-        }} />
+        <ChevronDown size={14} style={{ color: T.fgDim, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 180ms' }} />
       </button>
       {open && (
-        <div
-          className="absolute left-0 right-0 top-full mt-1.5 rounded-md overflow-hidden z-10"
-          style={{
-            background: T.bg2,
-            border: `1px solid ${T.border}`,
-            boxShadow: '0 12px 32px rgba(0,0,0,0.5)',
-            animation: 'fadeIn 180ms cubic-bezier(0.22, 1, 0.36, 1)',
-            maxHeight: 240,
-            overflowY: 'auto',
-          }}
-        >
+        <div className="absolute left-0 right-0 top-full mt-1.5 rounded-md overflow-hidden z-10" style={{ background: T.bg2, border: `1px solid ${T.border}`, boxShadow: '0 12px 32px rgba(0,0,0,0.5)', animation: 'fadeIn 180ms cubic-bezier(0.22, 1, 0.36, 1)', maxHeight: 240, overflowY: 'auto' }}>
           {options.map(opt => (
-            <button
-              key={opt}
-              onClick={() => { onChange(opt); setOpen(false); }}
-              className="w-full px-3 py-2 text-sm text-left transition-colors hover:bg-white/5"
-              style={{
-                color: opt === value ? T.accent : T.fg,
-                background: opt === value ? 'rgba(16,185,129,0.08)' : 'transparent',
-              }}
-            >
-              <span className="inline-flex items-center gap-2">
-                {opt === value && <span className="w-1 h-1 rounded-full" style={{ background: T.accent }} />}
-                {opt}
-              </span>
+            <button key={opt} onClick={() => { onChange(opt); setOpen(false); }} className="w-full px-3 py-2 text-sm text-left transition-colors hover:bg-white/5"
+              style={{ color: opt === value ? T.accent : T.fg, background: opt === value ? 'rgba(16,185,129,0.08)' : 'transparent' }}>
+              <span className="inline-flex items-center gap-2">{opt === value && <span className="w-1 h-1 rounded-full" style={{ background: T.accent }} />}{opt}</span>
             </button>
           ))}
         </div>
@@ -2930,20 +1553,15 @@ function SimpleDropdown({ value, options, onChange, placeholder }) {
   );
 }
 
-// Gera lista de horas: 00:00, 01:00, ..., 24:00
 const HORAS = Array.from({ length: 25 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
-
 const VERSOES_JOGO = ['Todas as versões', 'Última versão'];
 
 function DrawerFiltros({ open, onClose, onAplicar, filtrosAtuais }) {
-  // Estado interno (rascunho) - so vira estado real ao Aplicar
   const [janela, setJanela] = useState('Todas');
   const [campeonatos, setCampeonatos] = useState(['Adriatic League']);
   const [versao, setVersao] = useState('Todas as versões');
   const [horaInicio, setHoraInicio] = useState('00:00');
   const [horaFim, setHoraFim] = useState('24:00');
-
-  // Sincroniza com estado do pai ao abrir (descarta rascunho anterior)
   useEffect(() => {
     if (open && filtrosAtuais) {
       setJanela(filtrosAtuais.janela || 'Todas');
@@ -2953,133 +1571,41 @@ function DrawerFiltros({ open, onClose, onAplicar, filtrosAtuais }) {
       setHoraFim(filtrosAtuais.horaFim || '24:00');
     }
   }, [open, filtrosAtuais]);
-
-  const toggleCamp = (c) => {
-    setCampeonatos(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]);
-  };
-
-  const reset = () => {
-    setJanela('Todas');
-    setCampeonatos([]);
-    setVersao('Todas as versões');
-    setHoraInicio('00:00');
-    setHoraFim('24:00');
-  };
-
-  const aplicar = () => {
-    if (onAplicar) onAplicar({ janela, campeonatos, versao, horaInicio, horaFim });
-    onClose();
-  };
-
-  // Validacao: hora fim tem que ser > hora inicio
+  const toggleCamp = (c) => setCampeonatos(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]);
+  const reset = () => { setJanela('Todas'); setCampeonatos([]); setVersao('Todas as versões'); setHoraInicio('00:00'); setHoraFim('24:00'); };
+  const aplicar = () => { if (onAplicar) onAplicar({ janela, campeonatos, versao, horaInicio, horaFim }); onClose(); };
   const horaInvalida = HORAS.indexOf(horaFim) <= HORAS.indexOf(horaInicio);
-
   return (
-    <Drawer
-      open={open} onClose={onClose} title="Filtros"
-      footer={
-        <div className="grid grid-cols-2 gap-3">
-          <MikeButton variant="outline" onClick={reset}>Resetar</MikeButton>
-          <button
-            onClick={aplicar}
-            disabled={horaInvalida}
-            className="inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-md text-sm font-medium transition-all"
-            style={{
-              background: horaInvalida ? 'rgba(16,185,129,0.25)' : T.accent,
-              color: horaInvalida ? 'rgba(4,19,12,0.5)' : '#04130c',
-              border: `1px solid ${horaInvalida ? 'rgba(16,185,129,0.25)' : T.accent}`,
-              cursor: horaInvalida ? 'not-allowed' : 'pointer',
-            }}
-          >
-            Aplicar
-          </button>
-        </div>
-      }
-    >
-      {/* Versao do jogo */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium" style={{ color: T.fg }}>Versão do jogo</label>
-        <SimpleDropdown
-          value={versao}
-          options={VERSOES_JOGO}
-          onChange={setVersao}
-        />
+    <Drawer open={open} onClose={onClose} title="Filtros" footer={
+      <div className="grid grid-cols-2 gap-3">
+        <MikeButton variant="outline" onClick={reset}>Resetar</MikeButton>
+        <button onClick={aplicar} disabled={horaInvalida} className="inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-md text-sm font-medium transition-all"
+          style={{ background: horaInvalida ? 'rgba(16,185,129,0.25)' : T.accent, color: horaInvalida ? 'rgba(4,19,12,0.5)' : '#04130c', border: `1px solid ${horaInvalida ? 'rgba(16,185,129,0.25)' : T.accent}`, cursor: horaInvalida ? 'not-allowed' : 'pointer' }}>
+          Aplicar
+        </button>
       </div>
-
-      {/* Partidas analisadas - 3 grupos visuais */}
+    }>
+      <div className="space-y-2"><label className="text-sm font-medium" style={{ color: T.fg }}>Versão do jogo</label><SimpleDropdown value={versao} options={VERSOES_JOGO} onChange={setVersao} /></div>
       <div className="space-y-2">
         <label className="text-sm font-medium" style={{ color: T.fg }}>Partidas analisadas</label>
-
-        {/* Grupo 1: Todas / Ultima hora */}
-        <div className="flex flex-wrap gap-2">
-          {['Todas', 'Última hora'].map(v => (
-            <Pill key={v} active={janela === v} onClick={() => setJanela(v)}>{v}</Pill>
-          ))}
-        </div>
-
-        {/* Grupo 2: Periodos relativos (8h, 24h, 7d, 30d, 60d, 90d) */}
-        <div className="flex flex-wrap gap-2 pt-1">
-          {['Últimas 8 horas', 'Últimas 24 horas', 'Últimos 7 dias', 'Últimas 30 dias', 'Últimas 60 dias', 'Últimos 90 dias'].map(v => (
-            <Pill key={v} active={janela === v} onClick={() => setJanela(v)}>{v}</Pill>
-          ))}
-        </div>
-
-        {/* Grupo 3: Quantidade fixa de partidas */}
-        <div className="pt-1">
-          <div className="text-[10px] mb-1.5" style={{ color: T.fgDimmer }}>
-            Quantidade fixa de partidas
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {['5', '10', '15', '20', '25', '30', '40', '50', '100', '200'].map(v => (
-              <Pill key={v} active={janela === v} onClick={() => setJanela(v)}>{v}</Pill>
-            ))}
-          </div>
-        </div>
+        <div className="flex flex-wrap gap-2">{['Todas', 'Última hora'].map(v => <Pill key={v} active={janela === v} onClick={() => setJanela(v)}>{v}</Pill>)}</div>
+        <div className="flex flex-wrap gap-2 pt-1">{['Últimas 8 horas', 'Últimas 24 horas', 'Últimos 7 dias', 'Últimas 30 dias', 'Últimas 60 dias', 'Últimos 90 dias'].map(v => <Pill key={v} active={janela === v} onClick={() => setJanela(v)}>{v}</Pill>)}</div>
+        <div className="pt-1"><div className="text-[10px] mb-1.5" style={{ color: T.fgDimmer }}>Quantidade fixa de partidas</div><div className="flex flex-wrap gap-2">{['5','10','15','20','25','30','40','50','100','200'].map(v => <Pill key={v} active={janela === v} onClick={() => setJanela(v)}>{v}</Pill>)}</div></div>
       </div>
-
-      {/* Campeonatos */}
       <div className="space-y-2">
         <label className="text-sm font-medium" style={{ color: T.fg }}>Campeonatos</label>
-        <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-1 mike-scroll">
-          {['Adriatic League','East','East-West','East-West Conf.','West'].map(c => (
-            <Pill key={c} active={campeonatos.includes(c)} onClick={() => toggleCamp(c)}>{c}</Pill>
-          ))}
-        </div>
+        <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-1 mike-scroll">{['Adriatic League','East','East-West','East-West Conf.','West'].map(c => <Pill key={c} active={campeonatos.includes(c)} onClick={() => toggleCamp(c)}>{c}</Pill>)}</div>
       </div>
-
-      {/* Hora da partida */}
       <div className="space-y-2">
         <label className="text-sm font-medium" style={{ color: T.fg }}>Hora da partida</label>
-        <div className="grid grid-cols-2 gap-2">
-          <SimpleDropdown
-            value={horaInicio}
-            options={HORAS.slice(0, -1)}  // 00:00 ate 23:00 como inicio
-            onChange={setHoraInicio}
-          />
-          <SimpleDropdown
-            value={horaFim}
-            options={HORAS.slice(1)}      // 01:00 ate 24:00 como fim
-            onChange={setHoraFim}
-          />
-        </div>
-        {horaInvalida && (
-          <div className="text-[11px] mt-1" style={{ color: T.red }}>
-            Hora final deve ser maior que a inicial
-          </div>
-        )}
-        <div className="text-[11px]" style={{ color: T.fgDim }}>
-          Janela: {horaInicio} até {horaFim}
-        </div>
+        <div className="grid grid-cols-2 gap-2"><SimpleDropdown value={horaInicio} options={HORAS.slice(0, -1)} onChange={setHoraInicio} /><SimpleDropdown value={horaFim} options={HORAS.slice(1)} onChange={setHoraFim} /></div>
+        {horaInvalida && <div className="text-[11px] mt-1" style={{ color: T.red }}>Hora final deve ser maior que a inicial</div>}
+        <div className="text-[11px]" style={{ color: T.fgDim }}>Janela: {horaInicio} até {horaFim}</div>
       </div>
     </Drawer>
   );
 }
 
-// ============================================================
-// DRAWER ALTERAR JOGADORES
-// ============================================================
-
-// Catalogos mock - baseados em torneios reais do TipManager pra NBA2K
 const TORNEIOS_NBA2K = [
   { id: 43, nome: 'Adriatic - NextGen' },
   { id: 5,  nome: 'Battle (NBA2K)' },
@@ -3087,7 +1613,6 @@ const TORNEIOS_NBA2K = [
   { id: 50, nome: 'Live NBA' },
 ];
 
-// Jogadores por torneio (subset do scrape - Adriatic NextGen tem 61 players)
 const JOGADORES_POR_TORNEIO = {
   43: ['Valencia','Bangkok','Belgrade','Mumbai','Moscow','Athens','Sevilla','Dublin','Krakow','Amsterdam','Tokyo','Berlin','Paris','Madrid','Rome','Lisbon','Vienna','Prague','Warsaw','Budapest','Helsinki','Oslo','Stockholm','Copenhagen','Dubai','Cairo','Lagos','Nairobi','Mexico','Lima','Bogota','Caracas','Santiago','Buenos Aires','Sao Paulo','Rio','Brasilia','Salvador','Recife','Manaus','Belem','Fortaleza','Curitiba','Porto Alegre','Florianopolis','Goiania','Brasilia','Campinas','Vitoria','Natal','Maceio','Joao Pessoa','Teresina','Aracaju','Cuiaba','Campo Grande','Macapa','Boa Vista','Palmas','Rio Branco','Porto Velho'],
   5:  ['Player A','Player B','Player C','Player D'],
@@ -3099,94 +1624,45 @@ function ComboboxDrawer({ label, value, options, onChange, placeholder }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const ref = useRef(null);
-
-  // Fecha ao clicar fora
   useEffect(() => {
-    function handle(e) {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    }
+    function handle(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
     if (open) document.addEventListener('mousedown', handle);
     return () => document.removeEventListener('mousedown', handle);
   }, [open]);
-
-  const filtered = options.filter(o =>
-    o.toLowerCase().includes(query.toLowerCase())
-  );
-
+  const filtered = options.filter(o => o.toLowerCase().includes(query.toLowerCase()));
   return (
     <div className="space-y-2" ref={ref}>
       <label className="text-sm font-medium" style={{ color: T.fg }}>{label}</label>
       <div className="relative">
         <div className="flex gap-2">
-          <button
-            onClick={() => setOpen(o => !o)}
-            className="flex-1 inline-flex items-center justify-between px-3 h-9 rounded-md text-sm text-left transition-colors"
-            style={{
-              background: open ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)',
-              border: `1px solid ${open ? T.accent : T.borderLight}`,
-              color: value ? T.fg : T.fgDim,
-            }}
-          >
+          <button onClick={() => setOpen(o => !o)} className="flex-1 inline-flex items-center justify-between px-3 h-9 rounded-md text-sm text-left transition-colors"
+            style={{ background: open ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${open ? T.accent : T.borderLight}`, color: value ? T.fg : T.fgDim }}>
             <span className="truncate">{value || placeholder}</span>
             <ChevronDown size={14} style={{ color: T.fgDim, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 180ms' }} />
           </button>
           {value && !open && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onChange(''); }}
-              className="w-9 h-9 rounded-md grid place-items-center hover:opacity-70"
-              style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${T.borderLight}` }}
-            >
+            <button onClick={(e) => { e.stopPropagation(); onChange(''); }} className="w-9 h-9 rounded-md grid place-items-center hover:opacity-70" style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${T.borderLight}` }}>
               <X size={14} style={{ color: T.fgDim }} />
             </button>
           )}
         </div>
-
         {open && (
-          <div
-            className="absolute left-0 right-0 top-full mt-1.5 rounded-md overflow-hidden z-10"
-            style={{
-              background: T.bg2,
-              border: `1px solid ${T.border}`,
-              boxShadow: '0 12px 32px rgba(0,0,0,0.5)',
-              animation: 'fadeIn 180ms cubic-bezier(0.22, 1, 0.36, 1)',
-            }}
-          >
+          <div className="absolute left-0 right-0 top-full mt-1.5 rounded-md overflow-hidden z-10" style={{ background: T.bg2, border: `1px solid ${T.border}`, boxShadow: '0 12px 32px rgba(0,0,0,0.5)', animation: 'fadeIn 180ms cubic-bezier(0.22, 1, 0.36, 1)' }}>
             {options.length > 5 && (
               <div className="relative border-b" style={{ borderColor: T.borderLight }}>
                 <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: T.fgDim }} />
-                <input
-                  autoFocus
-                  value={query}
-                  onChange={e => setQuery(e.target.value)}
-                  placeholder="Buscar..."
-                  className="w-full h-9 pl-9 pr-3 text-sm outline-none bg-transparent"
-                  style={{ color: T.fg }}
-                />
+                <input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar..." className="w-full h-9 pl-9 pr-3 text-sm outline-none bg-transparent" style={{ color: T.fg }} />
               </div>
             )}
             <div className="max-h-56 overflow-y-auto py-1">
               {filtered.length === 0 ? (
-                <div className="px-3 py-3 text-xs text-center" style={{ color: T.fgDim }}>
-                  Nenhum resultado
-                </div>
-              ) : (
-                filtered.map(opt => (
-                  <button
-                    key={opt}
-                    onClick={() => { onChange(opt); setOpen(false); setQuery(''); }}
-                    className="w-full px-3 py-2 text-sm text-left transition-colors hover:bg-white/5"
-                    style={{
-                      color: opt === value ? T.accent : T.fg,
-                      background: opt === value ? 'rgba(16,185,129,0.08)' : 'transparent',
-                    }}
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      {opt === value && <span className="w-1 h-1 rounded-full" style={{ background: T.accent }} />}
-                      {opt}
-                    </span>
-                  </button>
-                ))
-              )}
+                <div className="px-3 py-3 text-xs text-center" style={{ color: T.fgDim }}>Nenhum resultado</div>
+              ) : filtered.map(opt => (
+                <button key={opt} onClick={() => { onChange(opt); setOpen(false); setQuery(''); }} className="w-full px-3 py-2 text-sm text-left transition-colors hover:bg-white/5"
+                  style={{ color: opt === value ? T.accent : T.fg, background: opt === value ? 'rgba(16,185,129,0.08)' : 'transparent' }}>
+                  <span className="inline-flex items-center gap-2">{opt === value && <span className="w-1 h-1 rounded-full" style={{ background: T.accent }} />}{opt}</span>
+                </button>
+              ))}
             </div>
           </div>
         )}
@@ -3196,99 +1672,42 @@ function ComboboxDrawer({ label, value, options, onChange, placeholder }) {
 }
 
 function DrawerAlterarJogadores({ open, onClose, onAplicar, torneioInicial, jog1Inicial, jog2Inicial }) {
-  // Estado interno (rascunho) - so vira o estado do pai quando clica Analisar
   const [torneio, setTorneio] = useState(torneioInicial || 'Adriatic - NextGen');
   const [jog1, setJog1] = useState(jog1Inicial || 'Valencia');
   const [jog2, setJog2] = useState(jog2Inicial || 'Bangkok');
-
-  // Sincroniza com o pai quando o drawer (re)abre (descarta rascunho anterior)
   useEffect(() => {
-    if (open) {
-      setTorneio(torneioInicial || 'Adriatic - NextGen');
-      setJog1(jog1Inicial || '');
-      setJog2(jog2Inicial || '');
-    }
+    if (open) { setTorneio(torneioInicial || 'Adriatic - NextGen'); setJog1(jog1Inicial || ''); setJog2(jog2Inicial || ''); }
   }, [open, torneioInicial, jog1Inicial, jog2Inicial]);
-
-  // Lista de jogadores depende do torneio
   const torneioObj = TORNEIOS_NBA2K.find(t => t.nome === torneio);
   const jogadoresDisponiveis = torneioObj ? JOGADORES_POR_TORNEIO[torneioObj.id] || [] : [];
-
-  // Reseta jogadores se mudou o torneio (e ele nao existe na lista nova)
   useEffect(() => {
     if (torneio && jog1 && !jogadoresDisponiveis.includes(jog1)) setJog1('');
     if (torneio && jog2 && !jogadoresDisponiveis.includes(jog2)) setJog2('');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [torneio]);
-
-  // Pode analisar se: tem torneio + jog1 (jog2 eh opcional - modo solo)
-  // Mas se ambos preenchidos, precisam ser diferentes
   const podeAnalisar = torneio && jog1 && (jog2 === '' || jog1 !== jog2);
-
-  const aplicar = () => {
-    if (!podeAnalisar) return;
-    if (onAplicar) onAplicar({ torneio, jog1, jog2 });
-    onClose();
-  };
-
+  const aplicar = () => { if (!podeAnalisar) return; if (onAplicar) onAplicar({ torneio, jog1, jog2 }); onClose(); };
   const modoSoloPreview = !jog2;
-
   return (
-    <Drawer
-      open={open} onClose={onClose} title="Alterar Jogadores"
-      footer={
-        <div className="grid grid-cols-2 gap-3">
-          <MikeButton variant="outline" onClick={onClose}>Cancelar</MikeButton>
-          <button
-            onClick={aplicar}
-            disabled={!podeAnalisar}
-            className="inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-md text-sm font-medium transition-all"
-            style={{
-              background: podeAnalisar ? T.accent : 'rgba(16,185,129,0.25)',
-              color: podeAnalisar ? '#04130c' : 'rgba(4,19,12,0.5)',
-              border: `1px solid ${podeAnalisar ? T.accent : 'rgba(16,185,129,0.25)'}`,
-              cursor: podeAnalisar ? 'pointer' : 'not-allowed',
-            }}
-          >
-            Analisar
-          </button>
-        </div>
-      }
-    >
-      <ComboboxDrawer
-        label="Torneios"
-        value={torneio}
-        options={TORNEIOS_NBA2K.map(t => t.nome)}
-        onChange={setTorneio}
-        placeholder="Selecione um torneio"
-      />
-      <ComboboxDrawer
-        label="Jogador 1"
-        value={jog1}
-        options={jogadoresDisponiveis.filter(j => j !== jog2)}
-        onChange={setJog1}
-        placeholder={torneio ? 'Selecione jogador 1' : 'Selecione um torneio primeiro'}
-      />
-      <ComboboxDrawer
-        label="Jogador 2"
-        value={jog2}
-        options={jogadoresDisponiveis.filter(j => j !== jog1)}
-        onChange={setJog2}
-        placeholder="Selecione jogador 2 (opcional - vazio = vs Oponentes)"
-      />
-
-      {/* Preview do confronto selecionado */}
+    <Drawer open={open} onClose={onClose} title="Alterar Jogadores" footer={
+      <div className="grid grid-cols-2 gap-3">
+        <MikeButton variant="outline" onClick={onClose}>Cancelar</MikeButton>
+        <button onClick={aplicar} disabled={!podeAnalisar} className="inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-md text-sm font-medium transition-all"
+          style={{ background: podeAnalisar ? T.accent : 'rgba(16,185,129,0.25)', color: podeAnalisar ? '#04130c' : 'rgba(4,19,12,0.5)', border: `1px solid ${podeAnalisar ? T.accent : 'rgba(16,185,129,0.25)'}`, cursor: podeAnalisar ? 'pointer' : 'not-allowed' }}>
+          Analisar
+        </button>
+      </div>
+    }>
+      <ComboboxDrawer label="Torneios" value={torneio} options={TORNEIOS_NBA2K.map(t => t.nome)} onChange={setTorneio} placeholder="Selecione um torneio" />
+      <ComboboxDrawer label="Jogador 1" value={jog1} options={jogadoresDisponiveis.filter(j => j !== jog2)} onChange={setJog1} placeholder={torneio ? 'Selecione jogador 1' : 'Selecione um torneio primeiro'} />
+      <ComboboxDrawer label="Jogador 2" value={jog2} options={jogadoresDisponiveis.filter(j => j !== jog1)} onChange={setJog2} placeholder="Selecione jogador 2 (opcional - vazio = vs Oponentes)" />
       {jog1 && (
         <div className="mt-2 p-3 rounded-md" style={{ background: 'rgba(16,185,129,0.05)', border: `1px solid ${T.borderLight}` }}>
-          <div className="text-[11px] mb-2" style={{ color: T.fgDim }}>
-            {modoSoloPreview ? 'Análise solo:' : 'Confronto a analisar:'}
-          </div>
+          <div className="text-[11px] mb-2" style={{ color: T.fgDim }}>{modoSoloPreview ? 'Análise solo:' : 'Confronto a analisar:'}</div>
           <div className="flex items-center justify-center gap-3 text-sm">
             <span className="font-bold" style={{ color: T.accent }}>{jog1}</span>
             <span className="text-xs tracking-widest" style={{ color: T.fgDimmer }}>VS</span>
-            <span className="font-bold" style={{ color: T.accent2 }}>
-              {modoSoloPreview ? 'Oponentes' : jog2}
-            </span>
+            <span className="font-bold" style={{ color: T.accent2 }}>{modoSoloPreview ? 'Oponentes' : jog2}</span>
           </div>
         </div>
       )}
@@ -3304,52 +1723,35 @@ export default function TipMikePartidaIndividual({ partida, onNavegar } = {}) {
   const [filtrosOpen, setFiltrosOpen] = useState(false);
   const [alterarOpen, setAlterarOpen] = useState(false);
 
-  // Estado dos jogadores selecionados (compartilhado com o drawer)
+  // Estado dos jogadores — inicializa com a partida recebida do Live.jsx
   const [torneio, setTorneio] = useState('Adriatic - NextGen');
-  const [jog1, setJog1] = useState('Valencia');
-  const [jog2, setJog2] = useState('Bangkok');
+  const [jog1, setJog1] = useState(partida?.jogadorA || 'Valencia');
+  const [jog2, setJog2] = useState(partida?.jogadorB || 'Bangkok');
 
-  // Estado dos filtros (compartilhado com DrawerFiltros e dropdowns de time)
-  // 🔌 BACKEND: estes filtros vao virar parametros da query no MikeDB
+  // Atualiza quando a prop partida mudar (navegação entre partidas sem remontar)
+  useEffect(() => {
+    if (partida?.jogadorA) setJog1(partida.jogadorA);
+    if (partida?.jogadorB) setJog2(partida.jogadorB);
+  }, [partida?.jogadorA, partida?.jogadorB]);
+
   const [filtros, setFiltros] = useState({
-    janela: 'Todas',
-    campeonatos: ['Adriatic League'],
-    versao: 'Todas as versões',
-    horaInicio: '00:00',
-    horaFim: '24:00',
-    timeA: null,  // null = todos os times do jogador A
-    timeB: null,  // null = todos os times do jogador B
+    janela: 'Todas', campeonatos: ['Adriatic League'], versao: 'Todas as versões',
+    horaInicio: '00:00', horaFim: '24:00', timeA: null, timeB: null,
   });
 
-  // Reseta times selecionados quando muda jogador (times sao por-jogador)
-  useEffect(() => {
-    setFiltros(f => ({ ...f, timeA: null, timeB: null }));
-  }, [jog1, jog2]);
+  useEffect(() => { setFiltros(f => ({ ...f, timeA: null, timeB: null })); }, [jog1, jog2]);
 
-  // Dados via hook plug-and-play (substitui useMemo + gerarDados direto)
-  // 🔌 BACKEND: hook chama API (USE_MOCK=true usa gerarDados local)
   const { data, loading: loadingData } = useDadosPartida(jog1 || 'Valencia', jog2, filtros);
 
-  // Drawer chama isso ao apertar "Analisar"
-  const aplicarJogadores = ({ torneio: t, jog1: j1, jog2: j2 }) => {
-    setTorneio(t);
-    setJog1(j1);
-    setJog2(j2);
-  };
+  const aplicarJogadores = ({ torneio: t, jog1: j1, jog2: j2 }) => { setTorneio(t); setJog1(j1); setJog2(j2); };
+  const aplicarFiltrosHandler = (novosFiltros) => { setFiltros(novosFiltros); };
 
-  const aplicarFiltros = (novosFiltros) => {
-    setFiltros(novosFiltros);
-    // 🔌 BACKEND: aqui dispararia re-fetch dos dados com filtros aplicados
-  };
-
-  // Conta quantos filtros estao ativos (diferente do default)
   const filtrosAtivos = (
     (filtros.janela !== 'Todas' ? 1 : 0) +
     (filtros.versao !== 'Todas as versões' ? 1 : 0) +
     (filtros.horaInicio !== '00:00' || filtros.horaFim !== '24:00' ? 1 : 0) +
     (filtros.campeonatos.length !== 1 || filtros.campeonatos[0] !== 'Adriatic League' ? 1 : 0) +
-    (filtros.timeA ? 1 : 0) +
-    (filtros.timeB ? 1 : 0)
+    (filtros.timeA ? 1 : 0) + (filtros.timeB ? 1 : 0)
   );
 
   return (
@@ -3362,24 +1764,17 @@ export default function TipMikePartidaIndividual({ partida, onNavegar } = {}) {
         ::-webkit-scrollbar-track { background: ${T.bg2}; }
         ::-webkit-scrollbar-thumb { background: ${T.border}; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: ${T.fgDimmer}; }
-        /* Scrollbar interna dos cards (mais fina e discreta) */
         .mike-scroll::-webkit-scrollbar { width: 4px; }
         .mike-scroll::-webkit-scrollbar-track { background: transparent; }
         .mike-scroll::-webkit-scrollbar-thumb { background: rgba(60,85,130,0.35); border-radius: 2px; }
         .mike-scroll::-webkit-scrollbar-thumb:hover { background: rgba(60,85,130,0.6); }
         .mike-scroll { scrollbar-width: thin; scrollbar-color: rgba(60,85,130,0.35) transparent; }
-        /* Hover de linha em minitabelas (faixa cinza-azulada sutil) */
-        .mike-row-hover {
-          transition: background-color 140ms cubic-bezier(0.22, 1, 0.36, 1);
-        }
-        .mike-row-hover:hover {
-          background-color: rgba(80, 110, 160, 0.10) !important;
-        }
+        .mike-row-hover { transition: background-color 140ms cubic-bezier(0.22, 1, 0.36, 1); }
+        .mike-row-hover:hover { background-color: rgba(80, 110, 160, 0.10) !important; }
       `}</style>
 
       <Header onNavegar={onNavegar} />
 
-      {/* Loading state quando dados ainda não chegaram */}
       {(loadingData || !data) && (
         <main className="max-w-[1280px] mx-auto px-6 py-12 flex flex-col items-center justify-center gap-3" style={{ minHeight: '60vh' }}>
           <svg className="w-8 h-8 animate-spin" style={{ color: T.accent }} viewBox="0 0 24 24" fill="none">
@@ -3390,95 +1785,51 @@ export default function TipMikePartidaIndividual({ partida, onNavegar } = {}) {
         </main>
       )}
 
-      {/* Conteúdo principal só renderiza com dados */}
       {!loadingData && data && (
+        <main className="max-w-[1280px] mx-auto px-6 py-5 space-y-4">
+          <nav className="flex items-center gap-2 text-xs" style={{ color: T.fgDim }}>
+            <Home size={12} /><span>Início</span><ChevronRight size={12} /><span>NBA 2K</span><ChevronRight size={12} />
+            <span style={{ color: T.fg, fontWeight: 600 }}>{data.modoSolo ? data.player_a.name : `${data.player_a.name} vs ${data.player_b.name}`}</span>
+          </nav>
 
-      <main className="max-w-[1280px] mx-auto px-6 py-5 space-y-4">
-        {/* Breadcrumb */}
-        <nav className="flex items-center gap-2 text-xs" style={{ color: T.fgDim }}>
-          <Home size={12} />
-          <span>Início</span>
-          <ChevronRight size={12} />
-          <span>NBA 2K</span>
-          <ChevronRight size={12} />
-          <span style={{ color: T.fg, fontWeight: 600 }}>
-            {data.modoSolo ? data.player_a.name : `${data.player_a.name} vs ${data.player_b.name}`}
-          </span>
-        </nav>
+          <HeroCard data={data} onAlterar={() => setAlterarOpen(true)} onFiltros={() => setFiltrosOpen(true)} filtrosAtivos={filtrosAtivos}
+            timeASelecionado={filtros.timeA} timeBSelecionado={filtros.timeB}
+            onChangeTimeA={(time) => setFiltros(f => ({ ...f, timeA: time }))}
+            onChangeTimeB={(time) => setFiltros(f => ({ ...f, timeB: time }))} />
 
-        {/* Hero */}
-        <HeroCard
-          data={data}
-          onAlterar={() => setAlterarOpen(true)}
-          onFiltros={() => setFiltrosOpen(true)}
-          filtrosAtivos={filtrosAtivos}
-          timeASelecionado={filtros.timeA}
-          timeBSelecionado={filtros.timeB}
-          onChangeTimeA={(time) => setFiltros(f => ({ ...f, timeA: time }))}
-          onChangeTimeB={(time) => setFiltros(f => ({ ...f, timeB: time }))}
-        />
+          <StatsCardRow data={data} />
 
-        {/* Cards stats */}
-        <StatsCardRow data={data} />
+          <div className="grid grid-cols-2 gap-4">
+            <OverUnderPartida data={data} />
+            <HandicapAsiatico data={data} />
+          </div>
 
-        {/* Linha 1: Over/Under Partida + Handicap Asiatico */}
-        <div className="grid grid-cols-2 gap-4">
-          <OverUnderPartida data={data} />
-          <HandicapAsiatico data={data} />
-        </div>
+          <div className="grid grid-cols-2 gap-4">
+            <OverUnderJogador player={data.player_a} data={data.ou_jogador_a} />
+            <OverUnderJogador player={data.player_b} data={data.ou_jogador_b} />
+          </div>
 
-        {/* Linha 2: Over/Under Jogador A + B */}
-        <div className="grid grid-cols-2 gap-4">
-          <OverUnderJogador player={data.player_a} data={data.ou_jogador_a} />
-          <OverUnderJogador player={data.player_b} data={data.ou_jogador_b} />
-        </div>
+          <div className="grid grid-cols-2 gap-4">
+            <MediaPontos data={data} />
+            <EstatisticasPartida data={data} />
+          </div>
 
-        {/* Linha 3: Media pontos por periodo + Estatisticas Partida */}
-        <div className="grid grid-cols-2 gap-4">
-          <MediaPontos data={data} />
-          <EstatisticasPartida data={data} />
-        </div>
+          <div className="grid grid-cols-2 gap-4">
+            <AnaliseTimes player={data.player_a} data={data.times_a} />
+            <AnaliseTimes player={data.player_b} data={data.times_b} />
+          </div>
 
-        {/* Linha 4: Analise de Times A + B */}
-        <div className="grid grid-cols-2 gap-4">
-          <AnaliseTimes player={data.player_a} data={data.times_a} />
-          <AnaliseTimes player={data.player_b} data={data.times_b} />
-        </div>
-
-        {/* Linha 5: Media nas ultimas (full width) */}
-        <MediaUltimas data={data} />
-
-        {/* Linha 6: Distribuicao diaria (full) */}
-        <DistribuicaoDiaria data={data} />
-
-        {/* Linha 7: Media movel (full) */}
-        <MediaMovel data={data} />
-
-        {/* Linha 8: Historico de partidas (full) */}
-        <HistoricoPartidas data={data} />
-
-        {/* Linha 9: Historico de Confrontos narrativo (full) */}
-        <HistoricoConfrontos data={data} />
-
-        <Footer />
-      </main>
+          <MediaUltimas data={data} />
+          <DistribuicaoDiaria data={data} />
+          <MediaMovel data={data} />
+          <HistoricoPartidas data={data} />
+          <HistoricoConfrontos data={data} />
+          <Footer />
+        </main>
       )}
 
-      {/* Drawers */}
-      <DrawerFiltros
-        open={filtrosOpen}
-        onClose={() => setFiltrosOpen(false)}
-        filtrosAtuais={filtros}
-        onAplicar={aplicarFiltros}
-      />
-      <DrawerAlterarJogadores
-        open={alterarOpen}
-        onClose={() => setAlterarOpen(false)}
-        torneioInicial={torneio}
-        jog1Inicial={jog1}
-        jog2Inicial={jog2}
-        onAplicar={aplicarJogadores}
-      />
+      <DrawerFiltros open={filtrosOpen} onClose={() => setFiltrosOpen(false)} filtrosAtuais={filtros} onAplicar={aplicarFiltrosHandler} />
+      <DrawerAlterarJogadores open={alterarOpen} onClose={() => setAlterarOpen(false)} torneioInicial={torneio} jog1Inicial={jog1} jog2Inicial={jog2} onAplicar={aplicarJogadores} />
     </div>
   );
 }
