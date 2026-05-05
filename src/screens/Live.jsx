@@ -1393,12 +1393,6 @@ export default function App({ onNavegar, onAbrirPartida }) {
                           torneio !== 'todos' || mercadosSel.length > 0 ||
                           conexaoModo !== 'ao_vivo';
 
-  // Stake nao filtra partidas - eh usado APENAS pra calcular retorno potencial
-  // (display nos cards futuro: "Aposta R$10 com odd 2.50 = R$25 retorno")
-  const algumFiltroAtivo = status !== 'todos' || oddMin || probMin || partidasMin ||
-                          torneio !== 'todos' || mercadosSel.length > 0 ||
-                          conexaoModo !== 'ao_vivo';
-
   const limparFiltros = () => {
     setStatus('todos');
     setOddMin('');
