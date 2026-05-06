@@ -432,6 +432,7 @@ function MikeSelect({ value, onChange, options, placeholder = '', disabled = fal
       setPos({ top: rect.bottom + 4, bottom: 'auto', left: rect.left, width: rect.width });
     }
     setAberto(true);
+    document.body.style.overflow = 'hidden';
   };
 
   useEffect(() => {
@@ -440,9 +441,13 @@ function MikeSelect({ value, onChange, options, placeholder = '', disabled = fal
       if (btnRef.current?.contains(e.target)) return;
       if (dropRef.current?.contains(e.target)) return;
       setAberto(false);
+      document.body.style.overflow = '';
     };
     document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.body.style.overflow = '';
+    };
   }, [aberto]);
 
   const opcaoSelecionada = options.find((o) => o.value === value);
@@ -482,7 +487,7 @@ function MikeSelect({ value, onChange, options, placeholder = '', disabled = fal
             return (
               <button
                 key={o.value}
-                onClick={() => { onChange(o.value); setAberto(false); }}
+                onClick={() => { onChange(o.value); setAberto(false); document.body.style.overflow = ''; }}
                 className="mike-option w-full flex items-center justify-between px-3 py-2 text-xs text-left transition-colors"
                 data-ativo={ativo ? 'true' : 'false'}
               >
