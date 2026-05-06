@@ -347,6 +347,14 @@ const mockResponses = {
     return { ok: true, id, ...campos };
   },
 
+  'DELETE /bots/:id': ({ id }) => {
+    const idx = MOCK_BOTS_BASE.findIndex(b => b.id === Number(id));
+    if (idx === -1) throw new Error(`Bot ${id} não encontrado`);
+    MOCK_BOTS_BASE.splice(idx, 1);
+    delete botsOverrides[id];
+    return { ok: true, id: Number(id) };
+  },
+
   'POST /bots/:id/clonar': ({ id }) => {
     const bot = MOCK_BOTS_BASE.find(b => b.id === Number(id));
     if (!bot) throw new Error(`Bot ${id} não encontrado`);
@@ -474,6 +482,10 @@ function useBotUpdate(opts) {
 
 function useBotClonar(opts) {
   return useApiMutation('POST', ({ id }) => `/bots/${id}/clonar`, opts);
+}
+
+function useBotDeletar(opts) {
+  return useApiMutation('DELETE', ({ id }) => `/bots/${id}`, opts);
 }
 
 // ============================================================
@@ -949,6 +961,9 @@ function CardBot({ bot, expandido, onToggle, onAcao, periodoVisao = 'geral' }) {
                 <button onClick={() => onAcao('parar', bot.id)} className="px-2.5 py-1 rounded text-[10px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30 hover:bg-rose-500/25 transition">
                   Parar Bot
                 </button>
+                <button onClick={() => onAcao('deletar', bot.id)} className="px-2.5 py-1 rounded text-[10px] font-bold bg-rose-700/20 text-rose-300 border border-rose-700/40 hover:bg-rose-700/35 transition flex items-center gap-1">
+                  <Trash2 className="w-3 h-3" /> Deletar
+                </button>
               </div>
             </div>
           )}
@@ -1024,6 +1039,14 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
   const clonarBot = useBotClonar({
     onSuccess: (data) => {
       adicionarToast(data.mensagem, 'success');
+      refetchBots();
+    },
+  });
+
+  const deletarBot = useBotDeletar({
+    onSuccess: (data, body) => {
+      const bot = bots.find(b => b.id === body.id);
+      adicionarToast(`Bot "${bot?.nome || '#' + body.id}" deletado`, 'error');
       refetchBots();
     },
   });
@@ -1107,6 +1130,22 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
       } catch (e) {
         adicionarToast(`Erro: ${e.message}`, 'error');
       }
+      return;
+    }
+
+    if (acao === 'deletar') {
+      setModalConfirm({
+        tipo: 'deletar',
+        bot,
+        onConfirm: async () => {
+          try {
+            await deletarBot.mutate({ id: botId });
+          } catch (e) {
+            adicionarToast(`Erro ao deletar: ${e.message}`, 'error');
+          }
+          setModalConfirm(null);
+        },
+      });
       return;
     }
 
@@ -1502,14 +1541,17 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
             animation: 'mike-modal-fade 200ms ease-out',
           }}>
             <div className="flex items-start gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-rose-500/15 border border-rose-500/40 flex items-center justify-center flex-shrink-0">
-                <AlertTriangle className="w-5 h-5 text-rose-400" />
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${modalConfirm.tipo === 'deletar' ? 'bg-rose-800/30 border border-rose-700/50' : 'bg-rose-500/15 border border-rose-500/40'}`}>
+                {modalConfirm.tipo === 'deletar' ? <Trash2 className="w-5 h-5 text-rose-300" /> : <AlertTriangle className="w-5 h-5 text-rose-400" />}
               </div>
               <div className="min-w-0 flex-1">
-                <h3 className="text-base font-bold text-[--mike-fg] mb-1">Parar bot?</h3>
+                <h3 className="text-base font-bold text-[--mike-fg] mb-1">
+                  {modalConfirm.tipo === 'deletar' ? 'Deletar bot?' : 'Parar bot?'}
+                </h3>
                 <p className="text-xs text-[--mike-fg-muted] leading-relaxed">
-                  Tem certeza que quer parar <span className="text-[--mike-fg] font-semibold">"{modalConfirm.bot.nome}"</span>?
-                  Apostas em andamento serão canceladas.
+                  {modalConfirm.tipo === 'deletar'
+                    ? <><span>Tem certeza que quer </span><span className="text-rose-300 font-bold">deletar permanentemente</span><span> o bot </span><span className="text-[--mike-fg] font-semibold">"{modalConfirm.bot.nome}"</span><span>? Esta ação não pode ser desfeita.</span></>
+                    : <><span>Tem certeza que quer parar </span><span className="text-[--mike-fg] font-semibold">"{modalConfirm.bot.nome}"</span><span>? Apostas em andamento serão canceladas.</span></>}
                 </p>
               </div>
             </div>
@@ -1517,8 +1559,8 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
               <button onClick={() => setModalConfirm(null)} className="px-3 py-1.5 rounded-md text-xs font-medium mike-border-thin text-[--mike-fg-soft] hover:text-[--mike-fg] transition">
                 Cancelar
               </button>
-              <button onClick={modalConfirm.onConfirm} className="px-3 py-1.5 rounded-md text-xs font-bold bg-rose-500 hover:bg-rose-400 text-white transition">
-                Sim, parar bot
+              <button onClick={modalConfirm.onConfirm} className={`px-3 py-1.5 rounded-md text-xs font-bold text-white transition ${modalConfirm.tipo === 'deletar' ? 'bg-rose-700 hover:bg-rose-600' : 'bg-rose-500 hover:bg-rose-400'}`}>
+                {modalConfirm.tipo === 'deletar' ? 'Sim, deletar permanentemente' : 'Sim, parar bot'}
               </button>
             </div>
           </div>
