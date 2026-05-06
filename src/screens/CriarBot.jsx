@@ -414,51 +414,57 @@ const BASES_DADOS = [
 // COMPONENTES BASE
 // ============================================================
 
+// Overlay global — criado uma vez, compartilhado por todos os MikeSelect
+// Absorve scroll e click fora sem depender de preventDefault em eventos React
+const _overlayEl = typeof document !== 'undefined' ? (() => {
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed;inset:0;z-index:9998;display:none;cursor:default;';
+  el.addEventListener('wheel', (e) => e.preventDefault(), { passive: false });
+  el.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+  document.body.appendChild(el);
+  return el;
+})() : null;
+
+let _overlayCallback = null;
+if (_overlayEl) {
+  _overlayEl.addEventListener('click', () => { if (_overlayCallback) _overlayCallback(); });
+}
+
+function _showOverlay(onClose) {
+  _overlayCallback = onClose;
+  if (_overlayEl) _overlayEl.style.display = 'block';
+}
+
+function _hideOverlay() {
+  _overlayCallback = null;
+  if (_overlayEl) _overlayEl.style.display = 'none';
+}
+
 function MikeSelect({ value, onChange, options, placeholder = '', disabled = false }) {
   const [aberto, setAberto] = useState(false);
   const [pos, setPos] = useState(null);
   const btnRef = useRef(null);
-  const dropRef = useRef(null);
+
+  const fechar = useCallback(() => {
+    setAberto(false);
+    _hideOverlay();
+  }, []);
 
   const abrirDropdown = () => {
     if (disabled) return;
-    if (aberto) { setAberto(false); return; }
+    if (aberto) { fechar(); return; }
     const rect = btnRef.current.getBoundingClientRect();
     const spaceBelow = window.innerHeight - rect.bottom;
-    // position:fixed — getBoundingClientRect() é relativo à viewport, sem scroll
     if (spaceBelow < 268) {
-      setPos({ bottom: window.innerHeight - rect.top + 4, top: 'auto', left: rect.left, width: rect.width });
+      setPos({ top: 'auto', bottom: window.innerHeight - rect.top + 4, left: rect.left, width: rect.width });
     } else {
       setPos({ top: rect.bottom + 4, bottom: 'auto', left: rect.left, width: rect.width });
     }
     setAberto(true);
+    _showOverlay(fechar);
   };
 
-  useEffect(() => {
-    if (!aberto) return;
-
-    // Bloqueia scroll da página — permite scroll só dentro do dropdown
-    // Usa closest() para subir a árvore DOM e verificar se está dentro do dropdown
-    const preventScroll = (e) => {
-      if (e.target.closest('[data-mike-dropdown]')) return;
-      e.preventDefault();
-    };
-    document.addEventListener('wheel', preventScroll, { passive: false });
-    document.addEventListener('touchmove', preventScroll, { passive: false });
-
-    const handler = (e) => {
-      if (btnRef.current?.contains(e.target)) return;
-      if (dropRef.current?.contains(e.target)) return;
-      setAberto(false);
-    };
-    document.addEventListener('mousedown', handler);
-
-    return () => {
-      document.removeEventListener('wheel', preventScroll);
-      document.removeEventListener('touchmove', preventScroll);
-      document.removeEventListener('mousedown', handler);
-    };
-  }, [aberto]);
+  useEffect(() => () => { if (aberto) _hideOverlay(); }, []);
 
   const opcaoSelecionada = options.find((o) => o.value === value);
 
@@ -479,9 +485,7 @@ function MikeSelect({ value, onChange, options, placeholder = '', disabled = fal
       </button>
       {aberto && pos && (
         <div
-          ref={dropRef}
           className="mike-mercados-scroll mike-dropdown-in fixed z-[9999] rounded-md overflow-y-auto"
-          data-mike-dropdown="true"
           style={{
             top: pos.top,
             bottom: pos.bottom,
@@ -498,7 +502,7 @@ function MikeSelect({ value, onChange, options, placeholder = '', disabled = fal
             return (
               <button
                 key={o.value}
-                onClick={() => { onChange(o.value); setAberto(false); }}
+                onClick={() => { onChange(o.value); fechar(); }}
                 className="mike-option w-full flex items-center justify-between px-3 py-2 text-xs text-left transition-colors"
                 data-ativo={ativo ? 'true' : 'false'}
               >
@@ -512,6 +516,7 @@ function MikeSelect({ value, onChange, options, placeholder = '', disabled = fal
     </div>
   );
 }
+
 
 // Switch toggle (bolinha)
 function Switch({ ativo, onChange, disabled = false }) {
