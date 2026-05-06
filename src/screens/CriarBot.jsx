@@ -58,6 +58,7 @@ const MERCADOS_POR_ESPORTE = {
     { value: 'over_under_ft',            label: 'Partida - Gols' },
     { value: 'over_under_ht',            label: 'Total de Gols - 1˚T' },
     { value: 'odd_even_ft',              label: 'Par/Ímpar' },
+    { value: 'odd_even_ht',              label: 'Par/Ímpar - 1˚T' },
     { value: 'next_goal',                label: 'Próximo Gol' },
     { value: 'eh_ft',                    label: 'Handicap Europeu' },
     { value: 'eh_ht',                    label: 'Handicap Europeu - 1˚T' },
@@ -415,16 +416,22 @@ const BASES_DADOS = [
 
 function MikeSelect({ value, onChange, options, placeholder = '', disabled = false }) {
   const [aberto, setAberto] = useState(false);
-  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
+  const [pos, setPos] = useState({ top: 0, bottom: null, left: 0, width: 0 });
   const btnRef = useRef(null);
   const dropRef = useRef(null);
 
-  // Calcular posição do dropdown via getBoundingClientRect (evita overflow:hidden)
+  // Calcular posição — abre para cima se não há espaço abaixo
   const abrirDropdown = () => {
     if (disabled) return;
     if (!aberto && btnRef.current) {
       const rect = btnRef.current.getBoundingClientRect();
-      setPos({ top: rect.bottom + window.scrollY + 4, left: rect.left + window.scrollX, width: rect.width });
+      const dropH = 260;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      if (spaceBelow < dropH + 8) {
+        setPos({ top: null, bottom: window.innerHeight - rect.top + 4, left: rect.left + window.scrollX, width: rect.width });
+      } else {
+        setPos({ top: rect.bottom + window.scrollY + 4, bottom: null, left: rect.left + window.scrollX, width: rect.width });
+      }
     }
     setAberto(o => !o);
   };
@@ -463,7 +470,8 @@ function MikeSelect({ value, onChange, options, placeholder = '', disabled = fal
           ref={dropRef}
           className="mike-mercados-scroll mike-dropdown-in fixed z-[9999] rounded-md overflow-y-auto"
           style={{
-            top: pos.top,
+            ...(pos.top  !== null ? { top: pos.top }       : {}),
+            ...(pos.bottom !== null ? { bottom: pos.bottom } : {}),
             left: pos.left,
             width: pos.width,
             backgroundColor: '#0d1220',
@@ -2130,21 +2138,17 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
               <MikeSelect value={tipoProporcao} onChange={setTipoProporcao} options={TIPOS_PROPORCAO} />
             </LinhaFiltro>}
 
-            <LinhaFiltro label="Limite de Placar" info="Filtra apenas partidas com placar específico" ativo={limitePlacarAtivo} onToggle={setLimitePlacarAtivo}>
+            {filtrosMercado.limitePlacar && <LinhaFiltro label="Limite de Placar" info="Filtra apenas partidas com placar específico" ativo={limitePlacarAtivo} onToggle={setLimitePlacarAtivo}>
               <MikeSelect value={limitePlacar} onChange={setLimitePlacar} options={[{ value: '', label: 'Selecione' }, ...LIMITE_PLACAR_OPCOES]} />
-            </LinhaFiltro>
+            </LinhaFiltro>}
 
             {filtrosMercado.extras && <LinhaFiltro label="Extras" info="Restringe apostas: Casa/Visitante (mando) ou Favorito/Azarão (odd inicial) - marque pelo menos 1" ativo={extrasAtivo} onToggle={setExtrasAtivo}>
               <div className="flex items-center gap-4 flex-wrap py-1.5">
                 {[
-                  { key: 'casa', label: 'Casa' },
-                  { key: 'visitante', label: 'Visitante' },
-                  { key: 'empate', label: 'Empate' },
-                  { key: 'favorito', label: 'Favorito' },
-                  { key: 'azarao', label: 'Azarão' },
+                  ...EXTRAS_OPCOES.map(o => ({ key: o.value, label: o.label })),
                 ].map((e) => (
                   <label key={e.key} className="flex items-center gap-1.5 cursor-pointer">
-                    <input type="checkbox" className="mike-checkbox" checked={extras[e.key]} onChange={(ev) => setExtras({ ...extras, [e.key]: ev.target.checked })} />
+                    <input type="checkbox" className="mike-checkbox" checked={!!extras[e.key]} onChange={(ev) => setExtras({ ...extras, [e.key]: ev.target.checked })} />
                     <span className="text-xs text-[--mike-fg-soft]">{e.label}</span>
                   </label>
                 ))}
