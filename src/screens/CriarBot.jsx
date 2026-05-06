@@ -432,21 +432,30 @@ function MikeSelect({ value, onChange, options, placeholder = '', disabled = fal
       setPos({ top: rect.bottom + 4, bottom: 'auto', left: rect.left, width: rect.width });
     }
     setAberto(true);
-    document.body.style.overflow = 'hidden';
   };
 
   useEffect(() => {
     if (!aberto) return;
+
+    // Bloqueia scroll da página — permite scroll só dentro do dropdown
+    const preventScroll = (e) => {
+      if (dropRef.current?.contains(e.target)) return;
+      e.preventDefault();
+    };
+    document.addEventListener('wheel', preventScroll, { passive: false });
+    document.addEventListener('touchmove', preventScroll, { passive: false });
+
     const handler = (e) => {
       if (btnRef.current?.contains(e.target)) return;
       if (dropRef.current?.contains(e.target)) return;
       setAberto(false);
-      document.body.style.overflow = '';
     };
     document.addEventListener('mousedown', handler);
+
     return () => {
+      document.removeEventListener('wheel', preventScroll);
+      document.removeEventListener('touchmove', preventScroll);
       document.removeEventListener('mousedown', handler);
-      document.body.style.overflow = '';
     };
   }, [aberto]);
 
@@ -487,7 +496,7 @@ function MikeSelect({ value, onChange, options, placeholder = '', disabled = fal
             return (
               <button
                 key={o.value}
-                onClick={() => { onChange(o.value); setAberto(false); document.body.style.overflow = ''; }}
+                onClick={() => { onChange(o.value); setAberto(false); }}
                 className="mike-option w-full flex items-center justify-between px-3 py-2 text-xs text-left transition-colors"
                 data-ativo={ativo ? 'true' : 'false'}
               >
