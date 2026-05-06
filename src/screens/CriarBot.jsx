@@ -1081,15 +1081,34 @@ function simularLatencia() {
 }
 
 // Stub de bots em memória (substituir por banco real)
+// Bots existentes disponíveis para edição (espelho do MOCK_BOTS_BASE do Bots.jsx)
+// Campos mapeados para o formato do aplicarFormSalvo
+const MOCK_BOTS_EDICAO = [
+  { id: 1, nome: 'Bot OFT Betano e-Soccer',        casa: 'betano',     esporte: 'e-Soccer', estrategia: 'oft',      liga: 'Battle / GT League',  mercado: 'over_ht',  status: 'rodando' },
+  { id: 2, nome: 'Bot Under HT Betano Adriatic',    casa: 'betano',     esporte: 'e-Basket', estrategia: 'under_ht', liga: 'Adriatic NextGen',    mercado: 'under_ht', status: 'rodando' },
+  { id: 3, nome: 'Bot Over FT Superbet Adriatic',   casa: 'superbet',   esporte: 'e-Basket', estrategia: 'over_ft',  liga: 'Adriatic League',     mercado: 'over_ft',  status: 'rodando' },
+  { id: 4, nome: 'Bot HC FT Live Arena Superbet',   casa: 'superbet',   esporte: 'e-Soccer', estrategia: 'hc_ft',    liga: 'FIFA TM Live Arena',  mercado: 'hc_ft',    status: 'rodando' },
+  { id: 5, nome: 'Bot OHT Bet365 e-Soccer',         casa: 'bet365',     esporte: 'e-Soccer', estrategia: 'oht',      liga: 'Multi-ligas',         mercado: 'over_ht',  status: 'pausado' },
+  { id: 6, nome: 'Bot ML Estrelabet Battle',        casa: 'estrelabet', esporte: 'e-Soccer', estrategia: 'ml',       liga: 'Battle',              mercado: 'ml',       status: 'rodando' },
+  { id: 7, nome: 'Bot HC H2H Estrelabet Valhalla',  casa: 'estrelabet', esporte: 'e-Soccer', estrategia: 'hc_h2h',  liga: 'Valhalla',            mercado: 'hc_ft',    status: 'parado'  },
+  { id: 8, nome: 'Bot O/U Novibet Multi-Liga',      casa: 'novibet',    esporte: 'e-Soccer', estrategia: 'ou',       liga: 'Multi-ligas',         mercado: 'over_ft',  status: 'agendado'},
+  { id: 9, nome: 'Bot OFT Vupi e-Basket',           casa: 'vupi',       esporte: 'e-Basket', estrategia: 'oft',      liga: 'eBasket Battle',      mercado: 'over_ht',  status: 'rodando' },
+];
+
 const botsStore = {};
 let proximoId = 100;
 
 const mockResponses = {
   // GET /bots/:id - busca bot pra modo edicao
   '/bots/:id': ({ id }) => {
-    const bot = botsStore[id];
-    if (!bot) throw new Error(`Bot #${id} não encontrado`);
-    return bot;
+    // Primeiro busca nos bots criados/editados no CriarBot
+    const botStore = botsStore[id];
+    if (botStore) return botStore;
+    // Fallback: busca nos bots existentes do Bots.jsx para edição
+    const numId = Number(id);
+    const botExistente = MOCK_BOTS_EDICAO.find(b => b.id === numId);
+    if (botExistente) return botExistente;
+    throw new Error(`Bot #${id} não encontrado`);
   },
 
   // POST /bots - criar novo
