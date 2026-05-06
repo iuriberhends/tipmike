@@ -438,8 +438,9 @@ function MikeSelect({ value, onChange, options, placeholder = '', disabled = fal
     if (!aberto) return;
 
     // Bloqueia scroll da página — permite scroll só dentro do dropdown
+    // Usa closest() para subir a árvore DOM e verificar se está dentro do dropdown
     const preventScroll = (e) => {
-      if (dropRef.current?.contains(e.target)) return;
+      if (e.target.closest('[data-mike-dropdown]')) return;
       e.preventDefault();
     };
     document.addEventListener('wheel', preventScroll, { passive: false });
@@ -480,6 +481,7 @@ function MikeSelect({ value, onChange, options, placeholder = '', disabled = fal
         <div
           ref={dropRef}
           className="mike-mercados-scroll mike-dropdown-in fixed z-[9999] rounded-md overflow-y-auto"
+          data-mike-dropdown="true"
           style={{
             top: pos.top,
             bottom: pos.bottom,
