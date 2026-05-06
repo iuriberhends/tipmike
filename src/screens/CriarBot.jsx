@@ -414,25 +414,24 @@ const BASES_DADOS = [
 // COMPONENTES BASE
 // ============================================================
 
-// Overlay global — criado uma vez, compartilhado por todos os MikeSelect
-// Absorve scroll e click fora sem depender de preventDefault em eventos React
-const _overlayEl = typeof document !== 'undefined' ? (() => {
-  const el = document.createElement('div');
-  el.style.cssText = 'position:fixed;inset:0;z-index:9998;display:none;cursor:default;';
-  el.addEventListener('wheel', (e) => e.preventDefault(), { passive: false });
-  el.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
-  document.body.appendChild(el);
-  return el;
-})() : null;
-
+// Overlay global — lazy init, só cria quando o DOM está pronto
+let _overlayEl = null;
 let _overlayCallback = null;
-if (_overlayEl) {
+
+function _getOverlay() {
+  if (_overlayEl) return _overlayEl;
+  _overlayEl = document.createElement('div');
+  _overlayEl.style.cssText = 'position:fixed;inset:0;z-index:9998;display:none;cursor:default;';
+  _overlayEl.addEventListener('wheel', (e) => e.preventDefault(), { passive: false });
+  _overlayEl.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
   _overlayEl.addEventListener('click', () => { if (_overlayCallback) _overlayCallback(); });
+  document.body.appendChild(_overlayEl);
+  return _overlayEl;
 }
 
 function _showOverlay(onClose) {
   _overlayCallback = onClose;
-  if (_overlayEl) _overlayEl.style.display = 'block';
+  _getOverlay().style.display = 'block';
 }
 
 function _hideOverlay() {
