@@ -416,36 +416,33 @@ const BASES_DADOS = [
 
 function MikeSelect({ value, onChange, options, placeholder = '', disabled = false }) {
   const [aberto, setAberto] = useState(false);
-  const [pos, setPos] = useState({ top: 0, bottom: null, left: 0, width: 0 });
+  const [pos, setPos] = useState(null);
   const btnRef = useRef(null);
   const dropRef = useRef(null);
 
-  // Calcular posição — abre para cima se não há espaço abaixo
   const abrirDropdown = () => {
     if (disabled) return;
-    if (!aberto && btnRef.current) {
-      const rect = btnRef.current.getBoundingClientRect();
-      const dropH = 260;
-      const spaceBelow = window.innerHeight - rect.bottom;
-      if (spaceBelow < dropH + 8) {
-        setPos({ top: null, bottom: window.innerHeight - rect.top + 4, left: rect.left + window.scrollX, width: rect.width });
-      } else {
-        setPos({ top: rect.bottom + window.scrollY + 4, bottom: null, left: rect.left + window.scrollX, width: rect.width });
-      }
+    if (aberto) { setAberto(false); return; }
+    const rect = btnRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    // position:fixed — getBoundingClientRect() é relativo à viewport, sem scroll
+    if (spaceBelow < 268) {
+      setPos({ bottom: window.innerHeight - rect.top + 4, top: 'auto', left: rect.left, width: rect.width });
+    } else {
+      setPos({ top: rect.bottom + 4, bottom: 'auto', left: rect.left, width: rect.width });
     }
-    setAberto(o => !o);
+    setAberto(true);
   };
 
   useEffect(() => {
+    if (!aberto) return;
     const handler = (e) => {
-      if (btnRef.current && btnRef.current.contains(e.target)) return;
-      if (dropRef.current && dropRef.current.contains(e.target)) return;
+      if (btnRef.current?.contains(e.target)) return;
+      if (dropRef.current?.contains(e.target)) return;
       setAberto(false);
     };
-    if (aberto) {
-      document.addEventListener('mousedown', handler);
-      return () => document.removeEventListener('mousedown', handler);
-    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, [aberto]);
 
   const opcaoSelecionada = options.find((o) => o.value === value);
@@ -465,13 +462,13 @@ function MikeSelect({ value, onChange, options, placeholder = '', disabled = fal
         </span>
         <ChevronDown className={`w-3.5 h-3.5 text-[--mike-fg-muted] flex-shrink-0 transition-transform ${aberto ? 'rotate-180' : ''}`} />
       </button>
-      {aberto && (
+      {aberto && pos && (
         <div
           ref={dropRef}
           className="mike-mercados-scroll mike-dropdown-in fixed z-[9999] rounded-md overflow-y-auto"
           style={{
-            ...(pos.top  !== null ? { top: pos.top }       : {}),
-            ...(pos.bottom !== null ? { bottom: pos.bottom } : {}),
+            top: pos.top,
+            bottom: pos.bottom,
             left: pos.left,
             width: pos.width,
             backgroundColor: '#0d1220',
