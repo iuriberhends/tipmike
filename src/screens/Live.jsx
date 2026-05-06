@@ -4,6 +4,7 @@ import {
   Clock, ExternalLink, X, FilterX, Gamepad2, Disc, Snowflake, CircleDot, Zap, Check, Wifi, Flame, AlertCircle,
   RefreshCw
 } from 'lucide-react';
+import MikeHeader from '../shared/MikeHeader.jsx';
 
 // ============================================================
 // MOCK DATA - PARTIDAS LIVE
@@ -568,15 +569,6 @@ const ESPORTES_LIVE = [
   { id: 'Futebol',      label: 'Futebol' },
 ];
 
-const NAV_ITEMS = [
-  { id: 'today',       label: 'Início',          icon: Home },
-  { id: 'live',        label: 'Ao Vivo',         icon: Activity },
-  { id: 'marketplace', label: 'Mercado de Bots', icon: Store },
-  { id: 'bots',        label: 'Bots',            icon: Bot },
-  { id: 'tables',      label: 'Tabelas',         icon: Table2 },
-  { id: 'stats',       label: 'Estatísticas',    icon: BarChart3, novo: true },
-  { id: 'extras',      label: 'Extras',          icon: Plus },
-];
 
 // ============================================================
 // API CLIENT + HOOKS (plug-and-play)
@@ -1163,81 +1155,7 @@ function CardLive({ partida, mostrarStats, casaApostas, dominioBet365, janela, o
 // ============================================================
 // HEADER (igual Today)
 // ============================================================
-function Header({ telaAtiva = 'live', onNavegar }) {
-  return (
-    <header className="sticky top-0 z-50 backdrop-blur-xl bg-[--mike-bg]/85 border-b border-[--mike-border]">
-      <div className="max-w-screen-2xl mx-auto px-4 lg:px-8">
-        <div className="flex items-center justify-between h-14">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => onNavegar?.('today')}
-              className="flex items-center gap-2 hover:opacity-90 transition"
-              title="Início"
-            >
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[--mike-accent] to-[--mike-accent-2] flex items-center justify-center shadow-lg shadow-[--mike-accent]/30">
-                <span className="font-black text-[--mike-bg] text-lg leading-none">M</span>
-              </div>
-              <span className="font-black tracking-tight text-[--mike-fg] text-base hidden sm:block" style={{ fontFamily: 'JetBrains Mono, monospace' }}>TIPMIKE</span>
-            </button>
-            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[--mike-card] border border-[--mike-border] cursor-pointer hover:bg-[--mike-card-hover] transition">
-              <Bot className="w-3 h-3 text-[--mike-fg-muted]" />
-              <span className="text-xs text-[--mike-fg-soft]">eSports</span>
-              <ChevronDown className="w-3 h-3 text-[--mike-fg-muted]" />
-            </div>
-          </div>
 
-          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-md bg-[--mike-card] border border-[--mike-border] w-72">
-            <Search className="w-3.5 h-3.5 text-[--mike-fg-muted]" />
-            <input placeholder="Buscar..." className="bg-transparent text-xs text-[--mike-fg] placeholder:text-[--mike-fg-muted] outline-none flex-1" />
-          </div>
-
-          <div className="flex items-center gap-1">
-            <button className="p-2 rounded-md hover:bg-[--mike-card] text-[--mike-fg-muted] hover:text-[--mike-fg] transition relative">
-              <Bell className="w-4 h-4" />
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[--mike-accent]" />
-            </button>
-            <button className="p-2 rounded-md hover:bg-[--mike-card] text-[--mike-fg-muted] hover:text-[--mike-fg] transition">
-              <Settings className="w-4 h-4" />
-            </button>
-            <div className="ml-2 flex items-center gap-2 pl-2 border-l border-[--mike-border]">
-              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[--mike-accent-2] to-[--mike-accent] flex items-center justify-center text-xs font-bold text-[--mike-bg]">S</div>
-              <div className="hidden sm:block leading-tight">
-                <div className="text-xs font-medium text-[--mike-fg]">Santos</div>
-                <div className="text-[10px] text-[--mike-fg-muted]">BOT (eSports)</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <nav className="flex items-center gap-1 -mb-px overflow-x-auto scrollbar-none">
-          {NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
-            const ativa = telaAtiva === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => onNavegar?.(item.id)}
-                className={`flex flex-col items-center gap-0.5 px-4 py-2.5 text-xs font-medium border-b-2 transition whitespace-nowrap relative ${
-                  ativa ? 'border-[--mike-accent] text-[--mike-fg]' : 'border-transparent text-[--mike-fg-muted] hover:text-[--mike-fg]'
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                <span>{item.label}</span>
-                {item.novo && (
-                  <span className="absolute -top-1 -right-1 text-[8px] px-1 py-0 rounded bg-amber-400 text-amber-950 font-black tracking-wide">NOVO</span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
-      </div>
-    </header>
-  );
-}
-
-// ============================================================
-// APP
-// ============================================================
 export default function App({ onNavegar, onAbrirPartida }) {
   const [esporteAtivo, setEsporteAtivo] = useState('e-Soccer');
   const [busca, setBusca] = useState('');
@@ -1614,7 +1532,7 @@ export default function App({ onNavegar, onAbrirPartida }) {
         }
       `}</style>
 
-      <Header telaAtiva={telaAtiva} onNavegar={handleNavegar} />
+      <MikeHeader telaAtiva={telaAtiva} onNavegar={handleNavegar} />
 
       <main className="max-w-screen-2xl mx-auto px-4 lg:px-8 py-6">
         {/* Breadcrumb */}

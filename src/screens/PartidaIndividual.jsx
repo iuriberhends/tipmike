@@ -6,6 +6,7 @@ import {
   TrendingUp, BarChart, Share2, Facebook, Twitter, MessageCircle, Send,
   ArrowUpDown, Plus, Activity, Flame,
 } from 'lucide-react';
+import MikeHeader from '../shared/MikeHeader.jsx';
 
 // ============================================================
 // THEME
@@ -734,65 +735,7 @@ function ToggleOverUnder({ value, onChange }) {
 // ============================================================
 // HEADER
 // ============================================================
-function Header({ onNavegar } = {}) {
-  return (
-    <header className="sticky top-0 z-20" style={{ background: 'rgba(11,15,26,0.92)', backdropFilter: 'blur(8px)', borderBottom: `1px solid ${T.border}` }}>
-      <div className="flex items-center justify-between px-6 py-2.5">
-        <div className="flex items-center gap-4">
-          <button onClick={() => onNavegar?.('today')} className="flex items-center gap-2 hover:opacity-80 transition">
-            <div className="w-7 h-7 rounded grid place-items-center font-bold text-base" style={{ background: T.accent, color: '#04130c' }}>M</div>
-            <span className="font-bold tracking-wider text-sm" style={{ color: T.fg }}>TIPMIKE</span>
-          </button>
-          <button className="inline-flex items-center gap-2 px-3 h-9 rounded-md text-sm" style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${T.borderLight}`, color: T.fg }}>
-            <Activity size={14} />eSports<ChevronDown size={14} />
-          </button>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: T.fgDim }} />
-            <input placeholder="Buscar..." className="h-9 pl-9 pr-3 rounded-md text-sm outline-none w-64" style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${T.borderLight}`, color: T.fg }} />
-          </div>
-          <button className="relative w-9 h-9 rounded-md grid place-items-center" style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${T.borderLight}` }}>
-            <Bell size={16} style={{ color: T.fgDim }} />
-            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[10px] font-bold grid place-items-center" style={{ background: T.accent, color: '#04130c' }}>1</span>
-          </button>
-          <button className="w-9 h-9 rounded-md grid place-items-center" style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${T.borderLight}` }}>
-            <Settings size={16} style={{ color: T.fgDim }} />
-          </button>
-          <div className="flex items-center gap-2 pl-2">
-            <div className="w-8 h-8 rounded-full grid place-items-center" style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${T.borderLight}` }}>
-              <User size={14} style={{ color: T.fgDim }} />
-            </div>
-            <div className="text-xs leading-tight">
-              <div style={{ color: T.fg }}>santos@mike</div>
-              <div style={{ color: T.fgDim }}>BOT (eSports)</div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <nav className="flex items-center gap-1 px-6 pb-2">
-        {[
-          { id: 'today', icon: Home, label: 'Início' },
-          { id: 'live', icon: PlayCircle, label: 'Ao Vivo' },
-          { id: 'marketplace', icon: Store, label: 'Mercado de Bots' },
-          { id: 'bots', icon: Bot, label: 'Bots' },
-          { id: 'tables', icon: Table2, label: 'Tabelas' },
-          { id: 'stats', icon: BarChart3, label: 'Estatísticas', badge: 'NOVO' },
-          { id: 'extras', icon: MoreHorizontal, label: 'Extras' },
-        ].map(({ id, icon: Icon, label, badge }, i) => (
-          <button key={i} onClick={() => onNavegar?.(id)} className="relative inline-flex items-center gap-2 px-3 h-9 rounded-md text-[13px] font-medium transition-colors hover:bg-white/5" style={{ color: T.fgDim }}>
-            <Icon size={15} />{label}
-            {badge && <span className="absolute -top-1 right-1 px-1.5 py-0.5 rounded text-[9px] font-bold" style={{ background: T.orange, color: '#0b0f1a' }}>{badge}</span>}
-          </button>
-        ))}
-      </nav>
-    </header>
-  );
-}
 
-// ============================================================
-// DONUT
-// ============================================================
 function Donut({ value, total, color, size = 130, strokeWidth = 11 }) {
   const radius = (size - strokeWidth) / 2;
   const circ = 2 * Math.PI * radius;
@@ -1833,7 +1776,7 @@ export default function TipMikePartidaIndividual({ partida, onNavegar } = {}) {
         .mike-row-hover:hover { background-color: rgba(80, 110, 160, 0.10) !important; }
       `}</style>
 
-      <Header onNavegar={onNavegar} />
+      <MikeHeader telaAtiva="partida" onNavegar={onNavegar} />
 
       {(loadingData || !data) && (
         <main className="max-w-[1280px] mx-auto px-6 py-12 flex flex-col items-center justify-center gap-3" style={{ minHeight: '60vh' }}>

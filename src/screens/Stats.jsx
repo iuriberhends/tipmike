@@ -25,6 +25,7 @@ import {
   Trophy, Clock, Target, Hash, Percent, DollarSign, Users, Zap, ArrowUpDown,
   CheckCircle2, Calendar, BarChart, ChevronLeft,
 } from 'lucide-react';
+import MikeHeader from '../shared/MikeHeader.jsx';
 
 // ============================================================
 // 1. CONSTANTES
@@ -41,15 +42,6 @@ const ESPORTES = [
   { id: 'futebol',     label: 'Futebol',          icon: '⚽', cor: '#3b82f6' },
 ];
 
-const NAV_ITEMS = [
-  { id: 'today',       label: 'Início',          icon: Home },
-  { id: 'live',        label: 'Ao Vivo',         icon: Activity },
-  { id: 'marketplace', label: 'Mercado de Bots', icon: Store },
-  { id: 'bots',        label: 'Bots',            icon: Bot },
-  { id: 'tables',      label: 'Tabelas',         icon: Table2 },
-  { id: 'stats',       label: 'Estatísticas',    icon: BarChart3, novo: true },
-  { id: 'extras',      label: 'Extras',          icon: Plus },
-];
 
 // ============================================================
 // 2. HELPERS DETERMINISTICOS (pra mocks estáveis)
@@ -94,6 +86,18 @@ function HighlightText({ texto, termo, className = '' }) {
 // ============================================================
 
 // Cada esporte tem suas ligas e jogadores específicos
+// Mapa: ID interno do Stats → esporte do PartidaIndividual
+const ESPORTE_PARA_PARTIDA = {
+  nba2k:       'e-Basket',
+  fifa:        'e-Soccer',
+  ehockey:     'e-Hockey',
+  enfl:        'e-NFL',
+  tabletennis: 'Table Tennis',
+  tennis:      'Tênis',
+  cs2:         'CS2',
+  futebol:     'Futebol',
+};
+
 const DADOS_POR_ESPORTE = {
   nba2k: {
     ligas: ['H2H GG League', 'Adriatic - NextGen', 'Battle'],
@@ -639,100 +643,7 @@ function MikeSelect({ value, onChange, options, placeholder = 'Selecione', width
   );
 }
 
-function Header({ telaAtiva = 'stats', onNavegar }) {
-  const [menuMobileAberto, setMenuMobileAberto] = useState(false);
-  return (
-    <header className="sticky top-0 z-30 backdrop-blur-md" style={{
-      backgroundColor: 'rgba(11, 15, 26, 0.8)',
-      borderBottom: '0.5px solid rgba(60, 85, 130, 0.4)',
-    }}>
-      <div className="max-w-screen-xl mx-auto px-4 lg:px-8 h-14 flex items-center gap-4">
-        <button
-          onClick={() => setMenuMobileAberto(!menuMobileAberto)}
-          className="md:hidden p-1 rounded text-[--mike-fg-muted] hover:text-[--mike-fg] transition"
-          title="Menu"
-        >
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            {menuMobileAberto ? <path d="M6 18L18 6M6 6l12 12" /> : <path d="M3 12h18M3 6h18M3 18h18" />}
-          </svg>
-        </button>
 
-        <button
-          onClick={() => { onNavegar?.('today'); setMenuMobileAberto(false); }}
-          className="flex items-center gap-2 hover:opacity-90 transition"
-        >
-          <div className="w-7 h-7 rounded-md bg-gradient-to-br from-[--mike-accent] to-[--mike-accent-2] flex items-center justify-center shadow-md shadow-[--mike-accent]/30">
-            <span className="font-black text-[--mike-bg] text-base leading-none">M</span>
-          </div>
-          <span className="font-black text-[--mike-fg] tracking-tight text-base" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-            TIPMIKE
-          </span>
-        </button>
-
-        <div className="hidden md:flex items-center gap-1 ml-4">
-          {NAV_ITEMS.map((n) => {
-            const Icone = n.icon;
-            const ativa = telaAtiva === n.id;
-            return (
-              <button
-                key={n.id}
-                onClick={() => onNavegar?.(n.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition relative ${
-                  ativa ? 'text-[--mike-accent]' : 'text-[--mike-fg-muted] hover:text-[--mike-fg]'
-                }`}
-              >
-                <Icone className="w-3.5 h-3.5" />
-                {n.label}
-                {n.novo && (<span className="absolute -top-1 -right-1 px-1 rounded-sm bg-amber-500 text-amber-950 text-[7px] font-black">NOVO</span>)}
-                {ativa && <div className="absolute -bottom-2 left-2 right-2 h-0.5 bg-[--mike-accent] rounded-full" />}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="flex-1" />
-
-        <button className="text-[--mike-fg-muted] hover:text-[--mike-fg]"><Bell className="w-4 h-4" /></button>
-        <button className="text-[--mike-fg-muted] hover:text-[--mike-fg] hidden sm:block"><Settings className="w-4 h-4" /></button>
-        <div className="flex items-center gap-2 pl-3" style={{ borderLeft: '0.5px solid rgba(60, 85, 130, 0.4)' }}>
-          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[--mike-accent] to-[--mike-accent-2] flex items-center justify-center font-black text-[--mike-bg] text-xs">S</div>
-          <div className="hidden lg:flex flex-col leading-tight">
-            <span className="text-[11px] text-[--mike-fg] font-semibold">Santos</span>
-            <span className="text-[9px] text-[--mike-fg-muted]">BOT (eSports)</span>
-          </div>
-        </div>
-      </div>
-
-      {menuMobileAberto && (
-        <div className="md:hidden border-t" style={{ borderColor: 'rgba(60,85,130,0.4)' }}>
-          <nav className="px-4 py-2 grid grid-cols-2 gap-1">
-            {NAV_ITEMS.map((n) => {
-              const Icone = n.icon;
-              const ativa = telaAtiva === n.id;
-              return (
-                <button
-                  key={n.id}
-                  onClick={() => { onNavegar?.(n.id); setMenuMobileAberto(false); }}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-xs font-semibold transition ${
-                    ativa ? 'bg-[--mike-accent]/15 text-[--mike-accent]' : 'text-[--mike-fg-soft] hover:bg-[--mike-card-hover]'
-                  }`}
-                >
-                  <Icone className="w-3.5 h-3.5" />
-                  {n.label}
-                  {n.novo && <span className="px-1 rounded-sm bg-amber-500 text-amber-950 text-[7px] font-black ml-auto">NOVO</span>}
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-      )}
-    </header>
-  );
-}
-
-// ============================================================
-// 6. KPI CARDS
-// ============================================================
 function CardKPI({ icon: Icon, label, valor, sublabel, cor = 'text-[--mike-accent]', loading }) {
   return (
     <div className="rounded-lg p-3 min-w-0 transition hover:bg-[--mike-card-2]/40" style={{
@@ -1385,7 +1296,7 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
         .mike-spin { animation: mike-spin 0.8s linear infinite; }
       `}</style>
 
-      <Header telaAtiva={telaAtiva} onNavegar={handleNavegar} />
+      <MikeHeader telaAtiva={telaAtiva} onNavegar={handleNavegar} />
 
       <main className="max-w-screen-xl mx-auto px-4 lg:px-8 py-6">
         {/* Breadcrumb */}
@@ -1489,7 +1400,7 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
                         loading={loadingPreviewA}
                         lado="A"
                         onVerPerfil={(nome) => {
-                          if (onNavegarExterno) onNavegarExterno('partida', { jogadorA: nome });
+                          if (onNavegarExterno) onNavegarExterno('partida', { jogadorA: nome, esporte: ESPORTE_PARA_PARTIDA[esporteAtivo] || 'e-Basket' });
                           else setModalAcao({ tipo: 'analisar_h2h', jogadorA: nome });
                         }}
                       />
@@ -1516,7 +1427,7 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
                         loading={loadingPreviewB}
                         lado="B"
                         onVerPerfil={(nome) => {
-                          if (onNavegarExterno) onNavegarExterno('partida', { jogadorA: nome });
+                          if (onNavegarExterno) onNavegarExterno('partida', { jogadorA: nome, esporte: ESPORTE_PARA_PARTIDA[esporteAtivo] || 'e-Basket' });
                           else setModalAcao({ tipo: 'analisar_h2h', jogadorA: nome });
                         }}
                       />
