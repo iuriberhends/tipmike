@@ -414,40 +414,16 @@ const BASES_DADOS = [
 // COMPONENTES BASE
 // ============================================================
 
-// Overlay global — lazy init, só cria quando o DOM está pronto
-let _overlayEl = null;
-let _overlayCallback = null;
-
-function _getOverlay() {
-  if (_overlayEl) return _overlayEl;
-  _overlayEl = document.createElement('div');
-  _overlayEl.style.cssText = 'position:fixed;inset:0;z-index:9998;display:none;cursor:default;';
-  _overlayEl.addEventListener('wheel', (e) => e.preventDefault(), { passive: false });
-  _overlayEl.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
-  _overlayEl.addEventListener('click', () => { if (_overlayCallback) _overlayCallback(); });
-  document.body.appendChild(_overlayEl);
-  return _overlayEl;
-}
-
-function _showOverlay(onClose) {
-  _overlayCallback = onClose;
-  _getOverlay().style.display = 'block';
-}
-
-function _hideOverlay() {
-  _overlayCallback = null;
-  if (_overlayEl) _overlayEl.style.display = 'none';
-}
-
 function MikeSelect({ value, onChange, options, placeholder = '', disabled = false }) {
   const [aberto, setAberto] = useState(false);
   const [pos, setPos] = useState(null);
   const btnRef = useRef(null);
+  const dropRef = useRef(null);
 
-  const fechar = useCallback(() => {
+  const fechar = () => {
     setAberto(false);
-    _hideOverlay();
-  }, []);
+    document.body.classList.remove('mike-no-scroll');
+  };
 
   const abrirDropdown = () => {
     if (disabled) return;
@@ -460,10 +436,21 @@ function MikeSelect({ value, onChange, options, placeholder = '', disabled = fal
       setPos({ top: rect.bottom + 4, bottom: 'auto', left: rect.left, width: rect.width });
     }
     setAberto(true);
-    _showOverlay(fechar);
+    document.body.classList.add('mike-no-scroll');
   };
 
-  useEffect(() => () => { if (aberto) _hideOverlay(); }, []);
+  useEffect(() => {
+    if (!aberto) return;
+    const handler = (e) => {
+      if (btnRef.current?.contains(e.target)) return;
+      if (dropRef.current?.contains(e.target)) return;
+      fechar();
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [aberto]);
+
+  useEffect(() => () => document.body.classList.remove('mike-no-scroll'), []);
 
   const opcaoSelecionada = options.find((o) => o.value === value);
 
@@ -484,6 +471,7 @@ function MikeSelect({ value, onChange, options, placeholder = '', disabled = fal
       </button>
       {aberto && pos && (
         <div
+          ref={dropRef}
           className="mike-mercados-scroll mike-dropdown-in fixed z-[9999] rounded-md overflow-y-auto"
           style={{
             top: pos.top,
@@ -517,7 +505,6 @@ function MikeSelect({ value, onChange, options, placeholder = '', disabled = fal
 }
 
 
-// Switch toggle (bolinha)
 function Switch({ ativo, onChange, disabled = false }) {
   return (
     <button
@@ -1885,6 +1872,8 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
         .mike-toast-in { animation: mike-toast-in 0.3s ease-out; }
 
         /* DROPDOWN - escorre de cima pra baixo */
+        .mike-no-scroll { overflow: hidden !important; }
+
         @keyframes mike-dropdown-in {
           0% { opacity: 0; transform: translateY(-6px) scaleY(0.96); }
           100% { opacity: 1; transform: translateY(0) scaleY(1); }
