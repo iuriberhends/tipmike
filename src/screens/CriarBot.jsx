@@ -43,125 +43,153 @@ const TORNEIOS_POR_ESPORTE = {
 
 // MERCADOS POR ESPORTE - cada esporte tem mercados diferentes
 const MERCADOS_POR_ESPORTE = {
-  // Fifa (e-Soccer): conjunto completo (gols, cantos, cartoes, ataques)
+  // e-Soccer H2H (tipo 1) — Battle, GT League, ECF Volta, H2H GG League, Live Arena
+  // Keys exatas do TipManager (chunk 7943 + __NEXT_DATA__)
   fifa: [
-    { value: 'ml_ft', label: 'Resultado Final' },
-    { value: 'ml_ht', label: 'Resultado 1º Tempo' },
-    { value: 'ah_ft', label: 'HC Asiático' },
-    { value: 'ah_ht', label: 'HC Asiático 1º Tempo' },
-    { value: 'eu_ft', label: 'Handicap Europeu' },
-    { value: 'eu_ht', label: 'Handicap Europeu 1º Tempo' },
-    { value: 'asian_ou_ft', label: 'Linhas Asiáticas +/-' },
-    { value: 'asian_ou_ht', label: 'Linhas Asiáticas +/- 1º Tempo' },
-    { value: 'ou_ft', label: 'Over/Under (Gols)' },
-    { value: 'ou_ht', label: 'Over/Under 1º Tempo (Gols)' },
-    { value: 'btts_ft', label: 'Ambos Marcam' },
-    { value: 'btts_ht', label: 'Ambos Marcam 1º Tempo' },
-    { value: 'next_goal', label: 'Próximo Gol' },
-    { value: 'double_chance', label: 'Dupla Hipótese' },
-    { value: 'odd_even', label: 'Par/Ímpar' },
-    { value: 'player_goals_ft', label: 'Jogador - Gols' },
-    { value: 'player_goals_ht', label: 'Jogador - Gols 1º Tempo' },
-    { value: 'corners_ft', label: 'Cantos' },
-    { value: 'corners_ht', label: 'Cantos 1º Tempo' },
-    { value: 'cards_ft', label: 'Cartões' },
-    { value: 'cards_ht', label: 'Cartões 1º Tempo' },
+    { value: 'ah_ft',                    label: 'HC Asiático' },
+    { value: 'ah_ht',                    label: 'HC Asiático - 1˚T' },
+    { value: 'asian_over_under_ft',      label: 'Gols +/-' },
+    { value: 'asian_over_under_ht',      label: 'Gols +/- 1˚T' },
+    { value: 'btts_ft',                  label: 'Ambos Marcam' },
+    { value: 'btts_ht',                  label: 'Ambos Marcam - 1˚T' },
+    { value: 'double_ml_ft',             label: 'Dupla Hipótese' },
+    { value: 'ml_ft',                    label: 'Resultado Final' },
+    { value: 'ml_ht',                    label: 'Resultado Final - 1˚T' },
+    { value: 'over_under_ft',            label: 'Partida - Gols' },
+    { value: 'over_under_ht',            label: 'Total de Gols - 1˚T' },
+    { value: 'odd_even_ft',              label: 'Par/Ímpar' },
+    { value: 'next_goal',                label: 'Próximo Gol' },
+    { value: 'eh_ft',                    label: 'Handicap Europeu' },
+    { value: 'eh_ht',                    label: 'Handicap Europeu - 1˚T' },
+    { value: 'ml_btts_ft',               label: 'Resultado Final/Ambos Marcam' },
+    { value: 'ml_btts_ht',               label: 'Resultado Final/Ambos Marcam - 1˚T' },
+    { value: 'over_under_ft_player',     label: 'Jogador - Gols' },
+    { value: 'over_under_ht_player',     label: 'Jogador - Gols - 1˚T' },
+    { value: 'over_under_ft_ht_0x0',     label: 'Partida - Gols (HT 0x0)' },
+    { value: 'over_under_ft_player_against', label: 'Jogador - Sofrer Gols' },
+    { value: 'clean_sheet_ft_player',    label: 'Jogador - Não sofre gol' },
   ],
-  // Nba2K (eBasket): so mercados de basquete
+  // e-Basket / NBA2K (tipo 2) — Adriatic NextGen, Battle NBA2K, H2H GG League
   nba2k: [
-    { value: 'ml_ft', label: 'Resultado Final' },
-    { value: 'ml_q1', label: 'Resultado 1º Quarto' },
-    { value: 'ml_q2', label: 'Resultado 2º Quarto' },
-    { value: 'ml_q3', label: 'Resultado 3º Quarto' },
-    { value: 'ml_q4', label: 'Resultado 4º Quarto' },
-    { value: 'ml_ht', label: 'Resultado 1º Tempo' },
-    { value: 'ah_ft', label: 'HC Asiático' },
-    { value: 'ah_ht', label: 'HC Asiático 1º Tempo' },
-    { value: 'ah_q1', label: 'HC Asiático 1º Quarto' },
-    { value: 'ah_q2', label: 'HC Asiático 2º Quarto' },
-    { value: 'ah_q3', label: 'HC Asiático 3º Quarto' },
-    { value: 'ah_q4', label: 'HC Asiático 4º Quarto' },
-    { value: 'asian_ou_ft', label: 'Linhas Asiáticas +/-' },
-    { value: 'asian_ou_ht', label: 'Linhas Asiáticas +/- 1º Tempo' },
-    { value: 'asian_ou_q1', label: 'Linhas Asiáticas +/- 1º Quarto' },
-    { value: 'asian_ou_q2', label: 'Linhas Asiáticas +/- 2º Quarto' },
-    { value: 'asian_ou_q3', label: 'Linhas Asiáticas +/- 3º Quarto' },
-    { value: 'asian_ou_q4', label: 'Linhas Asiáticas +/- 4º Quarto' },
-    { value: 'team_total_ft', label: 'Time - Total de Pontos' },
-    { value: 'team_total_ht', label: 'Time - Total Pontos 1º Tempo' },
-    { value: 'odd_even', label: 'Par/Ímpar' },
+    { value: 'ml_ft',              label: 'Resultado Final' },
+    { value: 'ml_ht',              label: 'Resultado Final - 1˚T' },
+    { value: 'over_under_ft',      label: 'Partida - Pontos' },
+    { value: 'over_under_ht',      label: 'Total de Pontos - 1˚T' },
+    { value: 'over_under_ft_player', label: 'Total de Pontos - Jogador' },
+    { value: 'ah_ft',              label: 'Handicap Asiático' },
+    { value: 'ah_ht',              label: 'Handicap Asiático - 1˚T' },
   ],
-  // Tenis: mercados de jogo
+  // Tênis / Tênis de Mesa (tipo 4)
   tennis: [
-    { value: 'ml_ft', label: 'Vencedor da Partida' },
-    { value: 'ml_set1', label: 'Vencedor 1º Set' },
-    { value: 'ml_set2', label: 'Vencedor 2º Set' },
-    { value: 'ah_games', label: 'HC de Games' },
-    { value: 'ah_points', label: 'HC de Pontos no Set' },
-    { value: 'ou_games_ft', label: 'Over/Under (Games)' },
-    { value: 'ou_games_set1', label: 'Over/Under Games 1º Set' },
-    { value: 'ou_sets', label: 'Total de Sets' },
-    { value: 'odd_even_games', label: 'Par/Ímpar (Games)' },
+    { value: 'ml_ft',        label: 'Vencedor da Partida' },
+    { value: 'ml_gm',        label: 'Vencedor do Game' },
+    { value: 'over_under_ft', label: 'Total da Partida' },
+    { value: 'over_under_gm', label: 'Total do Game' },
+    { value: 'ah_ft',        label: 'HC da Partida (Pontos)' },
+    { value: 'ah_gm',        label: 'HC do Game' },
+    { value: 'ah_sets_ft',   label: 'HC de Games (Sets)' },
   ],
-  // Tenis de Mesa: similar ao tenis
   tabletennis: [
-    { value: 'ml_ft', label: 'Vencedor da Partida' },
-    { value: 'ml_set1', label: 'Vencedor 1º Set' },
-    { value: 'ml_set2', label: 'Vencedor 2º Set' },
-    { value: 'ml_set3', label: 'Vencedor 3º Set' },
-    { value: 'ah_games', label: 'HC de Games' },
-    { value: 'ah_points', label: 'HC de Pontos no Set' },
-    { value: 'ou_games_ft', label: 'Over/Under (Games)' },
-    { value: 'ou_sets', label: 'Total de Sets' },
-    { value: 'odd_even_points', label: 'Par/Ímpar (Pontos)' },
+    { value: 'ml_ft',        label: 'Vencedor da Partida' },
+    { value: 'ml_gm',        label: 'Vencedor do Game' },
+    { value: 'over_under_ft', label: 'Total da Partida' },
+    { value: 'over_under_gm', label: 'Total do Game' },
+    { value: 'ah_ft',        label: 'HC da Partida (Pontos)' },
+    { value: 'ah_gm',        label: 'HC do Game' },
+    { value: 'ah_sets_ft',   label: 'HC de Games (Sets)' },
   ],
-  // CS2: simplificado (mapa)
-  cs2: [
-    { value: 'ml_ft', label: 'Vencedor da Partida' },
-    { value: 'ml_map1', label: 'Vencedor Mapa 1' },
-    { value: 'ml_map2', label: 'Vencedor Mapa 2' },
-    { value: 'ah_maps', label: 'HC de Mapas' },
-    { value: 'ou_maps', label: 'Total de Mapas' },
-  ],
-  // e-Hockey: similar ao basquete mas com periodos
-  ehockey: [
-    { value: 'ml_ft', label: 'Resultado Final' },
-    { value: 'ml_p1', label: 'Resultado 1º Período' },
-    { value: 'ml_p2', label: 'Resultado 2º Período' },
-    { value: 'ml_p3', label: 'Resultado 3º Período' },
-    { value: 'ah_ft', label: 'HC Asiático' },
-    { value: 'ou_ft', label: 'Over/Under (Gols)' },
-    { value: 'btts_ft', label: 'Ambos Marcam' },
-  ],
-  // e-NFL: Touchdowns + Total Points
-  enfl: [
-    { value: 'ml_ft', label: 'Resultado Final' },
-    { value: 'ml_q1', label: 'Resultado 1º Quarto' },
-    { value: 'ml_q2', label: 'Resultado 2º Quarto' },
-    { value: 'ml_q3', label: 'Resultado 3º Quarto' },
-    { value: 'ml_q4', label: 'Resultado 4º Quarto' },
-    { value: 'ml_ht', label: 'Resultado 1º Tempo' },
-    { value: 'ah_ft', label: 'HC Asiático' },
-    { value: 'asian_ou_ft', label: 'Linhas Asiáticas (Pontos)' },
-    { value: 'team_total_ft', label: 'Time - Total de Pontos' },
-    { value: 'next_td', label: 'Próximo Touchdown' },
-  ],
-  // Futebol (real): mesmos mercados do Fifa
+  // Futebol (real) — mesmos mercados do e-Soccer H2H
   futebol: [
-    { value: 'ml_ft', label: 'Resultado Final' },
-    { value: 'ml_ht', label: 'Resultado 1º Tempo' },
-    { value: 'ah_ft', label: 'HC Asiático' },
-    { value: 'eu_ft', label: 'Handicap Europeu' },
-    { value: 'ou_ft', label: 'Over/Under (Gols)' },
-    { value: 'btts_ft', label: 'Ambos Marcam' },
-    { value: 'next_goal', label: 'Próximo Gol' },
-    { value: 'double_chance', label: 'Dupla Hipótese' },
-    { value: 'corners_ft', label: 'Cantos' },
-    { value: 'cards_ft', label: 'Cartões' },
+    { value: 'ml_ft',           label: 'Resultado Final' },
+    { value: 'ml_ht',           label: 'Resultado Final - 1˚T' },
+    { value: 'ah_ft',           label: 'HC Asiático' },
+    { value: 'eh_ft',           label: 'Handicap Europeu' },
+    { value: 'over_under_ft',   label: 'Partida - Gols' },
+    { value: 'asian_over_under_ft', label: 'Gols +/-' },
+    { value: 'btts_ft',         label: 'Ambos Marcam' },
+    { value: 'next_goal',       label: 'Próximo Gol' },
+    { value: 'double_ml_ft',    label: 'Dupla Hipótese' },
+    { value: 'odd_even_ft',     label: 'Par/Ímpar' },
+  ],
+  // e-Hockey, e-NFL, CS2 — mantidos com keys aproximadas (TipManager não documenta explicitamente)
+  ehockey: [
+    { value: 'ml_ft',         label: 'Resultado Final' },
+    { value: 'ah_ft',         label: 'HC Asiático' },
+    { value: 'over_under_ft', label: 'Over/Under (Gols)' },
+    { value: 'btts_ft',       label: 'Ambos Marcam' },
+  ],
+  enfl: [
+    { value: 'ml_ft',         label: 'Resultado Final' },
+    { value: 'ah_ft',         label: 'HC Asiático' },
+    { value: 'over_under_ft', label: 'Total de Pontos' },
+  ],
+  cs2: [
+    { value: 'ml_ft',  label: 'Vencedor da Partida' },
+    { value: 'ah_ft',  label: 'HC de Mapas' },
+    { value: 'ou_ft',  label: 'Total de Mapas' },
   ],
 };
-
 // CAPACIDADES POR ESPORTE - controla o que mostrar/esconder
+
+// ============================================================
+// FILTROS VISIVEIS POR MERCADO
+// Baseado nos dados reais raspados do TipManager (chunk 7943 + __NEXT_DATA__)
+// Campos: inner (linha interna), linhaOpcoes (dropdown de linha), extras, limitePlacar, proporcao
+// ============================================================
+const FILTROS_VISIVEIS_POR_MERCADO = {
+  // e-Soccer H2H 8387rcPNz8SRX6pYXgdxCZg3VMLFwtdJB3Z9LeX8Ge2n──
+  // ML: tem extras (home/away/draw/moneyline/underdog/target/opponent), sem inner, limit=score_limit
+  ml_ft:                      { inner: false, linhaOpcoes: false, extras: true,  limitePlacar: true,  proporcao: true  },
+  ml_ht:                      { inner: false, linhaOpcoes: false, extras: true,  limitePlacar: true,  proporcao: true  },
+  // Over/Under gols: inner over/under, 17 linhas, sem extras
+  over_under_ft:               { inner: true,  linhaOpcoes: true,  extras: false, limitePlacar: false, proporcao: true  },
+  over_under_ht:               { inner: true,  linhaOpcoes: true,  extras: false, limitePlacar: false, proporcao: true  },
+  over_under_ft_ht_0x0:        { inner: true,  linhaOpcoes: true,  extras: false, limitePlacar: false, proporcao: true  },
+  // Over/Under jogador: inner + linhas + extras (home/away/moneyline/underdog/target/opponent)
+  over_under_ft_player:        { inner: true,  linhaOpcoes: true,  extras: true,  limitePlacar: false, proporcao: true  },
+  over_under_ht_player:        { inner: true,  linhaOpcoes: true,  extras: true,  limitePlacar: false, proporcao: true  },
+  over_under_ft_player_against:{ inner: true,  linhaOpcoes: true,  extras: true,  limitePlacar: false, proporcao: true  },
+  clean_sheet_ft_player:       { inner: true,  linhaOpcoes: false, extras: true,  limitePlacar: false, proporcao: false },
+  // HC Asiático: linhas, extras (home/away/moneyline/underdog), limit=score_limit
+  ah_ft:                       { inner: false, linhaOpcoes: true,  extras: true,  limitePlacar: true,  proporcao: true  },
+  ah_ht:                       { inner: false, linhaOpcoes: true,  extras: true,  limitePlacar: true,  proporcao: true  },
+  // HC Europeu: linhas, extras completos (home/away/draw/moneyline/underdog/target/opponent)
+  eh_ft:                       { inner: false, linhaOpcoes: true,  extras: true,  limitePlacar: true,  proporcao: true  },
+  eh_ht:                       { inner: false, linhaOpcoes: true,  extras: true,  limitePlacar: true,  proporcao: true  },
+  // Resultado/Ambos Marcam: inner yes/no, extras completos
+  ml_btts_ft:                  { inner: true,  linhaOpcoes: false, extras: true,  limitePlacar: false, proporcao: false },
+  ml_btts_ht:                  { inner: true,  linhaOpcoes: false, extras: true,  limitePlacar: false, proporcao: false },
+  // Par/Ímpar: inner odd/even, sem extras
+  odd_even_ft:                 { inner: true,  linhaOpcoes: false, extras: false, limitePlacar: false, proporcao: false },
+  odd_even_ht:                 { inner: true,  linhaOpcoes: false, extras: false, limitePlacar: false, proporcao: false },
+  // Gols +/- (asiático): inner over/under, 60 linhas, com extras
+  asian_over_under_ft:         { inner: true,  linhaOpcoes: true,  extras: true,  limitePlacar: false, proporcao: true  },
+  asian_over_under_ht:         { inner: true,  linhaOpcoes: true,  extras: false, limitePlacar: false, proporcao: true  },
+  // Ambos Marcam: inner yes/no, sem extras (btts puro)
+  btts_ft:                     { inner: true,  linhaOpcoes: false, extras: false, limitePlacar: false, proporcao: false },
+  btts_ht:                     { inner: true,  linhaOpcoes: false, extras: false, limitePlacar: false, proporcao: false },
+  // Dupla Hipótese: extras especiais (home_draw/away_draw/home_away/...), limit=score_limit
+  double_ml_ft:                { inner: false, linhaOpcoes: false, extras: true,  limitePlacar: true,  proporcao: true  },
+  // Próximo Gol: linha atual, extras (home/away/moneyline/underdog/no_goal)
+  next_goal:                   { inner: false, linhaOpcoes: false, extras: true,  limitePlacar: false, proporcao: false },
+
+  // e-Basket NBA2K 8387rcPNz8SRX6pYXgdxCZg3VMLFwtdJB3Z9LeX8Ge2n
+  // ML: extras (home/away/moneyline/underdog), sem empate, limit=score_limit
+  // over_under_ft já mapeado acima, reusa configuração
+
+  // Tênis / Tênis de Mesa ───────────────────────────────────
+  ml_gm:                       { inner: false, linhaOpcoes: false, extras: true,  limitePlacar: true,  proporcao: true  },
+  over_under_gm:               { inner: true,  linhaOpcoes: true,  extras: false, limitePlacar: false, proporcao: true  },
+  ah_gm:                       { inner: false, linhaOpcoes: true,  extras: true,  limitePlacar: false, proporcao: true  },
+  ah_sets_ft:                  { inner: false, linhaOpcoes: true,  extras: true,  limitePlacar: false, proporcao: true  },
+};
+
+// Helper: retorna config de filtros para o mercado atual
+// Fallback: mostra tudo exceto campos especiais
+const FILTROS_MERCADO_DEFAULT = { inner: true, linhaOpcoes: true, extras: true, limitePlacar: true, proporcao: true };
+const getFiltrosMercado = (mercadoValue) =>
+  FILTROS_VISIVEIS_POR_MERCADO[mercadoValue] || FILTROS_MERCADO_DEFAULT;
+
 const CAPACIDADES = {
   fifa: {
     label: 'Fifa',
@@ -281,11 +309,14 @@ const CENARIOS_REDUZIDO = [
 ];
 
 const EXTRAS_OPCOES = [
-  { value: 'home', label: 'Casa' },
-  { value: 'away', label: 'Visitante' },
-  { value: 'draw', label: 'Empate' },
-  { value: 'fav', label: 'Favorito' },
-  { value: 'underdog', label: 'Azarão' },
+  { value: 'home',      label: 'Casa' },
+  { value: 'away',      label: 'Visitante' },
+  { value: 'draw',      label: 'Empate' },
+  { value: 'moneyline', label: 'Favorito' },
+  { value: 'underdog',  label: 'Azarão' },
+  { value: 'target',    label: 'Alvo da tip' },
+  { value: 'opponent',  label: 'Oponente' },
+  { value: 'no_goal',   label: 'Sem gol' },
 ];
 
 const TIPOS_PROPORCAO = [
@@ -306,30 +337,32 @@ const LIMITE_PLACAR_OPCOES = (() => {
   return opcoes;
 })();
 
+// Janelas reais do TipManager (array m[] do chunk 7943)
+// Esports H2H: all,last_1..100,current_championship,last_1h,last_8h,last_1d,last_7d,last_30d,last_60d,last_90d,same_day
 const FILTRO_MEDIAS = [
-  { value: 'all', label: 'Todas' },
-  { value: 'last_1', label: 'Última' },
-  { value: 'last_2', label: 'Últ. 2' },
-  { value: 'last_3', label: 'Últ. 3' },
-  { value: 'last_4', label: 'Últ. 4' },
-  { value: 'last_5', label: 'Últ. 5' },
-  { value: 'last_10', label: 'Últ. 10' },
-  { value: 'last_15', label: 'Últ. 15' },
-  { value: 'last_20', label: 'Últ. 20' },
-  { value: 'last_25', label: 'Últ. 25' },
-  { value: 'last_30', label: 'Últ. 30' },
-  { value: 'last_40', label: 'Últ. 40' },
-  { value: 'last_50', label: 'Últ. 50' },
-  { value: 'last_100', label: 'Últ. 100' },
-  { value: 'current_grade', label: 'Grade atual' },
-  { value: 'last_hour', label: 'Últ hora' },
-  { value: 'last_8h', label: 'Últ. 8 horas' },
-  { value: 'last_24h', label: 'Últ. 24h' },
-  { value: 'last_7d', label: 'Últ. 7 dias' },
-  { value: 'last_30d', label: 'Últ. 30 dias' },
-  { value: 'last_60d', label: 'Últ. 60 dias' },
-  { value: 'last_90d', label: 'Últ. 90 dias' },
-  { value: 'same_weekday', label: 'Mesmo dia semana' },
+  { value: 'all',                  label: 'Todas' },
+  { value: 'last_1',               label: 'Última' },
+  { value: 'last_2',               label: 'Últ. 2' },
+  { value: 'last_3',               label: 'Últ. 3' },
+  { value: 'last_4',               label: 'Últ. 4' },
+  { value: 'last_5',               label: 'Últ. 5' },
+  { value: 'last_10',              label: 'Últ. 10' },
+  { value: 'last_15',              label: 'Últ. 15' },
+  { value: 'last_20',              label: 'Últ. 20' },
+  { value: 'last_25',              label: 'Últ. 25' },
+  { value: 'last_30',              label: 'Últ. 30' },
+  { value: 'last_40',              label: 'Últ. 40' },
+  { value: 'last_50',              label: 'Últ. 50' },
+  { value: 'last_100',             label: 'Últ. 100' },
+  { value: 'current_championship', label: 'Campeonato atual' },
+  { value: 'last_1h',              label: 'Últ. 1 hora' },
+  { value: 'last_8h',              label: 'Últ. 8 horas' },
+  { value: 'last_1d',              label: 'Últ. 24h' },
+  { value: 'last_7d',              label: 'Últ. 7 dias' },
+  { value: 'last_30d',             label: 'Últ. 30 dias' },
+  { value: 'last_60d',             label: 'Últ. 60 dias' },
+  { value: 'last_90d',             label: 'Últ. 90 dias' },
+  { value: 'same_day',             label: 'Mesmo dia' },
 ];
 
 const VERSOES_GAME = [
@@ -337,30 +370,31 @@ const VERSOES_GAME = [
   { value: 'nova', label: 'Nova' },
 ];
 
+// Janelas reais do TipManager (array m[] do chunk 7943)
 const JANELAS_PARTIDAS = [
-  { value: 'all', label: 'Todas' },
-  { value: 'last_1', label: 'Última' },
-  { value: 'last_2', label: 'Últ. 2' },
-  { value: 'last_3', label: 'Últ. 3' },
-  { value: 'last_4', label: 'Últ. 4' },
-  { value: 'last_5', label: 'Últ. 5' },
-  { value: 'last_10', label: 'Últ. 10' },
-  { value: 'last_15', label: 'Últ. 15' },
-  { value: 'last_20', label: 'Últ. 20' },
-  { value: 'last_25', label: 'Últ. 25' },
-  { value: 'last_30', label: 'Últ. 30' },
-  { value: 'last_40', label: 'Últ. 40' },
-  { value: 'last_50', label: 'Últ. 50' },
-  { value: 'last_100', label: 'Últ. 100' },
-  { value: 'current_grade', label: 'Grade atual' },
-  { value: 'last_hour', label: 'Últ hora' },
-  { value: 'last_8h', label: 'Últ. 8 horas' },
-  { value: 'last_24h', label: 'Últ. 24h' },
-  { value: 'last_7d', label: 'Últ. 7 dias' },
-  { value: 'last_30d', label: 'Últ. 30 dias' },
-  { value: 'last_60d', label: 'Últ. 60 dias' },
-  { value: 'last_90d', label: 'Últ. 90 dias' },
-  { value: 'same_weekday', label: 'Mesmo dia semana' },
+  { value: 'all',                  label: 'Todas' },
+  { value: 'last_1',               label: 'Última' },
+  { value: 'last_2',               label: 'Últ. 2' },
+  { value: 'last_3',               label: 'Últ. 3' },
+  { value: 'last_4',               label: 'Últ. 4' },
+  { value: 'last_5',               label: 'Últ. 5' },
+  { value: 'last_10',              label: 'Últ. 10' },
+  { value: 'last_15',              label: 'Últ. 15' },
+  { value: 'last_20',              label: 'Últ. 20' },
+  { value: 'last_25',              label: 'Últ. 25' },
+  { value: 'last_30',              label: 'Últ. 30' },
+  { value: 'last_40',              label: 'Últ. 40' },
+  { value: 'last_50',              label: 'Últ. 50' },
+  { value: 'last_100',             label: 'Últ. 100' },
+  { value: 'current_championship', label: 'Campeonato atual' },
+  { value: 'last_1h',              label: 'Últ. 1 hora' },
+  { value: 'last_8h',              label: 'Últ. 8 horas' },
+  { value: 'last_1d',              label: 'Últ. 24h' },
+  { value: 'last_7d',              label: 'Últ. 7 dias' },
+  { value: 'last_30d',             label: 'Últ. 30 dias' },
+  { value: 'last_60d',             label: 'Últ. 60 dias' },
+  { value: 'last_90d',             label: 'Últ. 90 dias' },
+  { value: 'same_day',             label: 'Mesmo dia' },
 ];
 
 const TIPOS_HISTORICO = [
@@ -1680,6 +1714,8 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
 
   const torneiosDisp = TORNEIOS_POR_ESPORTE[esporte] || [];
   const mercadosDisp = MERCADOS_POR_ESPORTE[esporte] || [];
+  // Config de filtros para o mercado selecionado (baseado em dados reais do TipManager)
+  const filtrosMercado = getFiltrosMercado(mercado);
   const capacidades = CAPACIDADES[esporte] || CAPACIDADES.fifa;
   const cenariosDisp = capacidades.cenariosFull ? CENARIOS_FULL : CENARIOS_REDUZIDO;
   const filtrosLiveDisp = capacidades.filtrosLive;
@@ -2086,19 +2122,19 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
               <RangeSlider min={1} max={10} step={0.01} value={limitarOdds} onChange={setLimitarOdds} disabled={!limitarOddsAtivo} />
             </LinhaFiltro>
 
-            <LinhaFiltro label="Proporção de odds" info="Razão entre odd alvo e odd oposta - mede a desigualdade da partida" ativo={proporcaoAtivo} onToggle={setProporcaoAtivo}>
+            {filtrosMercado.proporcao && <LinhaFiltro label="Proporção de odds" info="Razão entre odd alvo e odd oposta - mede a desigualdade da partida" ativo={proporcaoAtivo} onToggle={setProporcaoAtivo}>
               <SingleSlider min={0} max={10} step={0.1} value={proporcao[1]} onChange={(v) => setProporcao([0, v])} sufixoMin={0} sufixoMax="10+" disabled={!proporcaoAtivo} />
-            </LinhaFiltro>
+            </LinhaFiltro>}
 
-            <LinhaFiltro label="Tipo de proporção" info="Operador da proporção: maior ou menor que o valor configurado" ativo={tipoProporcaoAtivo} onToggle={setTipoProporcaoAtivo}>
+            {filtrosMercado.proporcao && <LinhaFiltro label="Tipo de proporção" info="Operador da proporção: maior ou menor que o valor configurado" ativo={tipoProporcaoAtivo} onToggle={setTipoProporcaoAtivo}>
               <MikeSelect value={tipoProporcao} onChange={setTipoProporcao} options={TIPOS_PROPORCAO} />
-            </LinhaFiltro>
+            </LinhaFiltro>}
 
             <LinhaFiltro label="Limite de Placar" info="Filtra apenas partidas com placar específico" ativo={limitePlacarAtivo} onToggle={setLimitePlacarAtivo}>
               <MikeSelect value={limitePlacar} onChange={setLimitePlacar} options={[{ value: '', label: 'Selecione' }, ...LIMITE_PLACAR_OPCOES]} />
             </LinhaFiltro>
 
-            <LinhaFiltro label="Extras" info="Restringe apostas: Casa/Visitante (mando) ou Favorito/Azarão (odd inicial) - marque pelo menos 1" ativo={extrasAtivo} onToggle={setExtrasAtivo}>
+            {filtrosMercado.extras && <LinhaFiltro label="Extras" info="Restringe apostas: Casa/Visitante (mando) ou Favorito/Azarão (odd inicial) - marque pelo menos 1" ativo={extrasAtivo} onToggle={setExtrasAtivo}>
               <div className="flex items-center gap-4 flex-wrap py-1.5">
                 {[
                   { key: 'casa', label: 'Casa' },
@@ -2113,7 +2149,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
                   </label>
                 ))}
               </div>
-            </LinhaFiltro>
+            </LinhaFiltro>}
 
             <LinhaFiltro label="Filtro de Médias" info="Janela de partidas usada para calcular médias do alvo da tip" ativo={filtroMediasAtivo} onToggle={setFiltroMediasAtivo}>
               <MikeSelect value={filtroMedias} onChange={setFiltroMedias} options={[{ value: '', label: 'Selecione' }, ...FILTRO_MEDIAS]} />
