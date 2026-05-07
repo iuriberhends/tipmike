@@ -672,11 +672,11 @@ export default function Live({ onNavegar, onAbrirPartida }) {
 
         {/* Grid */}
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[1,2,3,4,5,6].map(i => <CardSkeleton key={i} />)}
           </div>
         ) : eventosFiltrados.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {eventosFiltrados.map(ev => (
               <CardLive key={`${ev.jogador_a}||${ev.jogador_b}`} ev={ev} onAbrirPartida={onAbrirPartida} />
             ))}
