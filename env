@@ -1,2 +1,2 @@
 # URL da TipMike API (VPS)
-VITE_API_URL=http://138.255.160.158:8000
+VITE_API_URL=https://scene-shorter-better-connection.trycloudflare.com
