@@ -1,14 +1,19 @@
 // ============================================================
 // App.jsx - Orquestrador principal do TipMike
 //
-// Roteia entre todas as telas. Estado: { tela, contexto }.
-// Histórico fica em estado separado pq é modal sobreposto.
-//
-// Em produção: substituir por React Router (BrowserRouter + Routes)
-// ou Next.js App Router. Hoje usa estado local pra simplicidade.
+// Usa HashRouter do react-router-dom para navegação real.
+// URLs ficam no formato /#/tela — funciona no Vercel sem config extra.
+// O botão voltar do browser funciona normalmente.
 // ============================================================
 
 import { useState, useEffect, useCallback } from 'react';
+import {
+  HashRouter,
+  Routes,
+  Route,
+  useNavigate,
+  useLocation,
+} from 'react-router-dom';
 
 import Today from './screens/Today.jsx';
 import Live from './screens/Live.jsx';
@@ -19,7 +24,8 @@ import Stats from './screens/Stats.jsx';
 import { ModalHistorico } from './screens/Historico.jsx';
 
 // Tela placeholder pra rotas que ainda não tem implementação
-function TelaPlaceholder({ titulo, descricao, onVoltar }) {
+function TelaPlaceholder({ titulo, descricao }) {
+  const navigate = useNavigate();
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-8" style={{
       backgroundColor: '#0b0f1a',
@@ -46,7 +52,7 @@ function TelaPlaceholder({ titulo, descricao, onVoltar }) {
         </div>
       </div>
       <button
-        onClick={onVoltar}
+        onClick={() => navigate('/')}
         className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold transition"
         style={{
           backgroundColor: '#10b981',
@@ -60,132 +66,142 @@ function TelaPlaceholder({ titulo, descricao, onVoltar }) {
   );
 }
 
-export default function App() {
-  // Tela atual + contexto opcional (botId, partidaId, etc)
-  const [rota, setRota] = useState({ tela: 'today', contexto: null });
+// Componente interno que usa hooks de roteamento
+function AppRoutes() {
+  const navigate = useNavigate();
+  const location = useLocation();
 
   // Modal histórico flutua sobre qualquer tela
   const [historicoBotId, setHistoricoBotId] = useState(null);
 
-  // Função única de navegação - todas as telas recebem ela
+  // Função única de navegação — mesma interface de antes
   const navegar = useCallback((tela, contexto = null) => {
-    // Histórico é modal, não muda rota
     if (tela === 'historico') {
       setHistoricoBotId(contexto?.botId || contexto);
       return;
     }
-    setRota({ tela, contexto });
-    // Scroll pro topo ao trocar de tela
+    // Mapeia nome da tela para path de URL
+    const paths = {
+      today:      '/',
+      live:       '/live',
+      bots:       '/bots',
+      stats:      '/stats',
+      marketplace:'/marketplace',
+      tables:     '/tables',
+      extras:     '/extras',
+    };
+    if (tela === 'partida') {
+      navigate('/partida', { state: contexto });
+      return;
+    }
+    if (tela === 'criar_bot') {
+      navigate('/criar-bot', { state: contexto });
+      return;
+    }
+    navigate(paths[tela] ?? '/');
     window.scrollTo({ top: 0, behavior: 'instant' });
-  }, []);
+  }, [navigate]);
 
   // Atalho global: Alt+H volta pra home
   useEffect(() => {
     const handler = (e) => {
       if (e.altKey && e.key === 'h') {
         e.preventDefault();
-        navegar('today');
+        navigate('/');
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [navegar]);
-
-  // Renderiza a tela ativa
-  const telaAtual = (() => {
-    switch (rota.tela) {
-      case 'today':
-        return (
-          <Today
-            onNavegar={navegar}
-            onAbrirPartida={(p) => navegar('partida', p)}
-          />
-        );
-
-      case 'live':
-        return (
-          <Live
-            onNavegar={navegar}
-            onAbrirPartida={(p) => navegar('partida', p)}
-          />
-        );
-
-      case 'bots':
-        return (
-          <Bots
-            onNavegar={navegar}
-          />
-        );
-
-      case 'partida':
-        return (
-          <PartidaIndividual
-            partida={rota.contexto}
-            onNavegar={navegar}
-          />
-        );
-
-      case 'criar_bot':
-        return (
-          <CriarBot
-            botId={rota.contexto?.botId || null}
-            onSalvar={(bot) => {
-              // Volta pra lista de bots após salvar
-              navegar('bots');
-            }}
-            onCancelar={() => navegar('bots')}
-            onNavegar={navegar}
-          />
-        );
-
-      // Telas planejadas (placeholders)
-      case 'marketplace':
-        return (
-          <TelaPlaceholder
-            titulo="Mercado de Bots"
-            descricao="Loja para descobrir, comprar e vender estratégias de bots criadas pela comunidade."
-            onVoltar={() => navegar('today')}
-          />
-        );
-
-      case 'tables':
-        return (
-          <TelaPlaceholder
-            titulo="Tabelas"
-            descricao="Tabelas detalhadas de classificação, ROI por liga, ranking de jogadores e estatísticas históricas."
-            onVoltar={() => navegar('today')}
-          />
-        );
-
-      case 'stats':
-        return (
-          <Stats
-            onNavegar={navegar}
-          />
-        );
-
-      case 'extras':
-        return (
-          <TelaPlaceholder
-            titulo="Extras"
-            descricao="Configurações, integrações, calculadoras, calendário, perfil, suporte e ferramentas auxiliares."
-            onVoltar={() => navegar('today')}
-          />
-        );
-
-      default:
-        return (
-          <Today
-            onNavegar={navegar}
-            onAbrirPartida={(p) => navegar('partida', p)}
-          />
-        );
-    }
-  })();
+  }, [navigate]);
 
   return (
     <>
-      {telaAtual}
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <Today
+              onNavegar={navegar}
+              onAbrirPartida={(p) => navegar('partida', p)}
+            />
+          }
+        />
+
+        <Route
+          path="/live"
+          element={
+            <Live
+              onNavegar={navegar}
+              onAbrirPartida={(p) => navegar('partida', p)}
+            />
+          }
+        />
+
+        <Route
+          path="/bots"
+          element={<Bots onNavegar={navegar} />}
+        />
+
+        <Route
+          path="/partida"
+          element={
+            <PartidaIndividual
+              partida={location.state}
+              onNavegar={navegar}
+            />
+          }
+        />
+
+        <Route
+          path="/criar-bot"
+          element={
+            <CriarBot
+              botId={location.state?.botId || null}
+              onSalvar={() => navigate('/bots')}
+              onCancelar={() => navigate('/bots')}
+              onNavegar={navegar}
+            />
+          }
+        />
+
+        <Route
+          path="/stats"
+          element={<Stats onNavegar={navegar} />}
+        />
+
+        <Route
+          path="/marketplace"
+          element={
+            <TelaPlaceholder
+              titulo="Mercado de Bots"
+              descricao="Loja para descobrir, comprar e vender estratégias de bots criadas pela comunidade."
+            />
+          }
+        />
+
+        <Route
+          path="/tables"
+          element={
+            <TelaPlaceholder
+              titulo="Tabelas"
+              descricao="Tabelas detalhadas de classificação, ROI por liga, ranking de jogadores e estatísticas históricas."
+            />
+          }
+        />
+
+        <Route
+          path="/extras"
+          element={
+            <TelaPlaceholder
+              titulo="Extras"
+              descricao="Configurações, integrações, calculadoras, calendário, perfil, suporte e ferramentas auxiliares."
+            />
+          }
+        />
+
+        {/* Fallback — qualquer rota desconhecida vai pra home */}
+        <Route path="*" element={<Today onNavegar={navegar} onAbrirPartida={(p) => navegar('partida', p)} />} />
+      </Routes>
 
       {/* Modal de histórico - flutua sobre qualquer tela */}
       {historicoBotId && (
@@ -196,5 +212,13 @@ export default function App() {
         />
       )}
     </>
+  );
+}
+
+export default function App() {
+  return (
+    <HashRouter>
+      <AppRoutes />
+    </HashRouter>
   );
 }
