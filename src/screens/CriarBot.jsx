@@ -12,14 +12,10 @@ import MercadoFiltros from './MercadoFiltros';
 // CONSTANTES (opcoes dos dropdowns)
 // ============================================================
 const ESPORTES = [
-  { value: 'fifa',        label: 'e-Soccer (Fifa)' },
-  { value: 'nba2k',       label: 'e-Basket (NBA2K)' },
-  { value: 'ehockey',     label: 'e-Hockey' },
-  { value: 'enfl',        label: 'e-NFL (Madden)' },
-  { value: 'tabletennis', label: 'Tênis de Mesa' },
-  { value: 'tennis',      label: 'Tênis' },
-  { value: 'cs2',         label: 'Counter-Strike 2' },
-  { value: 'futebol',     label: 'Futebol' },
+  { value: 'fifa',    label: 'e-Soccer (Fifa)' },
+  { value: 'nba2k',  label: 'e-Basket (NBA2K)' },
+  { value: 'ehockey', label: 'e-Hockey' },
+  { value: 'etennis', label: 'e-Tênis' },
 ];
 
 const CASAS_APOSTAS = [
@@ -32,14 +28,10 @@ const CASAS_APOSTAS = [
 ];
 
 const TORNEIOS_POR_ESPORTE = {
-  fifa: ['Battle', 'GT League', 'ECF (Volta)', 'Adriatic League', 'H2H GG League', 'Battle (2x6)', 'Liga Pro (Rep. Tcheca)', 'Live Arena', 'Setka Cup', 'Cup', 'FIFA Live Arena', 'FIFA TM Cup', 'FIFA Battle', 'FIFA Cup'],
-  nba2k: ['H2H GG League', 'Adriatic NextGen', 'Battle (NBA2K)', 'Live NBA'],
+  fifa:    ['Battle', 'GT League', 'ECF (Volta)', 'Adriatic League', 'H2H GG League', 'Battle (2x6)', 'Liga Pro (Rep. Tcheca)', 'Live Arena', 'Setka Cup', 'Cup', 'FIFA Live Arena', 'FIFA TM Cup', 'FIFA Battle', 'FIFA Cup'],
+  nba2k:   ['H2H GG League', 'Adriatic NextGen', 'Battle (NBA2K)', 'Live NBA'],
   ehockey: ['NHL eSports', 'IIHF eSports', 'KHL eSports'],
-  enfl: ['Madden NFL eLeague', 'NFL Battle', 'eMadden Cup'],
-  tabletennis: ['Setka Cup (Ucrânia)', 'TT Cup', 'Liga Pro'],
-  tennis: ['ATP Roma', 'WTA Madrid', 'Roland Garros'],
-  cs2: ['BLAST Premier', 'IEM', 'ESL Pro League'],
-  futebol: ['Premier League', 'La Liga', 'Serie A', 'Bundesliga', 'Ligue 1', 'Brasileirão', 'Champions League', 'Copa do Brasil'],
+  etennis: ['ATP eSports', 'WTA eSports', 'Grand Slam eSports', 'Masters eSports'],
 };
 
 // MERCADOS POR ESPORTE - cada esporte tem mercados diferentes
@@ -91,15 +83,7 @@ const MERCADOS_POR_ESPORTE = {
     { value: 'ah_gm',        label: 'HC do Game' },
     { value: 'ah_sets_ft',   label: 'HC de Games (Sets)' },
   ],
-  tabletennis: [
-    { value: 'ml_ft',        label: 'Vencedor da Partida' },
-    { value: 'ml_gm',        label: 'Vencedor do Game' },
-    { value: 'over_under_ft', label: 'Total da Partida' },
-    { value: 'over_under_gm', label: 'Total do Game' },
-    { value: 'ah_ft',        label: 'HC da Partida (Pontos)' },
-    { value: 'ah_gm',        label: 'HC do Game' },
-    { value: 'ah_sets_ft',   label: 'HC de Games (Sets)' },
-  ],
+
   // Futebol (real) — mesmos mercados do e-Soccer H2H
   futebol: [
     { value: 'ml_ft',           label: 'Resultado Final' },
@@ -113,22 +97,17 @@ const MERCADOS_POR_ESPORTE = {
     { value: 'double_ml_ft',    label: 'Dupla Hipótese' },
     { value: 'odd_even_ft',     label: 'Par/Ímpar' },
   ],
-  // e-Hockey, e-NFL, CS2 — mantidos com keys aproximadas (TipManager não documenta explicitamente)
   ehockey: [
     { value: 'ml_ft',         label: 'Resultado Final' },
     { value: 'ah_ft',         label: 'HC Asiático' },
     { value: 'over_under_ft', label: 'Over/Under (Gols)' },
     { value: 'btts_ft',       label: 'Ambos Marcam' },
   ],
-  enfl: [
-    { value: 'ml_ft',         label: 'Resultado Final' },
-    { value: 'ah_ft',         label: 'HC Asiático' },
-    { value: 'over_under_ft', label: 'Total de Pontos' },
-  ],
-  cs2: [
-    { value: 'ml_ft',  label: 'Vencedor da Partida' },
-    { value: 'ah_ft',  label: 'HC de Mapas' },
-    { value: 'ou_ft',  label: 'Total de Mapas' },
+  etennis: [
+    { value: 'ml_ft',          label: 'Vencedor da Partida' },
+    { value: 'ah_ft',          label: 'HC Asiático (Games)' },
+    { value: 'over_under_ft',  label: 'Total de Games' },
+    { value: 'ml_ht',          label: 'Vencedor do Set' },
   ],
 };
 // CAPACIDADES POR ESPORTE - controla o que mostrar/esconder
@@ -222,30 +201,6 @@ const CAPACIDADES = {
     cenariosFull: true,
     temQuartos: true, // checkboxes Q1/Q2/Q3/Q4
   },
-  tennis: {
-    label: 'Tênis',
-    filtrosLive: {
-      placares: { tipo: 'text', label: 'Placar (Games)' },
-    },
-    cenariosFull: false, // so favorito/azarao + alvo/oponente
-    temQuartos: false,
-  },
-  tabletennis: {
-    label: 'Tênis de Mesa',
-    filtrosLive: {
-      placares: { tipo: 'text', label: 'Placar (Pontos)' },
-    },
-    cenariosFull: false,
-    temQuartos: false,
-  },
-  cs2: {
-    label: 'Counter-Strike 2',
-    filtrosLive: {
-      placares: { tipo: 'text', label: 'Placar (Mapas)' },
-    },
-    cenariosFull: false,
-    temQuartos: false,
-  },
   ehockey: {
     label: 'e-Hockey',
     filtrosLive: {
@@ -255,30 +210,12 @@ const CAPACIDADES = {
     cenariosFull: true,
     temQuartos: false,
   },
-  enfl: {
-    label: 'e-NFL',
+  etennis: {
+    label: 'e-Tênis',
     filtrosLive: {
-      tempo: { min: 0, max: 60, sufixo: '60+', label: 'Tempo (min)' },
-      placares: { tipo: 'text', label: 'Placares' },
+      placares: { tipo: 'text', label: 'Placar (Games)' },
     },
-    cenariosFull: true,
-    temQuartos: true,
-  },
-  futebol: {
-    label: 'Futebol',
-    // Mesmos filtros do Fifa pq sao gols/cantos/cartoes/etc
-    filtrosLive: {
-      tempo: { min: 0, max: 90, sufixo: '90+', label: 'Tempo' },
-      ataques: { min: 0, max: 50, sufixo: '50+', label: 'Ataques' },
-      chutes: { min: 0, max: 50, sufixo: '50+', label: 'Chutes' },
-      cantos: { min: 0, max: 25, sufixo: '25+', label: 'Cantos' },
-      cartVermelhos: { min: 0, max: 5, sufixo: '5+', label: 'Cart. Vermelhos' },
-      placares: { tipo: 'text', label: 'Placares' },
-      ataquesPerigosos: { min: 0, max: 50, sufixo: '50+', label: 'Ataques Perigosos' },
-      chutesGol: { min: 0, max: 50, sufixo: '50+', label: 'Chutes no gol' },
-      cartAmarelos: { min: 0, max: 15, sufixo: '15+', label: 'Cart. Amarelos' },
-    },
-    cenariosFull: true,
+    cenariosFull: false,
     temQuartos: false,
   },
 };
@@ -2137,6 +2074,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
 
             <MercadoFiltros
               mercado={mercado}
+              esporte={esporte}
               inner={inner}
               onInnerChange={setInner}
               linha={linha}
