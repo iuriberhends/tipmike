@@ -21,14 +21,23 @@ import { Info } from 'lucide-react';
 // RANGES POR TIPO DE MERCADO
 // ══════════════════════════════════════════════════════════════════
 
-const R_OU_GOLS         = { min: 0.5,   max: 16.5,  step: 1.0  };
+// Gols normais: 0.5 a 15.5, step 0.5
+const R_OU_GOLS         = { min: 0.5,   max: 15.5,  step: 0.5  };
+// Gols normais HT: 0.5 a 10.0, step 0.5
+const R_OU_GOLS_HT      = { min: 0.5,   max: 10.0,  step: 0.5  };
+// Gols asiáticos: 0.5 a 15.5, step 0.25
+const R_ASIATICO_GOLS   = { min: 0.5,   max: 15.5,  step: 0.25 };
+// Gols asiáticos HT: 0.5 a 10.0, step 0.25
+const R_ASIATICO_GOLS_HT = { min: 0.5,  max: 10.0,  step: 0.25 };
+// Pontos basquete
 const R_OU_PONTOS_FT    = { min: 79.5,  max: 149.5, step: 5.0  };
 const R_OU_PONTOS_HT    = { min: 34.5,  max: 74.5,  step: 5.0  };
+// HC gols
 const R_AH_GOLS         = { min: -3.5,  max: 3.5,   step: 0.5  };
 const R_EH_GOLS         = { min: -3.5,  max: 3.5,   step: 0.5  };
 const R_AH_PONTOS       = { min: -14.5, max: 14.5,  step: 2.0  };
-const R_ASIATICO_GOLS   = { min: 0.5,   max: 10.0,  step: 0.5  };
-const R_JOGADOR_GOLS    = { min: 0.5,   max: 6.5,   step: 1.0  };
+// Jogador
+const R_JOGADOR_GOLS    = { min: 0.5,   max: 6.5,   step: 0.5  };
 const R_JOGADOR_PONTOS  = { min: 9.5,   max: 39.5,  step: 5.0  };
 
 const ESPORTES_BASKET = ['nba2k'];
@@ -45,7 +54,7 @@ export function getConfigMercado(mercadoValue, esporte = 'fifa') {
     ml_ft:                       { inner: null,                     range: null,                              descricao: b ? 'Vencedor da partida (sem empate). Use Extras para Favorito/Azarão.' : 'Resultado final. Use Extras para Casa/Visitante/Favorito.' },
     ml_ht:                       { inner: null,                     range: null,                              descricao: b ? 'Vencedor do primeiro tempo (Q1+Q2).' : 'Resultado no intervalo (1ºT).' },
     over_under_ft:               { inner: ['Over','Under'],         range: b ? R_OU_PONTOS_FT : R_OU_GOLS,   descricao: b ? 'Total de pontos na partida (4 quartos).' : 'Total de gols na partida.' },
-    over_under_ht:               { inner: ['Over','Under'],         range: b ? R_OU_PONTOS_HT : R_OU_GOLS,   descricao: b ? 'Total de pontos no 1ºT (Q1+Q2).' : 'Total de gols no primeiro tempo.' },
+    over_under_ht:               { inner: ['Over','Under'],         range: b ? R_OU_PONTOS_HT : R_OU_GOLS_HT,   descricao: b ? 'Total de pontos no 1ºT (Q1+Q2).' : 'Total de gols no primeiro tempo.' },
     over_under_ft_ht_0x0:        { inner: ['Over','Under'],         range: R_OU_GOLS,                         descricao: 'Total de gols na partida, somente quando o intervalo termina 0x0.' },
     over_under_ft_player:        { inner: ['Over','Under'],         range: b ? R_JOGADOR_PONTOS : R_JOGADOR_GOLS, descricao: b ? 'Pontos marcados pelo jogador alvo.' : 'Gols marcados pelo jogador alvo.' },
     over_under_ht_player:        { inner: ['Over','Under'],         range: b ? R_JOGADOR_PONTOS : R_JOGADOR_GOLS, descricao: b ? 'Pontos do jogador alvo no 1ºT.' : 'Gols do jogador alvo no primeiro tempo.' },
@@ -62,7 +71,7 @@ export function getConfigMercado(mercadoValue, esporte = 'fifa') {
     odd_even_ft:                 { inner: ['Par','Ímpar'],          range: null,                              descricao: 'Total de gols da partida é par ou ímpar.' },
     odd_even_ht:                 { inner: ['Par','Ímpar'],          range: null,                              descricao: 'Total de gols do 1ºT é par ou ímpar.' },
     asian_over_under_ft:         { inner: ['Over','Under'],         range: R_ASIATICO_GOLS,                   descricao: 'Over/Under asiático. Linhas inteiras = push/devolução parcial.' },
-    asian_over_under_ht:         { inner: ['Over','Under'],         range: R_ASIATICO_GOLS,                   descricao: 'Over/Under asiático no primeiro tempo.' },
+    asian_over_under_ht:         { inner: ['Over','Under'],         range: R_ASIATICO_GOLS_HT,                   descricao: 'Over/Under asiático no primeiro tempo.' },
     double_ml_ft:                { inner: ['Home/Draw','Away/Draw','Home/Away'], range: null,                 descricao: 'Duas das três possibilidades de resultado final.' },
     next_goal:                   { inner: ['Home','Away','Sem Gol'], range: null,                             descricao: 'Quem marca o próximo gol da partida.' },
   };
