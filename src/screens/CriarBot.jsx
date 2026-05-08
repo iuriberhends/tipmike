@@ -6,6 +6,7 @@ import {
   Code, RotateCcw, HelpCircle
 } from 'lucide-react';
 import MikeHeader from '../shared/MikeHeader.jsx';
+import MercadoFiltros from './MercadoFiltros';
 
 // ============================================================
 // CONSTANTES (opcoes dos dropdowns)
@@ -1317,6 +1318,8 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
 
   // SECAO 4 - MERCADOS
   const [mercado, setMercado] = useState('ml_ft');
+  const [inner, setInner] = useState('Over');
+  const [linha, setLinha] = useState(null);
 
   const [limitarOddsAtivo, setLimitarOddsAtivo] = useState(false);
   const [limitarOdds, setLimitarOdds] = useState([1, 10]);
@@ -2131,6 +2134,14 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
             <LinhaFiltro label="Mercado" comToggle={false}>
               <MikeSelect value={mercado} onChange={setMercado} options={mercadosDisp} />
             </LinhaFiltro>
+
+            <MercadoFiltros
+              mercado={mercado}
+              inner={inner}
+              onInnerChange={setInner}
+              linha={linha}
+              onLinhaChange={setLinha}
+            />
 
             <LinhaFiltro label="Limitar Odds" info="Faixa de odds aceitável - filtra apostas fora deste intervalo" ativo={limitarOddsAtivo} onToggle={setLimitarOddsAtivo}>
               <RangeSlider min={1} max={10} step={0.01} value={limitarOdds} onChange={setLimitarOdds} disabled={!limitarOddsAtivo} />
