@@ -1786,7 +1786,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
                 cenarioPartidaAtivo, casaFavoritoAtivo, existeFavoritoAtivo, alvoFavoritoAtivo, diferencaPlacarAtivo,
                 tempoAtivo, ataquesAtivo, chutesAtivo, cantosAtivo, cartVermelhosAtivo,
                 placaresAtivo, ataquesPerigososAtivo, chutesGolAtivo, cartAmarelosAtivo,
-                torneioAtivo, filtrosComplementaresAtivo, mediaAtivo, gapMediaAtivo, gapLinhaAtivo, tendenciaAtivo, mediaAtivo, gapAtivo,
+                torneioAtivo, filtrosComplementaresAtivo, mediaAtivo, gapMediaAtivo, gapLinhaAtivo, tendenciaAtivo,
               ].filter(Boolean).length;
               const totalFilters = filtrosHistAdicionados.length;
               return (
