@@ -1256,7 +1256,8 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
   // SECAO 4 - MERCADOS
   const [mercado, setMercado] = useState('ml_ft');
   const [inner, setInner] = useState('Over');
-  const [linha, setLinha] = useState(null);
+  const [linhaMin, setLinhaMin] = useState(null);
+  const [linhaMax, setLinhaMax] = useState(null);
 
   const [limitarOddsAtivo, setLimitarOddsAtivo] = useState(false);
   const [limitarOdds, setLimitarOdds] = useState([1, 10]);
@@ -1386,7 +1387,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
   // Coleta todo o form em um objeto
   const formState = {
     nome, descricao, esporte, casa, torneioAtivo, torneios,
-    mercado, limitarOddsAtivo, limitarOdds, proporcaoAtivo, proporcao,
+    mercado, inner, linhaMin, linhaMax, limitarOddsAtivo, limitarOdds, proporcaoAtivo, proporcao,
     tipoProporcaoAtivo, tipoProporcao, limitePlacarAtivo, limitePlacar,
     extrasAtivo, extras, filtroMediasAtivo, filtroMedias,
     filtroMediasContraAtivo, filtroMediasContra,
@@ -2077,8 +2078,9 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
               esporte={esporte}
               inner={inner}
               onInnerChange={setInner}
-              linha={linha}
-              onLinhaChange={setLinha}
+              linhaMin={linhaMin}
+              linhaMax={linhaMax}
+              onLinhaChange={(min, max) => { setLinhaMin(min); setLinhaMax(max); }}
             />
 
             <LinhaFiltro label="Limitar Odds" info="Faixa de odds aceitável - filtra apostas fora deste intervalo" ativo={limitarOddsAtivo} onToggle={setLimitarOddsAtivo}>
