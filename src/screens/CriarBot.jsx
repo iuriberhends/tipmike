@@ -1166,16 +1166,22 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
 
   // FILTROS COMPLEMENTARES
   const [filtrosComplementaresAtivo, setFiltrosComplementaresAtivo] = useState(false);
-  const [compMercado, setCompMercado] = useState('ml_ht');
-  const [compExtras, setCompExtras] = useState('home');
-  const [compVersao, setCompVersao] = useState('all');
-  const [compJanela, setCompJanela] = useState('all');
-  const [compTipo, setCompTipo] = useState('all');
-  const [compBase, setCompBase] = useState('match');
-  const [compMinPartidas, setCompMinPartidas] = useState(1);
-  const [compProb, setCompProb] = useState([0, 100]);
-  const [filtrosCompAdicionados, setFiltrosCompAdicionados] = useState([]);
-  const [filtroCompHover, setFiltroCompHover] = useState(null);
+  // Média H2H
+  const [mediaAtivo, setMediaAtivo] = useState(false);
+  const [mediaJanela, setMediaJanela] = useState(10);
+  const [mediaMin, setMediaMin] = useState(null);
+  const [mediaMax, setMediaMax] = useState(null);
+  // Gap de Médias (média H2H − linha ao vivo)
+  const [gapMediaAtivo, setGapMediaAtivo] = useState(false);
+  const [gapMediaMin, setGapMediaMin] = useState(null);
+  const [gapMediaMax, setGapMediaMax] = useState(null);
+  // Gap de Linhas (linha inicial − linha atual)
+  const [gapLinhaAtivo, setGapLinhaAtivo] = useState(false);
+  const [gapLinhaMin, setGapLinhaMin] = useState(null);
+  const [gapLinhaMax, setGapLinhaMax] = useState(null);
+  // Tendência (média últimos 5 − média últimos 20)
+  const [tendenciaAtivo, setTendenciaAtivo] = useState(false);
+  const [tendenciaMin, setTendenciaMin] = useState(null);
 
   // CENARIOS
   const [cenarioPartidaAtivo, setCenarioPartidaAtivo] = useState(false);
@@ -1257,9 +1263,11 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     oponMesmaGradeAtivo, oponMesmaGradeWR, oponUlt8Ativo, oponUlt8WR,
     histVersao, histJanela, histTipo, histBase, histMinPartidas, histProb,
     filtrosHistAdicionados,
-    filtrosComplementaresAtivo, compMercado, compExtras, compVersao,
-    compJanela, compTipo, compBase, compMinPartidas, compProb,
-    filtrosCompAdicionados,
+    filtrosComplementaresAtivo,
+    mediaAtivo, mediaJanela, mediaMin, mediaMax,
+    gapMediaAtivo, gapMediaMin, gapMediaMax,
+    gapLinhaAtivo, gapLinhaMin, gapLinhaMax,
+    tendenciaAtivo, tendenciaMin,
     cenarioPartidaAtivo, cenarioPartida,
     casaFavoritoAtivo, casaFavorito, existeFavoritoAtivo, existeFavorito,
     alvoFavoritoAtivo, alvoFavorito, diferencaPlacarAtivo, diferencaPlacar,
@@ -1312,15 +1320,18 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     if (s.histProb !== undefined) setHistProb(s.histProb);
     if (s.filtrosHistAdicionados !== undefined) setFiltrosHistAdicionados(s.filtrosHistAdicionados);
     if (s.filtrosComplementaresAtivo !== undefined) setFiltrosComplementaresAtivo(s.filtrosComplementaresAtivo);
-    if (s.compMercado !== undefined) setCompMercado(s.compMercado);
-    if (s.compExtras !== undefined) setCompExtras(s.compExtras);
-    if (s.compVersao !== undefined) setCompVersao(s.compVersao);
-    if (s.compJanela !== undefined) setCompJanela(s.compJanela);
-    if (s.compTipo !== undefined) setCompTipo(s.compTipo);
-    if (s.compBase !== undefined) setCompBase(s.compBase);
-    if (s.compMinPartidas !== undefined) setCompMinPartidas(s.compMinPartidas);
-    if (s.compProb !== undefined) setCompProb(s.compProb);
-    if (s.filtrosCompAdicionados !== undefined) setFiltrosCompAdicionados(s.filtrosCompAdicionados);
+    if (s.mediaAtivo !== undefined) setMediaAtivo(s.mediaAtivo);
+    if (s.mediaJanela !== undefined) setMediaJanela(s.mediaJanela);
+    if (s.mediaMin !== undefined) setMediaMin(s.mediaMin);
+    if (s.mediaMax !== undefined) setMediaMax(s.mediaMax);
+    if (s.gapMediaAtivo !== undefined) setGapMediaAtivo(s.gapMediaAtivo);
+    if (s.gapMediaMin !== undefined) setGapMediaMin(s.gapMediaMin);
+    if (s.gapMediaMax !== undefined) setGapMediaMax(s.gapMediaMax);
+    if (s.gapLinhaAtivo !== undefined) setGapLinhaAtivo(s.gapLinhaAtivo);
+    if (s.gapLinhaMin !== undefined) setGapLinhaMin(s.gapLinhaMin);
+    if (s.gapLinhaMax !== undefined) setGapLinhaMax(s.gapLinhaMax);
+    if (s.tendenciaAtivo !== undefined) setTendenciaAtivo(s.tendenciaAtivo);
+    if (s.tendenciaMin !== undefined) setTendenciaMin(s.tendenciaMin);
     if (s.cenarioPartidaAtivo !== undefined) setCenarioPartidaAtivo(s.cenarioPartidaAtivo);
     if (s.cenarioPartida !== undefined) setCenarioPartida(s.cenarioPartida);
     if (s.casaFavoritoAtivo !== undefined) setCasaFavoritoAtivo(s.casaFavoritoAtivo);
@@ -1379,10 +1390,10 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     setHistBase('match'); setHistMinPartidas(1); setHistProb([0, 100]);
     setFiltrosHistAdicionados([]);
     setFiltrosComplementaresAtivo(false);
-    setCompMercado('ml_ft'); setCompExtras('home');
-    setCompVersao('all'); setCompJanela('all'); setCompTipo('all');
-    setCompBase('match'); setCompMinPartidas(1); setCompProb([0, 100]);
-    setFiltrosCompAdicionados([]);
+    setMediaAtivo(false); setMediaJanela(10); setMediaMin(null); setMediaMax(null);
+    setGapMediaAtivo(false); setGapMediaMin(null); setGapMediaMax(null);
+    setGapLinhaAtivo(false); setGapLinhaMin(null); setGapLinhaMax(null);
+    setTendenciaAtivo(false); setTendenciaMin(null);
     setCenarioPartidaAtivo(false); setCenarioPartida('');
     setCasaFavoritoAtivo(false); setCasaFavorito('sim');
     setExisteFavoritoAtivo(false); setExisteFavorito('sim');
@@ -1550,10 +1561,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
         setTorneios(validos);
       }
     }
-    // Mercado complementar: mesmo do principal
-    if (mercadosDisp.length > 0 && !mercadosDisp.find((m) => m.value === compMercado)) {
-      setCompMercado(mercadosDisp[0].value);
-    }
+
   }, [esporte]); // eslint-disable-line
 
   const radioWR = [
@@ -1778,9 +1786,9 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
                 cenarioPartidaAtivo, casaFavoritoAtivo, existeFavoritoAtivo, alvoFavoritoAtivo, diferencaPlacarAtivo,
                 tempoAtivo, ataquesAtivo, chutesAtivo, cantosAtivo, cartVermelhosAtivo,
                 placaresAtivo, ataquesPerigososAtivo, chutesGolAtivo, cartAmarelosAtivo,
-                torneioAtivo, filtrosComplementaresAtivo,
+                torneioAtivo, filtrosComplementaresAtivo, mediaAtivo, gapMediaAtivo, gapLinhaAtivo, tendenciaAtivo, mediaAtivo, gapAtivo,
               ].filter(Boolean).length;
-              const totalFilters = filtrosHistAdicionados.length + filtrosCompAdicionados.length;
+              const totalFilters = filtrosHistAdicionados.length;
               return (
                 <>
                   <div className="flex items-center gap-1 px-2 py-1 rounded font-mono font-bold" style={{
@@ -1790,15 +1798,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
                   }}>
                     {filtrosAtivos} {filtrosAtivos === 1 ? 'filtro' : 'filtros'}
                   </div>
-                  {totalFilters > 0 && (
-                    <div className="flex items-center gap-1 px-2 py-1 rounded font-mono font-bold" style={{
-                      backgroundColor: 'rgba(8, 145, 178, 0.15)',
-                      color: '#0891b2',
-                      border: '0.5px solid rgba(8, 145, 178, 0.4)',
-                    }}>
-                      {totalFilters} histórico{totalFilters > 1 ? 's' : ''}
-                    </div>
-                  )}
+
                 </>
               );
             })()}
@@ -1980,61 +1980,127 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
           />
         </SecaoForm>
 
-        {/* FILTROS COMPLEMENTARES */}
-        <SecaoForm titulo="Filtros de histórico complementares" descricao="Você pode criar até dois filtros de histórico de mercados diferentes do escolhido. Exemplo: Seu bot irá enviar uma tip no mercado Ambos Marcam (selecionado acima), mas você quer que o histórico do Over 0,5 HT desse confronto seja maior que 80%.">
+        {/* FILTROS COMPLEMENTARES — Média e Gap H2H */}
+        <SecaoForm titulo="Filtros complementares" descricao="Média e Gap calculados sobre o histórico H2H dos dois jogadores. Gap = média histórica − linha atual da casa.">
           <div className="rounded-lg p-4" style={{
             backgroundColor: 'rgba(60, 85, 130, 0.08)',
             border: '0.5px solid rgba(60, 85, 130, 0.4)',
           }}>
             {/* Header com toggle */}
             <div className="flex items-center gap-3">
-              <span className="text-xs font-semibold text-[--mike-fg-soft] flex-1">Filtros de histórico complementares</span>
+              <span className="text-xs font-semibold text-[--mike-fg-soft] flex-1">Filtros complementares</span>
               <Switch ativo={filtrosComplementaresAtivo} onChange={setFiltrosComplementaresAtivo} />
             </div>
 
-            {/* Conteudo expandido com animacao Collapse */}
             <Collapse aberto={filtrosComplementaresAtivo}>
-              <div className="pt-4 mt-4" style={{ borderTop: '0.5px solid rgba(60, 85, 130, 0.3)' }}>
-                <BlocoFiltrosHistorico
-                  semBackground
-                  campos={[
-                    { tipo: 'select', label: 'Mercado', value: compMercado, onChange: setCompMercado, options: mercadosDisp },
-                    { tipo: 'select', label: 'Extras', value: compExtras, onChange: setCompExtras, options: EXTRAS_OPCOES },
-                    { tipo: 'select', label: 'Versão do game', value: compVersao, onChange: setCompVersao, options: VERSOES_GAME },
-                    { tipo: 'select', label: 'Janela de partidas', value: compJanela, onChange: setCompJanela, options: JANELAS_PARTIDAS },
-                    { tipo: 'select', label: 'Tipo de histórico', value: compTipo, onChange: setCompTipo, options: TIPOS_HISTORICO },
-                    { tipo: 'select', label: 'Base de dados', value: compBase, onChange: setCompBase, options: BASES_DADOS },
-                    { tipo: 'slider', label: 'Mínimo de partidas', value: compMinPartidas, onChange: setCompMinPartidas, min: 1, max: 50, sufixoMax: '50+' },
-                    { tipo: 'range', label: 'Probabilidade', value: compProb, onChange: setCompProb, min: 0, max: 100 },
-                  ]}
-                  filtrosAdicionados={filtrosCompAdicionados}
-                  limiteFiltros={2}
-                  onAddBlocked={() => adicionarToast('Máximo de 2 filtros complementares', 'warn')}
-                  onAdicionar={() => {
-                    setFiltrosCompAdicionados([...filtrosCompAdicionados, {
-                      mercado: compMercado, extras: compExtras, versao: compVersao,
-                      janela: compJanela, tipo: compTipo, base: compBase,
-                      minPartidas: compMinPartidas, prob: [...compProb],
-                    }]);
-                    adicionarToast(`Filter complementar ${filtrosCompAdicionados.length + 1} adicionado`, 'success');
-                  }}
-                  onRemover={(idx) => {
-                    setFiltrosCompAdicionados(filtrosCompAdicionados.filter((_, i) => i !== idx));
-                    adicionarToast(`Filter complementar ${idx + 1} removido`, 'warn');
-                  }}
-                  hover={filtroCompHover}
-                  onHoverChange={setFiltroCompHover}
-                  detalhesParaTooltip={(f) => [
-                    { label: 'Mercado', valor: mercadosDisp.find((v) => v.value === f.mercado)?.label },
-                    { label: 'Extras', valor: EXTRAS_OPCOES.find((v) => v.value === f.extras)?.label },
-                    { label: 'Versão do game', valor: VERSOES_GAME.find((v) => v.value === f.versao)?.label },
-                    { label: 'Janela', valor: JANELAS_PARTIDAS.find((v) => v.value === f.janela)?.label },
-                    { label: 'Tipo histórico', valor: TIPOS_HISTORICO.find((v) => v.value === f.tipo)?.label },
-                    { label: 'Base dados', valor: BASES_DADOS.find((v) => v.value === f.base)?.label },
-                    { label: 'Mín. partidas', valor: f.minPartidas },
-                    { label: 'Probabilidade', valor: `${f.prob[0]}% - ${f.prob[1]}%` },
-                  ]}
-                />
+              <div className="pt-4 mt-4 space-y-4" style={{ borderTop: '0.5px solid rgba(60, 85, 130, 0.3)' }}>
+
+                {/* MÉDIA H2H */}
+                <div className="rounded-lg p-3" style={{ backgroundColor: 'rgba(60,85,130,0.08)', border: '0.5px solid rgba(60,85,130,0.3)' }}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Switch ativo={mediaAtivo} onChange={setMediaAtivo} />
+                    <PillLabel texto="Média H2H" ativo={mediaAtivo} info="Média de pontos totais (jogador A + B) dos últimos N jogos H2H. Ex: últimos 10 jogos com média 59.2." />
+                  </div>
+                  <div className={`space-y-3 mike-transition-all ${!mediaAtivo ? 'opacity-40 pointer-events-none' : ''}`}>
+                    {/* Janela */}
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] font-bold px-2 py-1 rounded flex-shrink-0 w-28 text-center" style={{ backgroundColor: '#10b981', color: '#fff' }}>JOGOS H2H</span>
+                      <div className="flex-1">
+                        <SingleSlider min={3} max={50} step={1} value={mediaJanela} onChange={setMediaJanela} sufixoMin={3} sufixoMax="50" />
+                      </div>
+                      <span className="text-[11px] font-mono font-bold w-12 text-center" style={{ color: '#10b981' }}>últ. {mediaJanela}</span>
+                    </div>
+                    {/* Faixa de média */}
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] font-bold px-2 py-1 rounded flex-shrink-0 w-28 text-center" style={{ backgroundColor: '#10b981', color: '#fff' }}>FAIXA</span>
+                      <div className="flex items-center gap-2 flex-1">
+                        <input
+                          type="number"
+                          placeholder="Mín"
+                          value={mediaMin ?? ''}
+                          onChange={(e) => setMediaMin(e.target.value === '' ? null : parseFloat(e.target.value))}
+                          className="mike-border-thin w-20 px-2 py-1.5 rounded text-xs text-center bg-transparent text-[--mike-fg] outline-none mike-no-spin"
+                        />
+                        <span className="text-[10px] text-[--mike-fg-muted]">até</span>
+                        <input
+                          type="number"
+                          placeholder="Máx"
+                          value={mediaMax ?? ''}
+                          onChange={(e) => setMediaMax(e.target.value === '' ? null : parseFloat(e.target.value))}
+                          className="mike-border-thin w-20 px-2 py-1.5 rounded text-xs text-center bg-transparent text-[--mike-fg] outline-none mike-no-spin"
+                        />
+                        <span className="text-[10px] text-[--mike-fg-muted]">(deixe vazio para sem limite)</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* GAP DE MÉDIAS */}
+                <div className="rounded-lg p-3" style={{ backgroundColor: 'rgba(60,85,130,0.08)', border: '0.5px solid rgba(60,85,130,0.3)' }}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Switch ativo={gapMediaAtivo} onChange={setGapMediaAtivo} />
+                    <PillLabel texto="Gap de Médias" ativo={gapMediaAtivo} info="Compara a linha ao vivo com o histórico H2H. Ex: média dos últimos 10 jogos = 63.2, linha atual = 55.5 → gap = +7.7. A casa está subestimando o total esperado." />
+                  </div>
+                  <div className={`space-y-2 mike-transition-all ${!gapMediaAtivo ? 'opacity-40 pointer-events-none' : ''}`}>
+                    <p className="text-[10px]" style={{ color: '#6b7691' }}>Gap = média H2H − linha ao vivo. Positivo = linha abaixo da média histórica.</p>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] font-bold px-2 py-1 rounded flex-shrink-0 w-24 text-center" style={{ backgroundColor: '#10b981', color: '#fff' }}>MÍN</span>
+                      <input type="number" placeholder="Ex: 7" value={gapMediaMin ?? ''} onChange={(e) => setGapMediaMin(e.target.value === '' ? null : parseFloat(e.target.value))} className="mike-border-thin w-24 px-2 py-1.5 rounded text-xs text-center bg-transparent text-[--mike-fg] outline-none mike-no-spin" />
+                      <span className="text-[10px] text-[--mike-fg-muted]">gap ≥ N (linha pelo menos N abaixo da média)</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] font-bold px-2 py-1 rounded flex-shrink-0 w-24 text-center" style={{ backgroundColor: '#10b981', color: '#fff' }}>MÁX</span>
+                      <input type="number" placeholder="Ex: 14" value={gapMediaMax ?? ''} onChange={(e) => setGapMediaMax(e.target.value === '' ? null : parseFloat(e.target.value))} className="mike-border-thin w-24 px-2 py-1.5 rounded text-xs text-center bg-transparent text-[--mike-fg] outline-none mike-no-spin" />
+                      <span className="text-[10px] text-[--mike-fg-muted]">gap ≤ N (acima disso pode ser jogo atípico)</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* GAP DE LINHAS */}
+                <div className="rounded-lg p-3" style={{ backgroundColor: 'rgba(60,85,130,0.08)', border: '0.5px solid rgba(60,85,130,0.3)' }}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Switch ativo={gapLinhaAtivo} onChange={setGapLinhaAtivo} />
+                    <PillLabel texto="Gap de Linhas" ativo={gapLinhaAtivo} info="Compara a linha atual com a linha de abertura do jogo. Ex: abriu em 58.5, agora está em 55.5 → gap = +3.0. A casa moveu a linha pra baixo, sinal de pressão de apostas no Over." />
+                  </div>
+                  <div className={`space-y-2 mike-transition-all ${!gapLinhaAtivo ? 'opacity-40 pointer-events-none' : ''}`}>
+                    <p className="text-[10px]" style={{ color: '#6b7691' }}>Gap = linha inicial (1º tick) − linha atual. Positivo = linha caiu desde a abertura.</p>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] font-bold px-2 py-1 rounded flex-shrink-0 w-24 text-center" style={{ backgroundColor: '#10b981', color: '#fff' }}>QUEDA MÍN</span>
+                      <input type="number" placeholder="Ex: 2" value={gapLinhaMin ?? ''} onChange={(e) => setGapLinhaMin(e.target.value === '' ? null : parseFloat(e.target.value))} className="mike-border-thin w-24 px-2 py-1.5 rounded text-xs text-center bg-transparent text-[--mike-fg] outline-none mike-no-spin" />
+                      <span className="text-[10px] text-[--mike-fg-muted]">a linha precisa ter caído pelo menos N pontos</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] font-bold px-2 py-1 rounded flex-shrink-0 w-24 text-center" style={{ backgroundColor: '#10b981', color: '#fff' }}>QUEDA MÁX</span>
+                      <input type="number" placeholder="Ex: 8" value={gapLinhaMax ?? ''} onChange={(e) => setGapLinhaMax(e.target.value === '' ? null : parseFloat(e.target.value))} className="mike-border-thin w-24 px-2 py-1.5 rounded text-xs text-center bg-transparent text-[--mike-fg] outline-none mike-no-spin" />
+                      <span className="text-[10px] text-[--mike-fg-muted]">queda muito grande pode indicar outra coisa</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* TENDÊNCIA */}
+                <div className="rounded-lg p-3" style={{ backgroundColor: 'rgba(60,85,130,0.08)', border: '0.5px solid rgba(60,85,130,0.3)' }}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Switch ativo={tendenciaAtivo} onChange={setTendenciaAtivo} />
+                    <PillLabel texto="Tendência" ativo={tendenciaAtivo} info="Tendência = média dos últimos 5 jogos H2H − média dos últimos 20. Positivo = jogos recentes mais pontuados que o histórico (aquecendo). Negativo = esfriando." />
+                  </div>
+                  <div className={`space-y-2 mike-transition-all ${!tendenciaAtivo ? 'opacity-40 pointer-events-none' : ''}`}>
+                    <p className="text-[10px]" style={{ color: '#6b7691' }}>
+                      Tendência = média últ. 5 − média últ. 20. Positivo = aquecendo ✅ · Negativo = esfriando ❌
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] font-bold px-2 py-1 rounded flex-shrink-0 w-24 text-center" style={{ backgroundColor: '#10b981', color: '#fff' }}>MÍN</span>
+                      <input
+                        type="number"
+                        placeholder="Ex: 0"
+                        value={tendenciaMin ?? ''}
+                        onChange={(e) => setTendenciaMin(e.target.value === '' ? null : parseFloat(e.target.value))}
+                        className="mike-border-thin w-24 px-2 py-1.5 rounded text-xs text-center bg-transparent text-[--mike-fg] outline-none mike-no-spin"
+                      />
+                      <span className="text-[10px] text-[--mike-fg-muted]">tendência ≥ N (0 = últimos 5 precisam ser ≥ média geral)</span>
+                    </div>
+                  </div>
+                </div>
+
               </div>
             </Collapse>
           </div>
@@ -2335,8 +2401,9 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
                       partes.push(<p key="fh">→ {filtrosHistAdicionados.length} filtro(s) de histórico aplicado(s)</p>);
                     }
 
-                    if (filtrosComplementaresAtivo && filtrosCompAdicionados.length > 0) {
-                      partes.push(<p key="fc">→ {filtrosCompAdicionados.length} filtro(s) complementar(es)</p>);
+                    if (filtrosComplementaresAtivo && (mediaAtivo || gapMediaAtivo || gapLinhaAtivo || tendenciaAtivo)) {
+                      const ativos = [mediaAtivo && 'Média H2H', gapMediaAtivo && 'Gap de Médias', gapLinhaAtivo && 'Gap de Linhas', tendenciaAtivo && 'Tendência'].filter(Boolean).join(', ');
+                      partes.push(<p key="fc">→ Filtros complementares: <span className="text-amber-400">{ativos}</span></p>);
                     }
 
                     const filtrosLiveAtivos = [
