@@ -39,29 +39,15 @@ const MERCADOS_POR_ESPORTE = {
   // e-Soccer H2H (tipo 1) — Battle, GT League, ECF Volta, H2H GG League, Live Arena
   // Keys exatas do TipManager (chunk 7943 + __NEXT_DATA__)
   fifa: [
-    { value: 'ah_ft',                    label: 'HC Asiático' },
-    { value: 'ah_ht',                    label: 'HC Asiático - 1˚T' },
-    { value: 'asian_over_under_ft',      label: 'Gols +/-' },
-    { value: 'asian_over_under_ht',      label: 'Gols +/- 1˚T' },
-    { value: 'btts_ft',                  label: 'Ambos Marcam' },
-    { value: 'btts_ht',                  label: 'Ambos Marcam - 1˚T' },
-    { value: 'double_ml_ft',             label: 'Dupla Hipótese' },
-    { value: 'ml_ft',                    label: 'Resultado Final' },
-    { value: 'ml_ht',                    label: 'Resultado Final - 1˚T' },
-    { value: 'over_under_ft',            label: 'Partida - Gols' },
-    { value: 'over_under_ht',            label: 'Total de Gols - 1˚T' },
-    { value: 'odd_even_ft',              label: 'Par/Ímpar' },
-    { value: 'odd_even_ht',              label: 'Par/Ímpar - 1˚T' },
-    { value: 'next_goal',                label: 'Próximo Gol' },
-    { value: 'eh_ft',                    label: 'Handicap Europeu' },
-    { value: 'eh_ht',                    label: 'Handicap Europeu - 1˚T' },
-    { value: 'ml_btts_ft',               label: 'Resultado Final/Ambos Marcam' },
-    { value: 'ml_btts_ht',               label: 'Resultado Final/Ambos Marcam - 1˚T' },
-    { value: 'over_under_ft_player',     label: 'Jogador - Gols' },
-    { value: 'over_under_ht_player',     label: 'Jogador - Gols - 1˚T' },
-    { value: 'over_under_ft_ht_0x0',     label: 'Partida - Gols (HT 0x0)' },
-    { value: 'over_under_ft_player_against', label: 'Jogador - Sofrer Gols' },
-    { value: 'clean_sheet_ft_player',    label: 'Jogador - Não sofre gol' },
+    { value: 'over_under_ft',        label: 'Over/Under - Gols FT' },
+    { value: 'over_under_ht',        label: 'Over/Under - Gols HT' },
+    { value: 'asian_over_under_ft',  label: 'Over/Under Asiático FT' },
+    { value: 'asian_over_under_ht',  label: 'Over/Under Asiático HT' },
+    { value: 'ah_ft',                label: 'HC Asiático FT' },
+    { value: 'ah_ht',                label: 'HC Asiático HT' },
+    { value: 'eh_ft',                label: 'HC Europeu FT' },
+    { value: 'over_under_ft_player', label: 'Jogador - Gols FT' },
+    { value: 'over_under_ht_player', label: 'Jogador - Gols HT' },
   ],
   // e-Basket / NBA2K (tipo 2) — Adriatic NextGen, Battle NBA2K, H2H GG League
   nba2k: [
@@ -73,30 +59,7 @@ const MERCADOS_POR_ESPORTE = {
     { value: 'ah_ft',              label: 'Handicap Asiático' },
     { value: 'ah_ht',              label: 'Handicap Asiático - 1˚T' },
   ],
-  // Tênis / Tênis de Mesa (tipo 4)
-  tennis: [
-    { value: 'ml_ft',        label: 'Vencedor da Partida' },
-    { value: 'ml_gm',        label: 'Vencedor do Game' },
-    { value: 'over_under_ft', label: 'Total da Partida' },
-    { value: 'over_under_gm', label: 'Total do Game' },
-    { value: 'ah_ft',        label: 'HC da Partida (Pontos)' },
-    { value: 'ah_gm',        label: 'HC do Game' },
-    { value: 'ah_sets_ft',   label: 'HC de Games (Sets)' },
-  ],
 
-  // Futebol (real) — mesmos mercados do e-Soccer H2H
-  futebol: [
-    { value: 'ml_ft',           label: 'Resultado Final' },
-    { value: 'ml_ht',           label: 'Resultado Final - 1˚T' },
-    { value: 'ah_ft',           label: 'HC Asiático' },
-    { value: 'eh_ft',           label: 'Handicap Europeu' },
-    { value: 'over_under_ft',   label: 'Partida - Gols' },
-    { value: 'asian_over_under_ft', label: 'Gols +/-' },
-    { value: 'btts_ft',         label: 'Ambos Marcam' },
-    { value: 'next_goal',       label: 'Próximo Gol' },
-    { value: 'double_ml_ft',    label: 'Dupla Hipótese' },
-    { value: 'odd_even_ft',     label: 'Par/Ímpar' },
-  ],
   ehockey: [
     { value: 'ml_ft',         label: 'Resultado Final' },
     { value: 'ah_ft',         label: 'HC Asiático' },
@@ -1254,7 +1217,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
   const [torneios, setTorneios] = useState([]);
 
   // SECAO 4 - MERCADOS
-  const [mercado, setMercado] = useState('ml_ft');
+  const [mercado, setMercado] = useState('over_under_ft');
   const [inner, setInner] = useState('Over');
   const [linhaMin, setLinhaMin] = useState(null);
   const [linhaMax, setLinhaMax] = useState(null);
@@ -1387,7 +1350,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
   // Coleta todo o form em um objeto
   const formState = {
     nome, descricao, esporte, casa, torneioAtivo, torneios,
-    mercado, inner, linhaMin, linhaMax, limitarOddsAtivo, limitarOdds, proporcaoAtivo, proporcao,
+    mercado, limitarOddsAtivo, limitarOdds, proporcaoAtivo, proporcao,
     tipoProporcaoAtivo, tipoProporcao, limitePlacarAtivo, limitePlacar,
     extrasAtivo, extras, filtroMediasAtivo, filtroMedias,
     filtroMediasContraAtivo, filtroMediasContra,
@@ -2083,65 +2046,6 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
               onLinhaChange={(min, max) => { setLinhaMin(min); setLinhaMax(max); }}
             />
 
-            <LinhaFiltro label="Limitar Odds" info="Faixa de odds aceitável - filtra apostas fora deste intervalo" ativo={limitarOddsAtivo} onToggle={setLimitarOddsAtivo}>
-              <RangeSlider min={1} max={10} step={0.01} value={limitarOdds} onChange={setLimitarOdds} disabled={!limitarOddsAtivo} />
-            </LinhaFiltro>
-
-            {filtrosMercado.proporcao && <LinhaFiltro label="Proporção de odds" info="Razão entre odd alvo e odd oposta - mede a desigualdade da partida" ativo={proporcaoAtivo} onToggle={setProporcaoAtivo}>
-              <SingleSlider min={0} max={10} step={0.1} value={proporcao[1]} onChange={(v) => setProporcao([0, v])} sufixoMin={0} sufixoMax="10+" disabled={!proporcaoAtivo} />
-            </LinhaFiltro>}
-
-            {filtrosMercado.proporcao && <LinhaFiltro label="Tipo de proporção" info="Operador da proporção: maior ou menor que o valor configurado" ativo={tipoProporcaoAtivo} onToggle={setTipoProporcaoAtivo}>
-              <MikeSelect value={tipoProporcao} onChange={setTipoProporcao} options={TIPOS_PROPORCAO} />
-            </LinhaFiltro>}
-
-            {filtrosMercado.limitePlacar && <LinhaFiltro label="Limite de Placar" info="Filtra apenas partidas com placar específico" ativo={limitePlacarAtivo} onToggle={setLimitePlacarAtivo}>
-              <MikeSelect value={limitePlacar} onChange={setLimitePlacar} options={[{ value: '', label: 'Selecione' }, ...LIMITE_PLACAR_OPCOES]} />
-            </LinhaFiltro>}
-
-            {filtrosMercado.extras && <LinhaFiltro label="Extras" info="Restringe apostas: Casa/Visitante (mando) ou Favorito/Azarão (odd inicial) - marque pelo menos 1" ativo={extrasAtivo} onToggle={setExtrasAtivo}>
-              <div className="flex items-center gap-4 flex-wrap py-1.5">
-                {[
-                  ...EXTRAS_OPCOES.map(o => ({ key: o.value, label: o.label })),
-                ].map((e) => (
-                  <label key={e.key} className="flex items-center gap-1.5 cursor-pointer">
-                    <input type="checkbox" className="mike-checkbox" checked={!!extras[e.key]} onChange={(ev) => setExtras({ ...extras, [e.key]: ev.target.checked })} />
-                    <span className="text-xs text-[--mike-fg-soft]">{e.label}</span>
-                  </label>
-                ))}
-              </div>
-            </LinhaFiltro>}
-
-            <LinhaFiltro label="Filtro de Médias" info="Janela de partidas usada para calcular médias do alvo da tip" ativo={filtroMediasAtivo} onToggle={setFiltroMediasAtivo}>
-              <MikeSelect value={filtroMedias} onChange={setFiltroMedias} options={[{ value: '', label: 'Selecione' }, ...FILTRO_MEDIAS]} />
-            </LinhaFiltro>
-
-            <LinhaFiltro label="Filtro de Médias Contra" info="Janela de partidas usada para calcular médias do oponente" ativo={filtroMediasContraAtivo} onToggle={setFiltroMediasContraAtivo}>
-              <MikeSelect value={filtroMediasContra} onChange={setFiltroMediasContra} options={[{ value: '', label: 'Selecione' }, ...FILTRO_MEDIAS]} />
-            </LinhaFiltro>
-
-            {/* Subgrupo Alvo da tip */}
-            <div className="pt-3">
-              <p className="text-[10px] text-[--mike-fg-muted] mb-1.5 ml-12">Alvo da tip</p>
-              <LinhaFiltro label="Mesma grade" info="WR do alvo na mesma grade" ativo={alvoMesmaGradeAtivo} onToggle={setAlvoMesmaGradeAtivo}>
-                <RadioGroup value={alvoMesmaGradeWR} onChange={setAlvoMesmaGradeWR} options={radioWR} disabled={!alvoMesmaGradeAtivo} />
-              </LinhaFiltro>
-              <LinhaFiltro label="Últ. 8 horas" info="WR nas últimas 8 horas" ativo={alvoUlt8Ativo} onToggle={setAlvoUlt8Ativo}>
-                <RadioGroup value={alvoUlt8WR} onChange={setAlvoUlt8WR} options={radioWR} disabled={!alvoUlt8Ativo} />
-              </LinhaFiltro>
-            </div>
-
-            {/* Subgrupo Oponente */}
-            <div className="pt-2">
-              <p className="text-[10px] text-[--mike-fg-muted] mb-1.5 ml-12">Oponente</p>
-              <LinhaFiltro label="Mesma grade" info="WR do oponente na mesma grade" ativo={oponMesmaGradeAtivo} onToggle={setOponMesmaGradeAtivo}>
-                <RadioGroup value={oponMesmaGradeWR} onChange={setOponMesmaGradeWR} options={radioWR} disabled={!oponMesmaGradeAtivo} />
-              </LinhaFiltro>
-              <LinhaFiltro label="Últ. 8 horas" info="WR do oponente nas últimas 8 horas" ativo={oponUlt8Ativo} onToggle={setOponUlt8Ativo}>
-                <RadioGroup value={oponUlt8WR} onChange={setOponUlt8WR} options={radioWR} disabled={!oponUlt8Ativo} />
-              </LinhaFiltro>
-            </div>
-          </div>
 
           {/* CAIXA DOS FILTROS DE HISTORICO */}
           <BlocoFiltrosHistorico
