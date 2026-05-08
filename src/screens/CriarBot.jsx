@@ -75,64 +75,8 @@ const MERCADOS_POR_ESPORTE = {
 };
 // CAPACIDADES POR ESPORTE - controla o que mostrar/esconder
 
-// ============================================================
-// FILTROS VISIVEIS POR MERCADO
-// Baseado nos dados reais raspados do TipManager (chunk 7943 + __NEXT_DATA__)
-// Campos: inner (linha interna), linhaOpcoes (dropdown de linha), extras, limitePlacar, proporcao
-// ============================================================
-const FILTROS_VISIVEIS_POR_MERCADO = {
-  // e-Soccer H2H 8387rcPNz8SRX6pYXgdxCZg3VMLFwtdJB3Z9LeX8Ge2n──
-  // ML: tem extras (home/away/draw/moneyline/underdog/target/opponent), sem inner, limit=score_limit
-  ml_ft:                      { inner: false, linhaOpcoes: false, extras: true,  limitePlacar: true,  proporcao: true  },
-  ml_ht:                      { inner: false, linhaOpcoes: false, extras: true,  limitePlacar: true,  proporcao: true  },
-  // Over/Under gols: inner over/under, 17 linhas, sem extras
-  over_under_ft:               { inner: true,  linhaOpcoes: true,  extras: false, limitePlacar: false, proporcao: true  },
-  over_under_ht:               { inner: true,  linhaOpcoes: true,  extras: false, limitePlacar: false, proporcao: true  },
-  over_under_ft_ht_0x0:        { inner: true,  linhaOpcoes: true,  extras: false, limitePlacar: false, proporcao: true  },
-  // Over/Under jogador: inner + linhas + extras (home/away/moneyline/underdog/target/opponent)
-  over_under_ft_player:        { inner: true,  linhaOpcoes: true,  extras: true,  limitePlacar: false, proporcao: true  },
-  over_under_ht_player:        { inner: true,  linhaOpcoes: true,  extras: true,  limitePlacar: false, proporcao: true  },
-  over_under_ft_player_against:{ inner: true,  linhaOpcoes: true,  extras: true,  limitePlacar: false, proporcao: true  },
-  clean_sheet_ft_player:       { inner: true,  linhaOpcoes: false, extras: true,  limitePlacar: false, proporcao: false },
-  // HC Asiático: linhas, extras (home/away/moneyline/underdog), limit=score_limit
-  ah_ft:                       { inner: false, linhaOpcoes: true,  extras: true,  limitePlacar: true,  proporcao: true  },
-  ah_ht:                       { inner: false, linhaOpcoes: true,  extras: true,  limitePlacar: true,  proporcao: true  },
-  // HC Europeu: linhas, extras completos (home/away/draw/moneyline/underdog/target/opponent)
-  eh_ft:                       { inner: false, linhaOpcoes: true,  extras: true,  limitePlacar: true,  proporcao: true  },
-  eh_ht:                       { inner: false, linhaOpcoes: true,  extras: true,  limitePlacar: true,  proporcao: true  },
-  // Resultado/Ambos Marcam: inner yes/no, extras completos
-  ml_btts_ft:                  { inner: true,  linhaOpcoes: false, extras: true,  limitePlacar: false, proporcao: false },
-  ml_btts_ht:                  { inner: true,  linhaOpcoes: false, extras: true,  limitePlacar: false, proporcao: false },
-  // Par/Ímpar: inner odd/even, sem extras
-  odd_even_ft:                 { inner: true,  linhaOpcoes: false, extras: false, limitePlacar: false, proporcao: false },
-  odd_even_ht:                 { inner: true,  linhaOpcoes: false, extras: false, limitePlacar: false, proporcao: false },
-  // Gols +/- (asiático): inner over/under, 60 linhas, com extras
-  asian_over_under_ft:         { inner: true,  linhaOpcoes: true,  extras: true,  limitePlacar: false, proporcao: true  },
-  asian_over_under_ht:         { inner: true,  linhaOpcoes: true,  extras: false, limitePlacar: false, proporcao: true  },
-  // Ambos Marcam: inner yes/no, sem extras (btts puro)
-  btts_ft:                     { inner: true,  linhaOpcoes: false, extras: false, limitePlacar: false, proporcao: false },
-  btts_ht:                     { inner: true,  linhaOpcoes: false, extras: false, limitePlacar: false, proporcao: false },
-  // Dupla Hipótese: extras especiais (home_draw/away_draw/home_away/...), limit=score_limit
-  double_ml_ft:                { inner: false, linhaOpcoes: false, extras: true,  limitePlacar: true,  proporcao: true  },
-  // Próximo Gol: linha atual, extras (home/away/moneyline/underdog/no_goal)
-  next_goal:                   { inner: false, linhaOpcoes: false, extras: true,  limitePlacar: false, proporcao: false },
 
-  // e-Basket NBA2K 8387rcPNz8SRX6pYXgdxCZg3VMLFwtdJB3Z9LeX8Ge2n
-  // ML: extras (home/away/moneyline/underdog), sem empate, limit=score_limit
-  // over_under_ft já mapeado acima, reusa configuração
 
-  // Tênis / Tênis de Mesa ───────────────────────────────────
-  ml_gm:                       { inner: false, linhaOpcoes: false, extras: true,  limitePlacar: true,  proporcao: true  },
-  over_under_gm:               { inner: true,  linhaOpcoes: true,  extras: false, limitePlacar: false, proporcao: true  },
-  ah_gm:                       { inner: false, linhaOpcoes: true,  extras: true,  limitePlacar: false, proporcao: true  },
-  ah_sets_ft:                  { inner: false, linhaOpcoes: true,  extras: true,  limitePlacar: false, proporcao: true  },
-};
-
-// Helper: retorna config de filtros para o mercado atual
-// Fallback: mostra tudo exceto campos especiais
-const FILTROS_MERCADO_DEFAULT = { inner: true, linhaOpcoes: true, extras: true, limitePlacar: true, proporcao: true };
-const getFiltrosMercado = (mercadoValue) =>
-  FILTROS_VISIVEIS_POR_MERCADO[mercadoValue] || FILTROS_MERCADO_DEFAULT;
 
 const CAPACIDADES = {
   fifa: {
@@ -221,51 +165,6 @@ const EXTRAS_OPCOES = [
   { value: 'no_goal',   label: 'Sem gol' },
 ];
 
-const TIPOS_PROPORCAO = [
-  { value: '>', label: 'Maior ou igual que' },
-  { value: '<', label: 'Menor ou igual que' },
-];
-
-const LIMITE_PLACAR_OPCOES = (() => {
-  const opcoes = [];
-  // 1 a 20 unitario
-  for (let i = 1; i <= 20; i++) {
-    opcoes.push({ value: String(i), label: String(i) });
-  }
-  // 25, 30, 35, 40, 45, 50
-  for (let i = 25; i <= 50; i += 5) {
-    opcoes.push({ value: String(i), label: String(i) });
-  }
-  return opcoes;
-})();
-
-// Janelas reais do TipManager (array m[] do chunk 7943)
-// Esports H2H: all,last_1..100,current_championship,last_1h,last_8h,last_1d,last_7d,last_30d,last_60d,last_90d,same_day
-const FILTRO_MEDIAS = [
-  { value: 'all',                  label: 'Todas' },
-  { value: 'last_1',               label: 'Última' },
-  { value: 'last_2',               label: 'Últ. 2' },
-  { value: 'last_3',               label: 'Últ. 3' },
-  { value: 'last_4',               label: 'Últ. 4' },
-  { value: 'last_5',               label: 'Últ. 5' },
-  { value: 'last_10',              label: 'Últ. 10' },
-  { value: 'last_15',              label: 'Últ. 15' },
-  { value: 'last_20',              label: 'Últ. 20' },
-  { value: 'last_25',              label: 'Últ. 25' },
-  { value: 'last_30',              label: 'Últ. 30' },
-  { value: 'last_40',              label: 'Últ. 40' },
-  { value: 'last_50',              label: 'Últ. 50' },
-  { value: 'last_100',             label: 'Últ. 100' },
-  { value: 'current_championship', label: 'Campeonato atual' },
-  { value: 'last_1h',              label: 'Últ. 1 hora' },
-  { value: 'last_8h',              label: 'Últ. 8 horas' },
-  { value: 'last_1d',              label: 'Últ. 24h' },
-  { value: 'last_7d',              label: 'Últ. 7 dias' },
-  { value: 'last_30d',             label: 'Últ. 30 dias' },
-  { value: 'last_60d',             label: 'Últ. 60 dias' },
-  { value: 'last_90d',             label: 'Últ. 90 dias' },
-  { value: 'same_day',             label: 'Mesmo dia' },
-];
 
 const VERSOES_GAME = [
   { value: 'all', label: 'Todas' },
@@ -1350,7 +1249,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
   // Coleta todo o form em um objeto
   const formState = {
     nome, descricao, esporte, casa, torneioAtivo, torneios,
-    mercado, limitarOddsAtivo, limitarOdds, proporcaoAtivo, proporcao,
+    mercado, inner, linhaMin, linhaMax, limitarOddsAtivo, limitarOdds, proporcaoAtivo, proporcao,
     tipoProporcaoAtivo, tipoProporcao, limitePlacarAtivo, limitePlacar,
     extrasAtivo, extras, filtroMediasAtivo, filtroMedias,
     filtroMediasContraAtivo, filtroMediasContra,
@@ -1464,7 +1363,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     setNome(''); setDescricao('');
     setEsporte('fifa'); setCasa('bet365');
     setTorneioAtivo(false); setTorneios([]);
-    setMercado('ml_ft');
+    setMercado('over_under_ft');
     setLimitarOddsAtivo(false); setLimitarOdds([1, 10]);
     setProporcaoAtivo(false); setProporcao([0, 10]);
     setTipoProporcaoAtivo(true); setTipoProporcao('>');
@@ -1630,8 +1529,6 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
 
   const torneiosDisp = TORNEIOS_POR_ESPORTE[esporte] || [];
   const mercadosDisp = MERCADOS_POR_ESPORTE[esporte] || [];
-  // Config de filtros para o mercado selecionado (baseado em dados reais do TipManager)
-  const filtrosMercado = getFiltrosMercado(mercado);
   const capacidades = CAPACIDADES[esporte] || CAPACIDADES.fifa;
   const cenariosDisp = capacidades.cenariosFull ? CENARIOS_FULL : CENARIOS_REDUZIDO;
   const filtrosLiveDisp = capacidades.filtrosLive;
@@ -2045,7 +1942,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
               linhaMax={linhaMax}
               onLinhaChange={(min, max) => { setLinhaMin(min); setLinhaMax(max); }}
             />
-
+          </div>
 
           {/* CAIXA DOS FILTROS DE HISTORICO */}
           <BlocoFiltrosHistorico
