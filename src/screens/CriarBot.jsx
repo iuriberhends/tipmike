@@ -966,6 +966,26 @@ function BlocoFiltrosHistorico({
 // ============================================================
 // FILTRAR PARTIDAS — caixa verde (apenas) ou rosa (ignorar)
 // ============================================================
+
+// Helper: formatar uma combinação adicionada como string legível
+// Ex: "Abyssal (H2H GG League)(Aston Villa) x (Arsenal)Apollo (H2H GG League)"
+function formatarCombinacao(c) {
+  const lado1 = [];
+  const lado2 = [];
+  if (c.j1) lado1.push(c.j1);
+  if (c.t1) lado1.push(`(${c.t1})`);
+  if (c.j2) lado2.push(c.j2);
+  if (c.t2) lado2.push(`(${c.t2})`);
+
+  const l1 = lado1.join('');
+  const l2 = lado2.join('');
+
+  if (l1 && l2) return `${l1} x ${l2}`;
+  if (l1) return l1;
+  if (l2) return l2;
+  return '(vazio)';
+}
+
 function CaixaFiltrarPartidas({ cor, titulo, ativo, onToggle, jogadores, times, carregando, estado, onChange }) {
   const isVerde = cor === 'verde';
   const corPrimaria = isVerde ? '#10b981' : '#f43f5e';
@@ -980,6 +1000,53 @@ function CaixaFiltrarPartidas({ cor, titulo, ativo, onToggle, jogadores, times, 
   const opcoesTimes = times.map(t => ({ value: t, label: t }));
   const setField = (field, value) => onChange({ ...estado, [field]: value });
 
+  // Função: adicionar combinação atual à lista de adicionadas
+  const adicionarCombinacao = () => {
+    // Pelo menos 1 campo precisa estar preenchido + ativo
+    const j1Valido = estado.j1Ativo && estado.j1;
+    const j2Valido = estado.j2Ativo && estado.j2;
+    const t1Valido = estado.t1Ativo && estado.t1;
+    const t2Valido = estado.t2Ativo && estado.t2;
+    if (!j1Valido && !j2Valido && !t1Valido && !t2Valido) return;
+
+    const nova = {
+      j1: j1Valido ? estado.j1 : '',
+      j2: j2Valido ? estado.j2 : '',
+      t1: t1Valido ? estado.t1 : '',
+      t2: t2Valido ? estado.t2 : '',
+      fixarJ1Casa: estado.fixarJ1Casa,
+      fixarJ2Visit: estado.fixarJ2Visit,
+      direcao: estado.direcao,
+    };
+
+    // Resetar campos do form, mantendo a lista
+    onChange({
+      ...estado,
+      j1: '', j2: '', t1: '', t2: '',
+      j1Ativo: false, j2Ativo: false, t1Ativo: false, t2Ativo: false,
+      fixarJ1Casa: false, fixarJ2Visit: false,
+      direcao: 'todas',
+      adicionadas: [...(estado.adicionadas || []), nova],
+    });
+  };
+
+  const removerAdicionada = (idx) => {
+    onChange({
+      ...estado,
+      adicionadas: (estado.adicionadas || []).filter((_, i) => i !== idx),
+    });
+  };
+
+  const limparTodasAdicionadas = () => {
+    onChange({ ...estado, adicionadas: [] });
+  };
+
+  // Pelo menos 1 ativo + valor pra habilitar botão
+  const podeAdicionar = (estado.j1Ativo && estado.j1) || (estado.j2Ativo && estado.j2)
+                    || (estado.t1Ativo && estado.t1) || (estado.t2Ativo && estado.t2);
+
+  const adicionadas = estado.adicionadas || [];
+
   return (
     <div className="rounded-lg p-4 space-y-3" style={{ backgroundColor: corBg, border: `0.5px solid ${corBorda}` }}>
       <div className="flex items-center justify-between">
@@ -989,7 +1056,7 @@ function CaixaFiltrarPartidas({ cor, titulo, ativo, onToggle, jogadores, times, 
       <Collapse aberto={ativo}>
         <div className="pt-3 space-y-3">
           <p className="text-[10px] leading-relaxed" style={{ color: '#6b7691' }}>
-            Você pode adicionar um jogador ou um time sozinho, além de todas as combinações possíveis. Adicione múltiplas entradas separando com vírgula.
+            Você pode adicionar um jogador ou um time sozinho, além de todas as combinações possíveis.
           </p>
 
           {carregando && (
@@ -1062,16 +1129,20 @@ function CaixaFiltrarPartidas({ cor, titulo, ativo, onToggle, jogadores, times, 
             </label>
           </div>
 
-          {/* Radio Todas / Somente a favor / Somente contra */}
+          {/* Radio Todas / Somente a favor da 1a posição / Somente a favor da 2a posição */}
           <div className="space-y-1 pt-1">
-            {['todas', 'somente_favor', 'somente_contra'].map((v) => (
-              <label key={v} className="flex items-center gap-2 cursor-pointer">
-                <input type="radio" className="mike-radio" checked={estado.direcao === v} onChange={() => setField('direcao', v)} />
-                <span className="text-xs text-[--mike-fg-soft]">
-                  {v === 'todas' ? 'Todas' : v === 'somente_favor' ? 'Somente a favor' : 'Somente contra'}
-                </span>
-              </label>
-            ))}
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="radio" className="mike-radio" checked={estado.direcao === 'todas'} onChange={() => setField('direcao', 'todas')} />
+              <span className="text-xs text-[--mike-fg-soft]">Todas</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="radio" className="mike-radio" checked={estado.direcao === 'somente_1a'} onChange={() => setField('direcao', 'somente_1a')} />
+              <span className="text-xs text-[--mike-fg-soft]">Somente a favor da 1ª posição</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="radio" className="mike-radio" checked={estado.direcao === 'somente_2a'} onChange={() => setField('direcao', 'somente_2a')} />
+              <span className="text-xs text-[--mike-fg-soft]">Somente a favor da 2ª posição</span>
+            </label>
           </div>
 
           {/* Botões */}
@@ -1081,17 +1152,68 @@ function CaixaFiltrarPartidas({ cor, titulo, ativo, onToggle, jogadores, times, 
               className="text-[10px] font-bold transition hover:opacity-80"
               style={{ color: corPrimaria }}
             >
-              LIMPAR LISTA
+              LIMPAR CAMPOS
             </button>
             <button
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold text-white transition hover:scale-105 active:scale-95"
-              style={{ backgroundColor: corPrimaria, boxShadow: `0 4px 12px ${corPrimaria}40` }}
-              onClick={() => {}}
+              onClick={adicionarCombinacao}
+              disabled={!podeAdicionar}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold text-white transition hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
+              style={{ backgroundColor: corPrimaria, boxShadow: podeAdicionar ? `0 4px 12px ${corPrimaria}40` : 'none' }}
             >
               <Plus className="w-3 h-3" strokeWidth={3} />
-              ADICIONAR JOGADORES
+              ADICIONAR
             </button>
           </div>
+
+          {/* Lista de Adicionadas */}
+          {adicionadas.length > 0 && (
+            <div className="rounded-md p-3 mt-3" style={{
+              backgroundColor: 'rgba(255,255,255,0.04)',
+              border: '0.5px solid rgba(255,255,255,0.08)',
+            }}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-bold text-[--mike-fg]">
+                  Adicionadas ({adicionadas.length})
+                </span>
+                <button
+                  onClick={limparTodasAdicionadas}
+                  className="text-[9px] font-bold uppercase transition hover:opacity-80"
+                  style={{ color: corPrimaria }}
+                >
+                  LIMPAR LISTA
+                </button>
+              </div>
+              <div className="space-y-1">
+                {adicionadas.map((c, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-start gap-2 group rounded px-2 py-1 transition hover:bg-white/5"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[11px] text-[--mike-fg] leading-relaxed break-words">
+                        {formatarCombinacao(c)}
+                      </div>
+                      {(c.fixarJ1Casa || c.fixarJ2Visit || c.direcao !== 'todas') && (
+                        <div className="text-[9px] text-[--mike-fg-muted] mt-0.5">
+                          {c.fixarJ1Casa && <span className="mr-2">📌 1ª como casa</span>}
+                          {c.fixarJ2Visit && <span className="mr-2">📌 2ª como visitante</span>}
+                          {c.direcao === 'somente_1a' && <span>→ só a favor da 1ª</span>}
+                          {c.direcao === 'somente_2a' && <span>→ só a favor da 2ª</span>}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => removerAdicionada(idx)}
+                      className="p-1 text-[--mike-fg-muted] hover:text-rose-400 transition flex-shrink-0 opacity-50 group-hover:opacity-100"
+                      title="Remover"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </Collapse>
     </div>
@@ -1396,7 +1518,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
   const [cartVermelhos, setCartVermelhos] = useState(0);
 
   // FILTRAR PARTIDAS
-  const ESTADO_FP_INICIAL = { j1: '', j2: '', t1: '', t2: '', j1Ativo: false, j2Ativo: false, t1Ativo: false, t2Ativo: false, fixarJ1Casa: false, fixarJ2Visit: false, direcao: 'todas' };
+  const ESTADO_FP_INICIAL = { j1: '', j2: '', t1: '', t2: '', j1Ativo: false, j2Ativo: false, t1Ativo: false, t2Ativo: false, fixarJ1Casa: false, fixarJ2Visit: false, direcao: 'todas', adicionadas: [] };
   const [apenasEspecificasAtivo, setApenasEspecificasAtivo] = useState(false);
   const [apenasEspecificasEstado, setApenasEspecificasEstado] = useState(ESTADO_FP_INICIAL);
   const [ignorarEspecificasAtivo, setIgnorarEspecificasAtivo] = useState(false);
