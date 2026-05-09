@@ -1234,6 +1234,8 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
 
   // EVITAR LINHAS SEQ
   const [evitarLinhasSeq, setEvitarLinhasSeq] = useState(true);
+  // MAX TIPS POR JOGO
+  const [maxTipsPorJogo, setMaxTipsPorJogo] = useState('ilimitado');
 
   // Toasts
   const [toasts, setToasts] = useState([]);
@@ -1280,7 +1282,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     placaresAtivo, placares, ataquesPerigososAtivo, ataquesPerigosos,
     chutesGolAtivo, chutesGol, cartAmarelosAtivo, cartAmarelos,
     apenasEspecificasAtivo, ignorarEspecificasAtivo,
-    evitarLinhasSeq,
+    evitarLinhasSeq, maxTipsPorJogo,
   };
 
   // Aplica state salvo: chama todos os setters
@@ -1371,6 +1373,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     if (s.apenasEspecificasAtivo !== undefined) setApenasEspecificasAtivo(s.apenasEspecificasAtivo);
     if (s.ignorarEspecificasAtivo !== undefined) setIgnorarEspecificasAtivo(s.ignorarEspecificasAtivo);
     if (s.evitarLinhasSeq !== undefined) setEvitarLinhasSeq(s.evitarLinhasSeq);
+    if (s.maxTipsPorJogo !== undefined) setMaxTipsPorJogo(s.maxTipsPorJogo);
   };
 
   // Reseta tudo pros defaults
@@ -1417,6 +1420,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     setCartAmarelosAtivo(false); setCartAmarelos(0);
     setApenasEspecificasAtivo(false); setIgnorarEspecificasAtivo(false);
     setEvitarLinhasSeq(true);
+    setMaxTipsPorJogo('ilimitado');
   };
 
   // ON MOUNT: carrega draft do storage
@@ -2363,12 +2367,41 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
           </div>
         </SecaoForm>
 
-        {/* EVITAR LINHAS SEQ */}
-        <div className="text-center mb-6">
+        {/* EVITAR LINHAS SEQ + MAX TIPS POR JOGO */}
+        <div className="rounded-lg p-4 mb-6 space-y-3" style={{ backgroundColor: 'rgba(60,85,130,0.06)', border: '0.5px solid rgba(60,85,130,0.3)' }}>
+          {/* Evitar linhas sequenciais */}
           <label className="inline-flex items-center gap-2 cursor-pointer">
             <input type="checkbox" className="mike-checkbox" checked={evitarLinhasSeq} onChange={(e) => setEvitarLinhasSeq(e.target.checked)} />
             <span className="text-xs text-[--mike-fg-soft]">Evitar linhas em sequência para o mesmo mercado durante uma partida.</span>
           </label>
+
+          {/* Max tips por jogo */}
+          <div className="flex items-center gap-3">
+            <label className="inline-flex items-center gap-1.5 cursor-pointer flex-shrink-0">
+              <input type="checkbox" className="mike-checkbox" checked={maxTipsPorJogo !== 'ilimitado'} onChange={(e) => setMaxTipsPorJogo(e.target.checked ? '2' : 'ilimitado')} />
+              <span className="text-xs text-[--mike-fg-soft]">Aceito receber no máximo</span>
+            </label>
+            <div className="w-36">
+              <MikeSelect
+                value={maxTipsPorJogo}
+                onChange={setMaxTipsPorJogo}
+                disabled={maxTipsPorJogo === 'ilimitado'}
+                options={[
+                  { value: 'ilimitado', label: 'ilimitadas' },
+                  { value: '2',  label: 'até 2' },
+                  { value: '3',  label: 'até 3' },
+                  { value: '4',  label: 'até 4' },
+                  { value: '5',  label: 'até 5' },
+                  { value: '6',  label: 'até 6' },
+                  { value: '7',  label: 'até 7' },
+                  { value: '8',  label: 'até 8' },
+                  { value: '9',  label: 'até 9' },
+                  { value: '10', label: 'até 10' },
+                ]}
+              />
+            </div>
+            <span className="text-xs text-[--mike-fg-soft] flex-shrink-0">tips para o mesmo jogo</span>
+          </div>
         </div>
 
         {/* AÇÕES */}
