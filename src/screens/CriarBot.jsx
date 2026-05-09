@@ -2205,34 +2205,31 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
             <span className="text-xs text-[--mike-fg-soft]">Evitar linhas em sequência para o mesmo mercado durante uma partida.</span>
           </label>
 
-          {/* Max tips por jogo */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <label className="inline-flex items-center gap-1.5 cursor-pointer flex-shrink-0">
-              <input type="checkbox" className="mike-checkbox"
-                checked={maxTipsPorJogo !== 'ilimitado'}
-                onChange={(e) => setMaxTipsPorJogo(e.target.checked ? '2' : 'ilimitado')} />
+          {/* Max tips por jogo — só aparece quando evitarLinhasSeq está DESMARCADO */}
+          {!evitarLinhasSeq && (
+            <div className="flex items-center gap-3 flex-wrap">
               <span className="text-xs text-[--mike-fg-soft]">Aceito receber</span>
-            </label>
-            <div className="w-32">
-              <MikeSelect
-                value={maxTipsPorJogo}
-                onChange={setMaxTipsPorJogo}
-                options={[
-                  { value: 'ilimitado', label: 'ilimitadas' },
-                  { value: '2',  label: 'até 2' },
-                  { value: '3',  label: 'até 3' },
-                  { value: '4',  label: 'até 4' },
-                  { value: '5',  label: 'até 5' },
-                  { value: '6',  label: 'até 6' },
-                  { value: '7',  label: 'até 7' },
-                  { value: '8',  label: 'até 8' },
-                  { value: '9',  label: 'até 9' },
-                  { value: '10', label: 'até 10' },
-                ]}
-              />
+              <div className="w-32">
+                <MikeSelect
+                  value={maxTipsPorJogo}
+                  onChange={setMaxTipsPorJogo}
+                  options={[
+                    { value: 'ilimitado', label: 'ilimitadas' },
+                    { value: '2',  label: 'até 2' },
+                    { value: '3',  label: 'até 3' },
+                    { value: '4',  label: 'até 4' },
+                    { value: '5',  label: 'até 5' },
+                    { value: '6',  label: 'até 6' },
+                    { value: '7',  label: 'até 7' },
+                    { value: '8',  label: 'até 8' },
+                    { value: '9',  label: 'até 9' },
+                    { value: '10', label: 'até 10' },
+                  ]}
+                />
+              </div>
+              <span className="text-xs text-[--mike-fg-soft]">tips para o mesmo jogo</span>
             </div>
-            <span className="text-xs text-[--mike-fg-soft]">tips para o mesmo jogo</span>
-          </div>
+          )}
         </div>
 
         {/* AÇÕES */}
