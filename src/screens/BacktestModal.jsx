@@ -4,21 +4,17 @@
 // Tem 3 estados:
 //   1. CONFIG: usuário escolhe período, stake. Botão "Executar"
 //   2. RODANDO: progress bar + mensagem do worker (polling 1s)
-//   3. RESULTADO: 4 cards (ROI, WR, total, DD) + chart equity + lista de jobs anteriores
+//   3. RESULTADO: 4 cards (ROI, WR, total, DD) + chart equity SVG
 //
-// Como abrir:
-//   <BacktestModal aberto={modalOpen} bot={bot} onFechar={() => setModalOpen(false)} />
+// Chart equity: SVG nativo (sem dep externa).
 // ============================================================
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   X, Play, BarChart3, TrendingUp, TrendingDown, Activity,
-  CheckCircle2, AlertCircle, RefreshCw, Trash2, Calendar, DollarSign,
+  CheckCircle2, AlertCircle, RefreshCw, Calendar, DollarSign,
   ChevronDown, ChevronRight, Info,
 } from 'lucide-react';
-import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine,
-} from 'recharts';
 import { ApiBacktest } from '../lib/api';
 
 // ============================================================
@@ -46,7 +42,6 @@ function formatarDataHora(iso) {
   } catch { return '—'; }
 }
 
-// Pega data de N dias atrás em ISO YYYY-MM-DD
 function dataAtras(dias) {
   const d = new Date();
   d.setDate(d.getDate() - dias);
@@ -58,7 +53,7 @@ function hoje() {
 }
 
 // ============================================================
-// COMPONENTES MENORES
+// CARD METRICA
 // ============================================================
 
 function CardMetrica({ titulo, valor, sub, cor = 'cyan', Icon }) {
@@ -91,8 +86,27 @@ function CardMetrica({ titulo, valor, sub, cor = 'cyan', Icon }) {
   );
 }
 
+// ============================================================
+// CHART EQUITY — SVG puro, sem deps externas
+// ============================================================
+
 function ChartEquity({ pontos }) {
-  if (!pontos || pontos.length < 2) {
+  const [hover, setHover] = useState(null);
+  const svgRef = useRef(null);
+
+  const dados = useMemo(() => {
+    if (!pontos || pontos.length < 2) return null;
+    const data = pontos.map((p, i) => ({
+      n: p.n ?? i + 1,
+      banca: Number(p.banca ?? 0),
+    }));
+    const min = Math.min(...data.map(d => d.banca));
+    const max = Math.max(...data.map(d => d.banca));
+    const banca0 = data[0].banca;
+    return { data, min, max, banca0 };
+  }, [pontos]);
+
+  if (!dados) {
     return (
       <div className="flex items-center justify-center h-48 rounded-md text-[11px] text-[--mike-fg-muted]" style={{
         backgroundColor: 'rgba(60,85,130,0.08)',
@@ -103,16 +117,67 @@ function ChartEquity({ pontos }) {
     );
   }
 
-  // Adapta o array do banco pra recharts
-  const data = pontos.map((p, i) => ({
-    n: p.n ?? i + 1,
-    banca: Number(p.banca ?? 0),
-    pnl: Number(p.pnl_acum ?? 0),
-  }));
+  const { data, min, max, banca0 } = dados;
 
-  const min = Math.min(...data.map(d => d.banca));
-  const max = Math.max(...data.map(d => d.banca));
-  const banca0 = data[0].banca;
+  const W = 600;
+  const H = 200;
+  const PAD_L = 50;
+  const PAD_R = 10;
+  const PAD_T = 10;
+  const PAD_B = 25;
+  const innerW = W - PAD_L - PAD_R;
+  const innerH = H - PAD_T - PAD_B;
+
+  const rangeY = max - min;
+  const yPad = rangeY * 0.1 || 1;
+  const yMin = min - yPad;
+  const yMax = max + yPad;
+
+  const xScale = (n) => PAD_L + ((n - data[0].n) / Math.max(1, data[data.length - 1].n - data[0].n)) * innerW;
+  const yScale = (banca) => PAD_T + (1 - (banca - yMin) / (yMax - yMin)) * innerH;
+
+  const pathLine = data.map((d, i) =>
+    (i === 0 ? 'M' : 'L') + xScale(d.n).toFixed(1) + ',' + yScale(d.banca).toFixed(1)
+  ).join(' ');
+
+  const yBaseline = yScale(banca0);
+  const pathArea = pathLine
+    + ` L ${xScale(data[data.length - 1].n).toFixed(1)},${yBaseline.toFixed(1)}`
+    + ` L ${xScale(data[0].n).toFixed(1)},${yBaseline.toFixed(1)} Z`;
+
+  const ehPositivo = data[data.length - 1].banca >= banca0;
+  const corLinha = ehPositivo ? '#10b981' : '#f43f5e';
+
+  const yLabels = [];
+  for (let i = 0; i <= 4; i++) {
+    const v = yMin + ((yMax - yMin) * i) / 4;
+    yLabels.push({ y: yScale(v), valor: v });
+  }
+
+  const handleMouseMove = (e) => {
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const x = ((e.clientX - rect.left) / rect.width) * W;
+    if (x < PAD_L || x > W - PAD_R) {
+      setHover(null);
+      return;
+    }
+    let melhor = data[0];
+    let menorDist = Infinity;
+    for (const d of data) {
+      const dist = Math.abs(xScale(d.n) - x);
+      if (dist < menorDist) {
+        menorDist = dist;
+        melhor = d;
+      }
+    }
+    setHover({
+      n: melhor.n,
+      banca: melhor.banca,
+      x: xScale(melhor.n),
+      y: yScale(melhor.banca),
+    });
+  };
 
   return (
     <div className="rounded-md p-3" style={{
@@ -125,53 +190,65 @@ function ChartEquity({ pontos }) {
           {data.length} apostas · min {formatarBRL(min)} · max {formatarBRL(max)}
         </span>
       </div>
-      <ResponsiveContainer width="100%" height={200}>
-        <LineChart data={data} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-          <XAxis
-            dataKey="n"
-            tick={{ fill: '#6b7691', fontSize: 9 }}
-            axisLine={{ stroke: 'rgba(60,85,130,0.4)' }}
-            tickLine={false}
-          />
-          <YAxis
-            tick={{ fill: '#6b7691', fontSize: 9 }}
-            axisLine={{ stroke: 'rgba(60,85,130,0.4)' }}
-            tickLine={false}
-            width={50}
-            tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(1)}k` : v.toFixed(0)}
-          />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: '#0d1220',
-              border: '0.5px solid rgba(16,185,129,0.5)',
-              borderRadius: 6,
-              fontSize: 11,
-            }}
-            labelFormatter={(n) => `Aposta #${n}`}
-            formatter={(value, name) => {
-              if (name === 'banca') return [formatarBRL(value), 'Banca'];
-              return [value, name];
-            }}
-          />
-          <ReferenceLine
-            y={banca0}
-            stroke="#6b7691"
-            strokeDasharray="3 3"
-            strokeWidth={0.5}
-          />
-          <Line
-            type="monotone"
-            dataKey="banca"
-            stroke="#10b981"
-            strokeWidth={1.5}
-            dot={false}
-            activeDot={{ r: 4, fill: '#10b981' }}
-          />
-        </LineChart>
-      </ResponsiveContainer>
+
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${W} ${H}`}
+        preserveAspectRatio="none"
+        className="w-full select-none"
+        style={{ height: H, display: 'block' }}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={() => setHover(null)}
+      >
+        {yLabels.map((lab, i) => (
+          <g key={i}>
+            <line x1={PAD_L} x2={W - PAD_R} y1={lab.y} y2={lab.y}
+              stroke="rgba(60,85,130,0.25)" strokeWidth="0.5" strokeDasharray="2,2" />
+            <text x={PAD_L - 6} y={lab.y + 3} fill="#6b7691" fontSize="9" textAnchor="end">
+              {lab.valor >= 1000 ? `${(lab.valor/1000).toFixed(1)}k` : lab.valor.toFixed(0)}
+            </text>
+          </g>
+        ))}
+
+        <line x1={PAD_L} x2={W - PAD_R} y1={yBaseline} y2={yBaseline}
+          stroke="#6b7691" strokeWidth="0.5" strokeDasharray="3,3" opacity="0.5" />
+
+        <path d={pathArea} fill={corLinha} opacity="0.1" />
+
+        <path d={pathLine} fill="none" stroke={corLinha} strokeWidth="1.5"
+          strokeLinejoin="round" strokeLinecap="round" />
+
+        {hover && (
+          <g>
+            <line x1={hover.x} x2={hover.x} y1={PAD_T} y2={H - PAD_B}
+              stroke="rgba(255,255,255,0.3)" strokeWidth="0.5" strokeDasharray="2,2" />
+            <circle cx={hover.x} cy={hover.y} r="4" fill={corLinha}
+              stroke="#0d1220" strokeWidth="2" />
+            <g transform={`translate(${Math.min(W - 130, Math.max(PAD_L, hover.x + 8))}, ${Math.max(PAD_T + 4, hover.y - 30)})`}>
+              <rect width="120" height="34" rx="4" fill="#0d1220"
+                stroke="rgba(16,185,129,0.5)" strokeWidth="0.5" />
+              <text x="6" y="14" fontSize="9" fill="#94a3b8">Aposta #{hover.n}</text>
+              <text x="6" y="27" fontSize="11" fill={corLinha} fontWeight="bold">
+                {formatarBRL(hover.banca)}
+              </text>
+            </g>
+          </g>
+        )}
+
+        <text x={PAD_L} y={H - 8} fill="#6b7691" fontSize="9" textAnchor="start">
+          #{data[0].n}
+        </text>
+        <text x={W - PAD_R} y={H - 8} fill="#6b7691" fontSize="9" textAnchor="end">
+          #{data[data.length - 1].n}
+        </text>
+      </svg>
     </div>
   );
 }
+
+// ============================================================
+// HISTORICO
+// ============================================================
 
 function HistoricoJobs({ botId, onSelecionar }) {
   const [jobs, setJobs] = useState([]);
@@ -202,9 +279,7 @@ function HistoricoJobs({ botId, onSelecionar }) {
       >
         {aberto ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
         Histórico de execuções deste bot
-        {jobs.length > 0 && (
-          <span className="text-[--mike-fg-muted] font-normal">({jobs.length})</span>
-        )}
+        {jobs.length > 0 && <span className="text-[--mike-fg-muted] font-normal">({jobs.length})</span>}
       </button>
       {aberto && (
         <div className="px-3 pb-3 pt-1">
@@ -217,8 +292,7 @@ function HistoricoJobs({ botId, onSelecionar }) {
               {jobs.map(j => {
                 const corStatus = j.status === 'concluido' ? '#10b981'
                   : j.status === 'erro' ? '#f43f5e'
-                  : j.status === 'rodando' ? '#f59e0b'
-                  : '#6b7691';
+                  : j.status === 'rodando' ? '#f59e0b' : '#6b7691';
                 return (
                   <button
                     key={j.id}
@@ -228,9 +302,7 @@ function HistoricoJobs({ botId, onSelecionar }) {
                   >
                     <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: corStatus }} />
                     <span className="text-[--mike-fg-muted] font-mono">#{j.id}</span>
-                    <span className="text-[--mike-fg-soft]">
-                      {j.data_inicio} → {j.data_fim}
-                    </span>
+                    <span className="text-[--mike-fg-soft]">{j.data_inicio} → {j.data_fim}</span>
                     {j.status === 'concluido' && (
                       <>
                         <span className="text-[--mike-fg-muted]">·</span>
@@ -261,12 +333,11 @@ function HistoricoJobs({ botId, onSelecionar }) {
 // ============================================================
 
 export default function BacktestModal({ aberto, bot, onFechar }) {
-  const [estado, setEstado] = useState('config'); // config | rodando | resultado | erro
+  const [estado, setEstado] = useState('config');
   const [jobId, setJobId] = useState(null);
   const [job, setJob] = useState(null);
   const [erroMsg, setErroMsg] = useState(null);
 
-  // Form
   const [dataInicio, setDataInicio] = useState(dataAtras(30));
   const [dataFim, setDataFim] = useState(hoje());
   const [stakeModo, setStakeModo] = useState('fixo');
@@ -275,7 +346,6 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
 
   const pollRef = useRef(null);
 
-  // Reset ao abrir/trocar bot
   useEffect(() => {
     if (aberto) {
       setEstado('config');
@@ -291,7 +361,6 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
     };
   }, [aberto, bot?.id]);
 
-  // Polling enquanto rodando
   useEffect(() => {
     if (!jobId || estado !== 'rodando') return;
 
@@ -300,7 +369,6 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
         const data = await ApiBacktest.get(jobId, false);
         setJob(data);
         if (data.status === 'concluido') {
-          // Re-fetch com detalhe pra mostrar o gráfico
           const completo = await ApiBacktest.get(jobId, true);
           setJob(completo);
           setEstado('resultado');
@@ -401,36 +469,25 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
           .mike-pulse-bar { animation: mike-pulse-bar 1.2s ease-in-out infinite; }
         `}</style>
 
-        {/* HEADER */}
         <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: '0.5px solid rgba(60,85,130,0.4)' }}>
           <div className="w-8 h-8 rounded-md bg-cyan-500/15 border border-cyan-500/40 flex items-center justify-center">
             <BarChart3 className="w-4 h-4 text-cyan-400" />
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-sm font-bold text-white truncate">
-              Backtest · {bot.nome}
-            </h2>
+            <h2 className="text-sm font-bold text-white truncate">Backtest · {bot.nome}</h2>
             <p className="text-[10px] text-[--mike-fg-muted] truncate">
               {bot.casa} · {bot.esporte} · {bot.mercado} · #{bot.id}
             </p>
           </div>
-          <button
-            onClick={onFechar}
-            className="p-1.5 rounded text-[--mike-fg-muted] hover:text-white hover:bg-white/5 transition"
-          >
+          <button onClick={onFechar} className="p-1.5 rounded text-[--mike-fg-muted] hover:text-white hover:bg-white/5 transition">
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* CONTENT */}
         <div className="flex-1 overflow-y-auto px-4 py-4">
 
-          {/* ============================================================
-              ESTADO 1: CONFIG
-              ============================================================ */}
           {estado === 'config' && (
             <div className="space-y-4">
-              {/* Aviso */}
               <div className="flex items-start gap-2 px-3 py-2 rounded-md text-[11px] leading-relaxed" style={{
                 backgroundColor: 'rgba(245,158,11,0.06)',
                 border: '0.5px solid rgba(245,158,11,0.3)',
@@ -443,7 +500,6 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
                 </span>
               </div>
 
-              {/* Período */}
               <div>
                 <label className="flex items-center gap-1.5 text-[11px] font-bold text-[--mike-fg] mb-2">
                   <Calendar className="w-3.5 h-3.5 text-cyan-400" />
@@ -453,22 +509,17 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
                   <div>
                     <label className="block text-[10px] text-[--mike-fg-muted] mb-1">Início</label>
                     <input
-                      type="date"
-                      value={dataInicio}
-                      onChange={e => setDataInicio(e.target.value)}
+                      type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)}
                       max={dataFim}
-                      className="w-full px-3 py-2 rounded-md text-xs text-white bg-transparent outline-none mike-border-thin"
+                      className="w-full px-3 py-2 rounded-md text-xs text-white bg-transparent outline-none"
                       style={{ border: '0.5px solid rgba(60,85,130,0.4)' }}
                     />
                   </div>
                   <div>
                     <label className="block text-[10px] text-[--mike-fg-muted] mb-1">Fim</label>
                     <input
-                      type="date"
-                      value={dataFim}
-                      onChange={e => setDataFim(e.target.value)}
-                      min={dataInicio}
-                      max={hoje()}
+                      type="date" value={dataFim} onChange={e => setDataFim(e.target.value)}
+                      min={dataInicio} max={hoje()}
                       className="w-full px-3 py-2 rounded-md text-xs text-white bg-transparent outline-none"
                       style={{ border: '0.5px solid rgba(60,85,130,0.4)' }}
                     />
@@ -492,7 +543,6 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
                 </div>
               </div>
 
-              {/* Stake */}
               <div>
                 <label className="flex items-center gap-1.5 text-[11px] font-bold text-[--mike-fg] mb-2">
                   <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
@@ -502,9 +552,7 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
                   <button
                     onClick={() => setStakeModo('fixo')}
                     className={`flex-1 px-3 py-2 rounded-md text-[11px] font-semibold transition ${
-                      stakeModo === 'fixo'
-                        ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/50'
-                        : 'text-[--mike-fg-muted] border-[--mike-border]'
+                      stakeModo === 'fixo' ? 'bg-emerald-500/15 text-emerald-300' : 'text-[--mike-fg-muted]'
                     }`}
                     style={{ border: '0.5px solid', borderColor: stakeModo === 'fixo' ? 'rgba(16,185,129,0.5)' : 'rgba(60,85,130,0.4)' }}
                   >
@@ -513,9 +561,7 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
                   <button
                     onClick={() => setStakeModo('ratchet')}
                     className={`flex-1 px-3 py-2 rounded-md text-[11px] font-semibold transition ${
-                      stakeModo === 'ratchet'
-                        ? 'bg-emerald-500/15 text-emerald-300'
-                        : 'text-[--mike-fg-muted]'
+                      stakeModo === 'ratchet' ? 'bg-emerald-500/15 text-emerald-300' : 'text-[--mike-fg-muted]'
                     }`}
                     style={{ border: '0.5px solid', borderColor: stakeModo === 'ratchet' ? 'rgba(16,185,129,0.5)' : 'rgba(60,85,130,0.4)' }}
                   >
@@ -527,9 +573,7 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
                   <div>
                     <label className="block text-[10px] text-[--mike-fg-muted] mb-1">Valor por aposta (R$)</label>
                     <input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
+                      type="number" step="0.01" min="0.01"
                       value={stakeValor}
                       onChange={e => setStakeValor(parseFloat(e.target.value) || 0)}
                       className="w-full px-3 py-2 rounded-md text-xs text-white bg-transparent outline-none"
@@ -541,10 +585,7 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
                     <div>
                       <label className="block text-[10px] text-[--mike-fg-muted] mb-1">% da banca pico</label>
                       <input
-                        type="number"
-                        step="0.1"
-                        min="0.1"
-                        max="100"
+                        type="number" step="0.1" min="0.1" max="100"
                         value={stakeValor}
                         onChange={e => setStakeValor(parseFloat(e.target.value) || 0)}
                         className="w-full px-3 py-2 rounded-md text-xs text-white bg-transparent outline-none"
@@ -554,9 +595,7 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
                     <div>
                       <label className="block text-[10px] text-[--mike-fg-muted] mb-1">Banca inicial (R$)</label>
                       <input
-                        type="number"
-                        step="1"
-                        min="1"
+                        type="number" step="1" min="1"
                         value={bancaInicial}
                         onChange={e => setBancaInicial(parseFloat(e.target.value) || 0)}
                         className="w-full px-3 py-2 rounded-md text-xs text-white bg-transparent outline-none"
@@ -578,14 +617,10 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
                 </div>
               )}
 
-              {/* Histórico colapsável */}
               <HistoricoJobs botId={bot.id} onSelecionar={verJobAnterior} />
             </div>
           )}
 
-          {/* ============================================================
-              ESTADO 2: RODANDO
-              ============================================================ */}
           {estado === 'rodando' && (
             <div className="py-8 space-y-4">
               <div className="text-center">
@@ -616,9 +651,6 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
             </div>
           )}
 
-          {/* ============================================================
-              ESTADO 3: RESULTADO
-              ============================================================ */}
           {estado === 'resultado' && job && (
             <div className="space-y-4">
               <div className="flex items-center gap-2">
@@ -629,38 +661,29 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
                 </span>
               </div>
 
-              {/* Cards principais */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <CardMetrica
-                  titulo="ROI"
-                  valor={formatarPct(job.roi)}
+                  titulo="ROI" valor={formatarPct(job.roi)}
                   cor={(job.roi || 0) >= 0 ? 'emerald' : 'rose'}
                   Icon={(job.roi || 0) >= 0 ? TrendingUp : TrendingDown}
                 />
                 <CardMetrica
-                  titulo="Win Rate"
-                  valor={formatarPct(job.win_rate)}
+                  titulo="Win Rate" valor={formatarPct(job.win_rate)}
                   sub={`${job.green || 0}G · ${job.red || 0}R`}
-                  cor="cyan"
-                  Icon={Activity}
+                  cor="cyan" Icon={Activity}
                 />
                 <CardMetrica
-                  titulo="Apostas"
-                  valor={job.total_apostas || 0}
+                  titulo="Apostas" valor={job.total_apostas || 0}
                   sub={`${job.dias_verdes || 0}/${job.dias_total || 0} dias verdes`}
-                  cor="slate"
-                  Icon={BarChart3}
+                  cor="slate" Icon={BarChart3}
                 />
                 <CardMetrica
-                  titulo="Drawdown"
-                  valor={formatarBRL(job.drawdown_max)}
+                  titulo="Drawdown" valor={formatarBRL(job.drawdown_max)}
                   sub={`Streak red: ${job.max_streak_red || 0}`}
-                  cor="amber"
-                  Icon={TrendingDown}
+                  cor="amber" Icon={TrendingDown}
                 />
               </div>
 
-              {/* PnL grande */}
               <div className="rounded-md p-4 text-center" style={{
                 backgroundColor: (job.pnl || 0) >= 0 ? 'rgba(16,185,129,0.06)' : 'rgba(244,63,94,0.06)',
                 border: `0.5px solid ${(job.pnl || 0) >= 0 ? 'rgba(16,185,129,0.3)' : 'rgba(244,63,94,0.3)'}`,
@@ -682,10 +705,8 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
                 </div>
               </div>
 
-              {/* Chart equity */}
               <ChartEquity pontos={job.equity_curve} />
 
-              {/* Aviso se 0 apostas */}
               {(job.total_apostas || 0) === 0 && (
                 <div className="flex items-start gap-2 px-3 py-2 rounded-md text-[11px]" style={{
                   backgroundColor: 'rgba(245,158,11,0.08)',
@@ -707,9 +728,6 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
             </div>
           )}
 
-          {/* ============================================================
-              ESTADO 4: ERRO
-              ============================================================ */}
           {estado === 'erro' && (
             <div className="py-8 text-center">
               <AlertCircle className="w-10 h-10 mx-auto text-rose-400 mb-3" />
@@ -719,7 +737,8 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
               </p>
               <button
                 onClick={() => { setEstado('config'); setErroMsg(null); }}
-                className="px-3 py-1.5 rounded-md text-[11px] font-semibold mike-border-thin text-[--mike-fg-soft] hover:text-white transition"
+                className="px-3 py-1.5 rounded-md text-[11px] font-semibold text-[--mike-fg-soft] hover:text-white transition"
+                style={{ border: '0.5px solid rgba(60,85,130,0.4)' }}
               >
                 Tentar novamente
               </button>
@@ -727,7 +746,6 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
           )}
         </div>
 
-        {/* FOOTER */}
         <div className="flex items-center gap-2 px-4 py-3" style={{ borderTop: '0.5px solid rgba(60,85,130,0.4)' }}>
           {estado === 'config' && (
             <>
