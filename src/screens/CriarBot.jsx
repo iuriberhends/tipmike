@@ -970,11 +970,13 @@ function BlocoFiltrosHistorico({
 // Helper: formatar uma combinação adicionada como string legível
 // Ex: "Abyssal (H2H GG League)(Aston Villa) x (Arsenal)Apollo (H2H GG League)"
 function formatarCombinacao(c) {
+  const torneio = c.torneio || '';
   const lado1 = [];
   const lado2 = [];
-  if (c.j1) lado1.push(c.j1);
+  // Cada jogador leva o torneio entre parênteses logo após o nome
+  if (c.j1) lado1.push(torneio ? `${c.j1} (${torneio})` : c.j1);
   if (c.t1) lado1.push(`(${c.t1})`);
-  if (c.j2) lado2.push(c.j2);
+  if (c.j2) lado2.push(torneio ? `${c.j2} (${torneio})` : c.j2);
   if (c.t2) lado2.push(`(${c.t2})`);
 
   const l1 = lado1.join('');
@@ -986,7 +988,7 @@ function formatarCombinacao(c) {
   return '(vazio)';
 }
 
-function CaixaFiltrarPartidas({ cor, titulo, ativo, onToggle, jogadores, times, carregando, estado, onChange }) {
+function CaixaFiltrarPartidas({ cor, titulo, ativo, onToggle, jogadores, times, carregando, estado, onChange, torneioNome }) {
   const isVerde = cor === 'verde';
   const corPrimaria = isVerde ? '#10b981' : '#f43f5e';
   const corBg = ativo
@@ -1017,6 +1019,7 @@ function CaixaFiltrarPartidas({ cor, titulo, ativo, onToggle, jogadores, times, 
       fixarJ1Casa: estado.fixarJ1Casa,
       fixarJ2Visit: estado.fixarJ2Visit,
       direcao: estado.direcao,
+      torneio: torneioNome || '',
     };
 
     // Resetar campos do form, mantendo a lista
@@ -2587,12 +2590,14 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
                 ativo={apenasEspecificasAtivo} onToggle={setApenasEspecificasAtivo}
                 jogadores={participantes.jogadores} times={participantes.times} carregando={participantes.carregando}
                 estado={apenasEspecificasEstado} onChange={setApenasEspecificasEstado}
+                torneioNome={torneios[0] || ''}
               />
               <CaixaFiltrarPartidas
                 cor="rosa" titulo="Ignorar partidas específicas"
                 ativo={ignorarEspecificasAtivo} onToggle={setIgnorarEspecificasAtivo}
                 jogadores={participantes.jogadores} times={participantes.times} carregando={participantes.carregando}
                 estado={ignorarEspecificasEstado} onChange={setIgnorarEspecificasEstado}
+                torneioNome={torneios[0] || ''}
               />
             </div>
           )}
