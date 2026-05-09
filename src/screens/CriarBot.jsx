@@ -29,7 +29,29 @@ const CASAS_APOSTAS = [
 ];
 
 const TORNEIOS_POR_ESPORTE = {
-  fifa:    ['Battle', 'GT League', 'ECF (Volta)', 'Adriatic League', 'H2H GG League', 'Battle (2x6)', 'Liga Pro (Rep. Tcheca)', 'Live Arena', 'Setka Cup', 'Cup', 'FIFA Live Arena', 'FIFA TM Cup', 'FIFA Battle', 'FIFA Cup'],
+  fifa: [
+    'Battle',
+    'GT League',
+    'ECF (Volta)',
+    'Adriatic League',
+    'eAdriatic League',
+    'H2H GG League',
+    'Live Arena',
+    'Champions League',
+    'Liga dos Campeões',
+    'Premier League',
+    'La Liga',
+    'Bundesliga',
+    'Serie A',
+    'Ligue 1',
+    'Super Lig',
+    'Europa League',
+    'FC26',
+    'Volta',
+    'Valhalla',
+    'Valkyrie',
+    'NBA League',
+  ],
   nba2k:   ['H2H GG League', 'Adriatic NextGen', 'Battle (NBA2K)', 'Live NBA'],
   ehockey: ['NHL eSports', 'IIHF eSports', 'KHL eSports'],
   etennis: ['ATP eSports', 'WTA eSports', 'Grand Slam eSports', 'Masters eSports'],
@@ -1262,9 +1284,13 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
   const [esporte, setEsporte] = useState('fifa');
   const [casa, setCasa] = useState('betano');
 
-  // SECAO 3
+  // SECAO 3 — Torneio + Grade (variações específicas dentro do torneio)
   const [torneioAtivo, setTorneioAtivo] = useState(false);
   const [torneios, setTorneios] = useState([]);
+  const [gradesAtivo, setGradesAtivo] = useState(false);
+  const [gradesSelecionadas, setGradesSelecionadas] = useState([]); // grades específicas escolhidas
+  const [gradesDisponiveis, setGradesDisponiveis] = useState([]);   // todas as grades vindas da API
+  const [gradesCarregando, setGradesCarregando] = useState(false);
 
   // SECAO 4 - MERCADOS
   const [mercado, setMercado] = useState('over_under_ft');
@@ -1390,15 +1416,41 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3500);
   };
 
-  // Busca participantes do torneio quando torneioAtivo muda ou torneios mudam
+  // 1) Quando torneio é ativado/escolhido → busca as grades disponíveis
+  useEffect(() => {
+    if (!torneioAtivo || torneios.length === 0) {
+      setGradesDisponiveis([]);
+      setGradesSelecionadas([]);
+      return;
+    }
+    const torneio = torneios[0];
+    setGradesCarregando(true);
+    ApiTorneios.grades(torneio)
+      .then(data => {
+        setGradesDisponiveis(data.grades || []);
+        setGradesCarregando(false);
+      })
+      .catch(() => {
+        setGradesDisponiveis([]);
+        setGradesCarregando(false);
+      });
+  }, [torneios, torneioAtivo]);
+
+  // 2) Quando torneio OU grades mudam → busca participantes
   useEffect(() => {
     if (!torneioAtivo || torneios.length === 0) {
       setParticipantes({ jogadores: [], times: [], carregando: false });
       return;
     }
-    const torneio = torneios[0]; // primeiro torneio selecionado
+    const torneio = torneios[0];
     setParticipantes(prev => ({ ...prev, carregando: true }));
-    ApiTorneios.participantes(torneio)
+
+    // Se gradesAtivo e tem grades selecionadas, manda elas; senão agrega tudo
+    const options = (gradesAtivo && gradesSelecionadas.length > 0)
+      ? { grades: gradesSelecionadas }
+      : {};
+
+    ApiTorneios.participantes(torneio, options)
       .then(data => {
         setParticipantes({
           jogadores: data.jogadores || [],
@@ -1409,7 +1461,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
       .catch(() => {
         setParticipantes({ jogadores: [], times: [], carregando: false });
       });
-  }, [torneios, torneioAtivo]);
+  }, [torneios, torneioAtivo, gradesAtivo, gradesSelecionadas]);
 
   // ============================================================
   // PERSISTENCIA LOCAL + AUTO-SAVE (defensivo)
@@ -1425,7 +1477,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
 
   // Coleta todo o form em um objeto
   const formState = {
-    nome, descricao, esporte, casa, torneioAtivo, torneios,
+    nome, descricao, esporte, casa, torneioAtivo, torneios, gradesAtivo, gradesSelecionadas,
     mercado, inner, linhaMin, linhaMax, limitarOddsAtivo, limitarOdds, proporcaoAtivo, proporcao,
     tipoProporcaoAtivo, tipoProporcao, limitePlacarAtivo, limitePlacar,
     extrasAtivo, extras, filtroMediasAtivo, filtroMedias,
@@ -1457,6 +1509,8 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     if (s.casa !== undefined) setCasa(s.casa);
     if (s.torneioAtivo !== undefined) setTorneioAtivo(s.torneioAtivo);
     if (s.torneios !== undefined) setTorneios(s.torneios);
+    if (s.gradesAtivo !== undefined) setGradesAtivo(s.gradesAtivo);
+    if (s.gradesSelecionadas !== undefined) setGradesSelecionadas(s.gradesSelecionadas);
     if (s.mercado !== undefined) setMercado(s.mercado);
     if (s.limitarOddsAtivo !== undefined) setLimitarOddsAtivo(s.limitarOddsAtivo);
     if (s.limitarOdds !== undefined) setLimitarOdds(s.limitarOdds);
@@ -1534,6 +1588,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     setNome(''); setDescricao('');
     setEsporte('fifa'); setCasa('bet365');
     setTorneioAtivo(false); setTorneios([]);
+    setGradesAtivo(false); setGradesSelecionadas([]);
     setMercado('over_under_ft');
     setLimitarOddsAtivo(false); setLimitarOdds([1, 10]);
     setProporcaoAtivo(false); setProporcao([0, 10]);
@@ -2075,8 +2130,8 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
           </div>
         </SecaoForm>
 
-        {/* SECAO 3: TORNEIO */}
-        <SecaoForm titulo="Torneio e Grade" descricao="Escolha o torneio e/ou a grade que o seu bot vai observar. (Deixe desativado para qualquer)">
+        {/* SECAO 3: TORNEIO + GRADE */}
+        <SecaoForm titulo="Torneio e Grade" descricao="Escolha o torneio e, opcionalmente, grades específicas (variações). Sem grade selecionada, agrega todas as variações.">
           <LinhaFiltro
             ativo={torneioAtivo} onToggle={setTorneioAtivo} label="Torneio"
             comAcoes
@@ -2085,6 +2140,37 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
           >
             <MultiTagInput valores={torneios} onChange={setTorneios} opcoes={torneiosDisp} placeholder="Selecione um torneio" />
           </LinhaFiltro>
+
+          {/* Linha de Grade — só aparece se torneio ativo + tem ao menos 1 torneio selecionado */}
+          {torneioAtivo && torneios.length > 0 && (
+            <LinhaFiltro
+              ativo={gradesAtivo}
+              onToggle={(v) => { setGradesAtivo(v); if (!v) setGradesSelecionadas([]); }}
+              label="Grade"
+              info="Filtrar variações específicas do torneio (ex: Battle - La Liga, Battle - Bundesliga). Sem nada selecionado, mostra todas."
+            >
+              {gradesCarregando ? (
+                <div className="flex items-center gap-2 text-[10px] text-[--mike-fg-muted]">
+                  <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.3"/>
+                    <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
+                  </svg>
+                  Carregando grades...
+                </div>
+              ) : gradesDisponiveis.length === 0 ? (
+                <div className="text-[10px] text-[--mike-fg-muted]">
+                  Nenhuma grade encontrada nos últimos 14 dias.
+                </div>
+              ) : (
+                <MultiTagInput
+                  valores={gradesSelecionadas}
+                  onChange={setGradesSelecionadas}
+                  opcoes={gradesDisponiveis.map(g => g.nome)}
+                  placeholder={`${gradesDisponiveis.length} grade(s) disponíveis — deixe vazio para todas`}
+                />
+              )}
+            </LinhaFiltro>
+          )}
         </SecaoForm>
 
         {/* SECAO 4: MERCADOS */}

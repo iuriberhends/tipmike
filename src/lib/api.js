@@ -1,13 +1,5 @@
 /**
  * api.js — Cliente HTTP centralizado da TipMike API
- *
- * Todos os screens importam daqui. Quando o IP mudar,
- * só precisa alterar o .env (VITE_API_URL).
- *
- * Uso:
- *   import { api } from '../lib/api'
- *   const data = await api.get('/eventos/live')
- *   const bot  = await api.post('/bots', { nome: 'Meu Bot', ... })
  */
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://138.255.160.158:8000';
@@ -15,7 +7,6 @@ const BASE_URL = import.meta.env.VITE_API_URL || 'http://138.255.160.158:8000';
 async function request(method, path, body, params) {
   let url = `${BASE_URL}${path}`;
 
-  // Query string
   if (params) {
     const qs = new URLSearchParams(
       Object.entries(params).filter(([, v]) => v !== null && v !== undefined && v !== '')
@@ -48,8 +39,6 @@ export const api = {
   put:    (path, body)   => request('PUT', path, body),
   delete: (path)         => request('DELETE', path),
 };
-
-// ─── Endpoints prontos ───────────────────────────────────────────
 
 export const ApiSistema = {
   health:  () => api.get('/health'),
@@ -102,9 +91,22 @@ export const ApiStats = {
 };
 
 export const ApiTorneios = {
-  participantes: (torneioId, bookmaker) =>
-    api.get(
+  // Lista as grades (variações) de um torneio
+  // Ex: 'Battle' → ['Battle Bundesliga (2x4 mins)', 'Battle - La Liga', ...]
+  grades: (torneioId) =>
+    api.get(`/torneios/${encodeURIComponent(torneioId)}/grades`),
+
+  // Lista jogadores de um torneio
+  // grades opcional: array de grades específicas (vira ?grades=g1|g2|g3)
+  participantes: (torneioId, options = {}) => {
+    const params = {};
+    if (options.bookmaker) params.bookmaker = options.bookmaker;
+    if (options.grades && options.grades.length > 0) {
+      params.grades = options.grades.join('|');
+    }
+    return api.get(
       `/torneios/${encodeURIComponent(torneioId)}/participantes`,
-      bookmaker ? { bookmaker } : undefined
-    ),
+      Object.keys(params).length > 0 ? params : undefined
+    );
+  },
 };
