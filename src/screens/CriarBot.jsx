@@ -1303,101 +1303,27 @@ function formStateToPayload(s) {
 }
 
 function botRowToFormState(row) {
-  // Converte row do banco de volta pro formState (modo edição).
-  //
-  // Estratégia em 2 camadas:
-  //   1) Pega `filtros` JSONB como BASE (tem o formState completo de quando salvou)
-  //   2) Colunas dedicadas SOBRESCREVEM o que vier no JSONB (mais autoritativas)
-  //      e ativam os toggles *Ativo correspondentes
-  //
-  // Importante: nunca sobrescrever com null/undefined — isso poderia apagar
-  // valores válidos que vieram do JSONB.
-
+  // Converte row do banco de volta pro formState (modo edição)
+  // Estratégia: pega `filtros` JSONB que tem o formState completo;
+  // sobrepoe com campos das colunas dedicadas (mais autoritativos).
   const base = (row.filtros && typeof row.filtros === 'object') ? { ...row.filtros } : {};
 
-  // ------------------------------------------------------------
-  // CAMPOS BÁSICOS (sempre não-nulos no banco)
-  // ------------------------------------------------------------
-  if (row.nome != null)     base.nome = row.nome;
-  if (row.descricao != null) base.descricao = row.descricao;
-  if (row.casa != null)     base.casa = row.casa;
-  if (row.esporte != null)  base.esporte = row.esporte;
-  if (row.mercado != null)  base.mercado = row.mercado;
-
-  // ------------------------------------------------------------
-  // TORNEIOS (whitelist)
-  // ------------------------------------------------------------
-  if (Array.isArray(row.torneios) && row.torneios.length > 0) {
+  // Campos dedicados sobrescrevem
+  base.nome = row.nome ?? base.nome ?? '';
+  base.descricao = row.descricao ?? base.descricao ?? '';
+  base.casa = row.casa ?? base.casa;
+  base.esporte = row.esporte ?? base.esporte;
+  base.mercado = row.mercado ?? base.mercado;
+  if (row.torneios && row.torneios.length > 0) {
     base.torneios = row.torneios;
     base.torneioAtivo = true;
   }
-
-  // ------------------------------------------------------------
-  // GRADES (blacklist via torneios_excluir)
-  // ------------------------------------------------------------
-  if (Array.isArray(row.torneios_excluir) && row.torneios_excluir.length > 0) {
-    base.gradesSelecionadas = row.torneios_excluir;
-    base.gradesAtivo = true;
-    base.gradesModo = 'blacklist';
-  }
-
-  // ------------------------------------------------------------
-  // LINHAS
-  // ------------------------------------------------------------
-  if (row.linha_min != null) base.linhaMin = Number(row.linha_min);
-  if (row.linha_max != null) base.linhaMax = Number(row.linha_max);
-
-  // ------------------------------------------------------------
-  // ODDS (toggle ativa só se ambos preenchidos)
-  // ------------------------------------------------------------
-  if (row.odd_min != null && row.odd_max != null) {
+  if (row.linha_min !== null && row.linha_min !== undefined) base.linhaMin = row.linha_min;
+  if (row.linha_max !== null && row.linha_max !== undefined) base.linhaMax = row.linha_max;
+  if (row.odd_min !== null && row.odd_max !== null) {
     base.limitarOddsAtivo = true;
-    base.limitarOdds = [Number(row.odd_min), Number(row.odd_max)];
+    base.limitarOdds = [row.odd_min, row.odd_max];
   }
-
-  // ------------------------------------------------------------
-  // PARES (whitelist + blacklist) → estado das caixas Filtrar Partidas
-  // ------------------------------------------------------------
-  const ESTADO_FP_DEFAULT = {
-    j1: '', j2: '', t1: '', t2: '',
-    j1Ativo: false, j2Ativo: false, t1Ativo: false, t2Ativo: false,
-    fixarJ1Casa: false, fixarJ2Visit: false,
-    direcao: 'todas', adicionadas: [],
-  };
-
-  if (Array.isArray(row.whitelist_pares) && row.whitelist_pares.length > 0) {
-    base.apenasEspecificasAtivo = true;
-    base.apenasEspecificasEstado = {
-      ...ESTADO_FP_DEFAULT,
-      ...(base.apenasEspecificasEstado || {}),
-      adicionadas: row.whitelist_pares,
-    };
-  }
-  if (Array.isArray(row.blacklist_pares) && row.blacklist_pares.length > 0) {
-    base.ignorarEspecificasAtivo = true;
-    base.ignorarEspecificasEstado = {
-      ...ESTADO_FP_DEFAULT,
-      ...(base.ignorarEspecificasEstado || {}),
-      adicionadas: row.blacklist_pares,
-    };
-  }
-
-  // ------------------------------------------------------------
-  // CENÁRIO DA PARTIDA (whitelist_cenarios é array, mas UI só usa o 1º)
-  // ------------------------------------------------------------
-  if (Array.isArray(row.whitelist_cenarios) && row.whitelist_cenarios.length > 0) {
-    base.cenarioPartidaAtivo = true;
-    base.cenarioPartida = row.whitelist_cenarios[0];
-  }
-
-  // ------------------------------------------------------------
-  // MAX TIPS POR JOGO
-  // ------------------------------------------------------------
-  if (row.max_apostas_partida != null) {
-    base.evitarLinhasSeq = false; // se tem limite, não está em "evitar sequenciais"
-    base.maxTipsPorJogo = String(row.max_apostas_partida);
-  }
-
   return base;
 }
 
@@ -1480,16 +1406,8 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
 
   // Hook de salvar
   const { salvar, loading: salvando } = useBotSalvar({
-    onSuccess: async (bot) => {
+    onSuccess: (bot) => {
       adicionarToast(modoEdicao ? `Bot "${bot.nome}" editado` : `Bot "${bot.nome}" criado`, 'success');
-      // Limpa o draft local quando cria bot novo (bot já está no banco agora)
-      if (!modoEdicao) {
-        try {
-          if (typeof window !== 'undefined' && window.storage) {
-            await window.storage.delete('tipmike:bot:draft');
-          }
-        } catch {}
-      }
       // Notifica callback externo (app pai navega de volta pra lista)
       if (onSalvar) {
         setTimeout(() => onSalvar(bot), 800);
@@ -1751,6 +1669,9 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     if (s.gradesSelecionadas !== undefined) setGradesSelecionadas(s.gradesSelecionadas);
     if (s.gradesModo !== undefined) setGradesModo(s.gradesModo);
     if (s.mercado !== undefined) setMercado(s.mercado);
+    if (s.inner !== undefined) setInner(s.inner);
+    if (s.linhaMin !== undefined) setLinhaMin(s.linhaMin);
+    if (s.linhaMax !== undefined) setLinhaMax(s.linhaMax);
     if (s.limitarOddsAtivo !== undefined) setLimitarOddsAtivo(s.limitarOddsAtivo);
     if (s.limitarOdds !== undefined) setLimitarOdds(s.limitarOdds);
     if (s.proporcaoAtivo !== undefined) setProporcaoAtivo(s.proporcaoAtivo);
@@ -1870,14 +1791,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
   };
 
   // ON MOUNT: carrega draft do storage
-  // (apenas em modo CRIAÇÃO — em modo edição o bot vem do banco, não do draft)
   useEffect(() => {
-    if (modoEdicao) {
-      // Em modo edição, marca como carregado pra liberar a UI
-      // mas não toca no draft (preserva pra próxima criação nova)
-      setDraftCarregado(true);
-      return;
-    }
     let cancelado = false;
     (async () => {
       try {
@@ -1899,14 +1813,12 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
       }
     })();
     return () => { cancelado = true; };
-  }, [modoEdicao]); // eslint-disable-line
+  }, []); // eslint-disable-line
 
   // AUTO-SAVE com debounce: salva 3s depois da ultima mudanca
-  // Pulado em modo edição (draft é só pra criação nova; ao editar
-  // o bot já está no banco e salvar manualmente persiste lá)
+  // Usa um hash simples ao inves de JSON.stringify completo nos deps
   const formStateKey = JSON.stringify(formState);
   useEffect(() => {
-    if (modoEdicao) return; // não usa draft em modo edição
     if (!draftCarregado) return; // espera carregar primeiro
     if (primeiraRender.current) {
       primeiraRender.current = false;
@@ -1930,7 +1842,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
       }
     }, 3000);
     return () => clearTimeout(timer);
-  }, [formStateKey, draftCarregado, modoEdicao]); // eslint-disable-line
+  }, [formStateKey, draftCarregado]); // eslint-disable-line
 
   // Atalho Ctrl+S = salvar manual / Esc = fecha modais ou cancela form
   useEffect(() => {
