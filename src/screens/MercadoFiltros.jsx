@@ -20,9 +20,9 @@ const R_ASIATICO_GOLS_HT = { min: 0.25,  max: 9.75,  step: 0.25 };
 const R_OU_PONTOS_FT     = { min: 79.5,  max: 249.5, step: 5.0  };
 const R_OU_PONTOS_HT     = { min: 34.5,  max: 124.5, step: 5.0  };
 // HC
-const R_AH_GOLS          = { min: -3.5,  max: 3.5,   step: 0.5  };
-const R_EH_GOLS          = { min: -3.5,  max: 3.5,   step: 0.5  };
-const R_AH_PONTOS        = { min: -14.5, max: 14.5,  step: 2.0  };
+const R_AH_GOLS          = { vals: Array.from({length: 42}, (_, i) => -10.5 + i) }; // -10.5 a +10.5, apenas .5
+const R_EH_GOLS          = { vals: Array.from({length: 42}, (_, i) => -10.5 + i) }; // -10.5 a +10.5, apenas .5
+const R_AH_PONTOS        = { vals: Array.from({length: 42}, (_, i) => -10.5 + i) }; // -10.5 a +10.5, apenas .5
 // Jogador
 const R_JOGADOR_GOLS     = { vals: [0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5] };
 const R_JOGADOR_PONTOS   = { min: 9.5,   max: 39.5,  step: 5.0  };
