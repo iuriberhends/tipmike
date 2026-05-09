@@ -20,6 +20,7 @@ async function request(method, path, body, params) {
   };
 
   if (body) {
+    // JSON minificado pra reduzir bytes na rede
     options.body = JSON.stringify(body);
   }
 
@@ -37,6 +38,7 @@ export const api = {
   get:    (path, params) => request('GET', path, null, params),
   post:   (path, body)   => request('POST', path, body),
   put:    (path, body)   => request('PUT', path, body),
+  patch:  (path, body)   => request('PATCH', path, body),
   delete: (path)         => request('DELETE', path),
 };
 
@@ -64,11 +66,13 @@ export const ApiH2H = {
   busca: (params)         => api.get('/h2h', params),
 };
 
+// ApiBots - operações leves
+// list: paginada, sem JSONB pesado | get: completo pra editar
 export const ApiBots = {
   list:   (params) => api.get('/bots', params),
   get:    (id)     => api.get(`/bots/${id}`),
   create: (body)   => api.post('/bots', body),
-  update: (id, b)  => api.put(`/bots/${id}`, b),
+  update: (id, b)  => api.patch(`/bots/${id}`, b),
   delete: (id)     => api.delete(`/bots/${id}`),
   start:  (id)     => api.post(`/bots/${id}/start`),
   stop:   (id)     => api.post(`/bots/${id}/stop`),
@@ -91,12 +95,9 @@ export const ApiStats = {
 };
 
 export const ApiTorneios = {
-  // Lista as grades (variações) de um torneio
   grades: (torneioId) =>
     api.get(`/torneios/${encodeURIComponent(torneioId)}/grades`),
 
-  // Lista jogadores de um torneio
-  // options: { bookmaker, grades: ['g1','g2'], gradesModo: 'whitelist'|'blacklist' }
   participantes: (torneioId, options = {}) => {
     const params = {};
     if (options.bookmaker) params.bookmaker = options.bookmaker;

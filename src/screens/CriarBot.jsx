@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import MikeHeader from '../shared/MikeHeader.jsx';
 import MercadoFiltros from './MercadoFiltros';
-import { ApiTorneios } from '../lib/api';
+import { ApiTorneios, ApiBots } from '../lib/api';
 
 // ============================================================
 // CONSTANTES (opcoes dos dropdowns)
@@ -1234,99 +1234,124 @@ function CaixaFiltrarPartidas({ cor, titulo, ativo, onToggle, jogadores, times, 
 // Quando trocar pra HTTP real, basta mudar USE_MOCK = false.
 // ============================================================
 
-const USE_MOCK = true;
-const API_BASE_URL = '';  // ex: 'https://api.tipmike.com'
-const MOCK_LATENCY = { min: 80, max: 250 };
+// ============================================================
+// MAPEAMENTO formState ↔ payload do banco
+// ============================================================
+//
+// O backend tem colunas dedicadas pros campos importantes (queryable via SQL)
+// e uma coluna `filtros` JSONB que guarda o resto do formState pra reidratação
+// fiel quando o usuário abrir o bot pra editar.
+// ============================================================
 
-function simularLatencia() {
-  const ms = MOCK_LATENCY.min + Math.random() * (MOCK_LATENCY.max - MOCK_LATENCY.min);
-  return new Promise(resolve => setTimeout(resolve, ms));
+function formStateToPayload(s) {
+  // Campos diretos
+  const payload = {
+    nome: (s.nome || '').trim(),
+    descricao: s.descricao || null,
+    casa: s.casa,
+    esporte: s.esporte,
+    mercado: s.mercado,
+  };
+
+  // Torneios (whitelist)
+  if (s.torneioAtivo && Array.isArray(s.torneios) && s.torneios.length > 0) {
+    payload.torneios = s.torneios;
+  }
+
+  // Grades como blacklist → torneios_excluir
+  if (s.gradesAtivo && s.gradesModo === 'blacklist'
+      && Array.isArray(s.gradesSelecionadas) && s.gradesSelecionadas.length > 0) {
+    payload.torneios_excluir = s.gradesSelecionadas;
+  }
+
+  // Linhas
+  if (s.linhaMin !== null && s.linhaMin !== undefined) payload.linha_min = s.linhaMin;
+  if (s.linhaMax !== null && s.linhaMax !== undefined) payload.linha_max = s.linhaMax;
+
+  // Odds
+  if (s.limitarOddsAtivo && Array.isArray(s.limitarOdds) && s.limitarOdds.length === 2) {
+    payload.odd_min = s.limitarOdds[0];
+    payload.odd_max = s.limitarOdds[1];
+  }
+
+  // Pares (combinações da seção Filtrar Partidas)
+  const adicionadasApenas = s.apenasEspecificasEstado?.adicionadas || [];
+  if (s.apenasEspecificasAtivo && adicionadasApenas.length > 0) {
+    payload.whitelist_pares = adicionadasApenas;
+  }
+  const adicionadasIgnorar = s.ignorarEspecificasEstado?.adicionadas || [];
+  if (s.ignorarEspecificasAtivo && adicionadasIgnorar.length > 0) {
+    payload.blacklist_pares = adicionadasIgnorar;
+  }
+
+  // Cenário da partida
+  if (s.cenarioPartidaAtivo && s.cenarioPartida) {
+    payload.whitelist_cenarios = [s.cenarioPartida];
+  }
+
+  // Max tips por jogo
+  if (!s.evitarLinhasSeq && s.maxTipsPorJogo && s.maxTipsPorJogo !== 'ilimitado') {
+    const n = parseInt(s.maxTipsPorJogo, 10);
+    if (!isNaN(n)) payload.max_apostas_partida = n;
+  }
+
+  // filtros JSONB: backup de TODO o formState pra reidratação fiel ao editar
+  // (permite recuperar fixarJ1Casa, gradesModo, filtros hist, comp, live, etc)
+  payload.filtros = { ...s };
+
+  return payload;
 }
 
-// Stub de bots em memória (substituir por banco real)
+function botRowToFormState(row) {
+  // Converte row do banco de volta pro formState (modo edição)
+  // Estratégia: pega `filtros` JSONB que tem o formState completo;
+  // sobrepoe com campos das colunas dedicadas (mais autoritativos).
+  const base = (row.filtros && typeof row.filtros === 'object') ? { ...row.filtros } : {};
 
-const botsStore = {};
-let proximoId = 100;
-
-const mockResponses = {
-  // GET /bots/:id - busca bot pra modo edicao
-  '/bots/:id': ({ id }) => {
-    const bot = botsStore[id];
-    if (!bot) throw new Error(`Bot #${id} não encontrado`);
-    return bot;
-  },
-
-  // POST /bots - criar novo
-  'POST /bots': (body) => {
-    const id = proximoId++;
-    const novo = { ...body, id, criadoEm: new Date().toISOString() };
-    botsStore[id] = novo;
-    return novo;
-  },
-
-  // PATCH /bots/:id - editar existente
-  'PATCH /bots/:id': ({ id, ...campos }) => {
-    if (!botsStore[id]) throw new Error(`Bot #${id} não encontrado`);
-    botsStore[id] = { ...botsStore[id], ...campos, atualizadoEm: new Date().toISOString() };
-    return botsStore[id];
-  },
-};
-
-async function apiGet(endpoint, params) {
-  if (USE_MOCK) {
-    await simularLatencia();
-    let handler = mockResponses[endpoint];
-    if (!handler) {
-      // Tenta match com :id wildcard
-      const matchKey = Object.keys(mockResponses).find(k => {
-        if (k.includes(' ')) return false;  // skip mutações
-        const pattern = k.replace(/:[a-z]+/g, '[^/]+');
-        return new RegExp('^' + pattern + '$').test(endpoint);
-      });
-      if (matchKey) {
-        handler = mockResponses[matchKey];
-        const idMatch = endpoint.match(/\/(\d+)/);
-        if (idMatch) params = { id: idMatch[1], ...params };
-      }
-    }
-    if (!handler) throw new Error(`[MOCK] Endpoint não implementado: GET ${endpoint}`);
-    return handler(params || {});
+  // Campos dedicados sobrescrevem
+  base.nome = row.nome ?? base.nome ?? '';
+  base.descricao = row.descricao ?? base.descricao ?? '';
+  base.casa = row.casa ?? base.casa;
+  base.esporte = row.esporte ?? base.esporte;
+  base.mercado = row.mercado ?? base.mercado;
+  if (row.torneios && row.torneios.length > 0) {
+    base.torneios = row.torneios;
+    base.torneioAtivo = true;
   }
-  const res = await fetch(`${API_BASE_URL}${endpoint}`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  if (row.linha_min !== null && row.linha_min !== undefined) base.linhaMin = row.linha_min;
+  if (row.linha_max !== null && row.linha_max !== undefined) base.linhaMax = row.linha_max;
+  if (row.odd_min !== null && row.odd_max !== null) {
+    base.limitarOddsAtivo = true;
+    base.limitarOdds = [row.odd_min, row.odd_max];
+  }
+  return base;
+}
+
+// ============================================================
+// API CLIENT (real, sem mock) — usa ApiBots do lib/api.js
+// ============================================================
+
+async function apiGet(endpoint) {
+  // /bots/:id → ApiBots.get(id)
+  const m = endpoint.match(/^\/bots\/(\d+)$/);
+  if (m) return ApiBots.get(parseInt(m[1], 10));
+  throw new Error(`apiGet: endpoint não suportado: ${endpoint}`);
 }
 
 async function apiMutate(method, endpoint, body) {
-  if (USE_MOCK) {
-    await simularLatencia();
-    const key = `${method} ${endpoint}`;
-    let handler = mockResponses[key];
-    if (!handler) {
-      const matchKey = Object.keys(mockResponses).find(k => {
-        if (!k.startsWith(method + ' ')) return false;
-        const pattern = k.replace(method + ' ', '').replace(/:[a-z]+/g, '[^/]+');
-        return new RegExp('^' + pattern + '$').test(endpoint);
-      });
-      if (matchKey) {
-        handler = mockResponses[matchKey];
-        const idMatch = endpoint.match(/\/(\d+)/);
-        if (idMatch) body = { id: idMatch[1], ...body };
-      }
-    }
-    if (!handler) {
-      console.warn(`[MOCK] Mutação não implementada: ${key}`);
-      return body;
-    }
-    return handler(body);
+  // POST /bots → criar
+  if (method === 'POST' && endpoint === '/bots') {
+    const payload = formStateToPayload(body);
+    return ApiBots.create(payload);
   }
-  const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  // PATCH /bots/:id → editar
+  const m = endpoint.match(/^\/bots\/(\d+)$/);
+  if (m && (method === 'PATCH' || method === 'PUT')) {
+    const id = parseInt(m[1], 10);
+    const payload = formStateToPayload(body);
+    return ApiBots.update(id, payload);
+  }
+  throw new Error(`apiMutate: endpoint não suportado: ${method} ${endpoint}`);
 }
 
 // Hook: busca bot pra editar
@@ -1335,8 +1360,12 @@ function useBotPorId(id) {
   useEffect(() => {
     if (!id) { setState({ data: null, loading: false, error: null }); return; }
     setState({ data: null, loading: true, error: null });
-    apiGet(`/bots/${id}`)
-      .then(data => setState({ data, loading: false, error: null }))
+    ApiBots.get(id)
+      .then(row => {
+        const formData = botRowToFormState(row);
+        formData.id = row.id;
+        setState({ data: formData, loading: false, error: null });
+      })
       .catch(error => setState({ data: null, loading: false, error }));
   }, [id]);
   return state;
@@ -1348,9 +1377,10 @@ function useBotSalvar({ onSuccess, onError } = {}) {
   const salvar = async (config, idEdicao) => {
     setState({ loading: true, error: null });
     try {
+      const payload = formStateToPayload(config);
       const data = idEdicao
-        ? await apiMutate('PATCH', `/bots/${idEdicao}`, config)
-        : await apiMutate('POST', '/bots', config);
+        ? await ApiBots.update(idEdicao, payload)
+        : await ApiBots.create(payload);
       setState({ loading: false, error: null });
       onSuccess?.(data);
       return data;
@@ -2645,11 +2675,15 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
         }}>
           {modoEdicao && (
             <button
-              onClick={() => {
+              onClick={async () => {
                 if (window.confirm(`Tem certeza que quer deletar "${nome}"? Esta ação é irreversível.`)) {
-                  // 🔌 BACKEND: chamar DELETE /bots/:id
-                  adicionarToast(`Bot "${nome}" deletado`, 'error');
-                  if (onSalvar) setTimeout(() => onSalvar(null), 800);
+                  try {
+                    await ApiBots.delete(botId);
+                    adicionarToast(`Bot "${nome}" deletado`, 'error');
+                    if (onSalvar) setTimeout(() => onSalvar(null), 800);
+                  } catch (e) {
+                    adicionarToast(`Erro ao deletar: ${e.message}`, 'error');
+                  }
                 }
               }}
               disabled={salvando}
