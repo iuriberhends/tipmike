@@ -22,6 +22,7 @@ import {
   AlertCircle, AlertTriangle, CheckCircle2, ChevronRight,
 } from 'lucide-react';
 import MikeHeader from '../shared/MikeHeader.jsx';
+import BacktestModal from './BacktestModal';
 import { ApiBots } from '../lib/api';
 
 // ============================================================
@@ -196,6 +197,13 @@ function LinhaBot({ bot, onAcao, loadingAcao }) {
                 {isAtivo ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
               </button>
               <button
+                onClick={() => onAcao('backtest', bot.id)}
+                className="p-1.5 rounded hover:bg-purple-500/15 text-[--mike-fg-muted] hover:text-purple-400 transition"
+                title="Backtest"
+              >
+                <BarChart3 className="w-3.5 h-3.5" />
+              </button>
+              <button
                 onClick={() => onAcao('editar', bot.id)}
                 className="p-1.5 rounded hover:bg-cyan-500/15 text-[--mike-fg-muted] hover:text-cyan-400 transition"
                 title="Editar"
@@ -262,6 +270,9 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
   // Modal de confirmação (deletar)
   const [modalConfirm, setModalConfirm] = useState(null);
 
+  // Modal de Backtest
+  const [backtestBot, setBacktestBot] = useState(null);
+
   const handleNavegar = useCallback((telaId, ctx) => {
     if (onNavegarExterno) onNavegarExterno(telaId, ctx);
   }, [onNavegarExterno]);
@@ -309,6 +320,11 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
 
     if (acao === 'editar') {
       handleNavegar('criar_bot', { botId });
+      return;
+    }
+
+    if (acao === 'backtest') {
+      setBacktestBot(bot);
       return;
     }
 
@@ -621,6 +637,15 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
           <Plus className="w-6 h-6" strokeWidth={3} />
         </button>
       </main>
+
+      {/* MODAL BACKTEST */}
+      {backtestBot && (
+        <BacktestModal
+          aberto={!!backtestBot}
+          bot={backtestBot}
+          onFechar={() => setBacktestBot(null)}
+        />
+      )}
 
       {/* TOASTS */}
       <div className="fixed bottom-4 left-4 z-50 flex flex-col gap-2 pointer-events-none">

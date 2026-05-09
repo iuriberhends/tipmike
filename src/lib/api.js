@@ -20,7 +20,6 @@ async function request(method, path, body, params) {
   };
 
   if (body) {
-    // JSON minificado pra reduzir bytes na rede
     options.body = JSON.stringify(body);
   }
 
@@ -66,8 +65,6 @@ export const ApiH2H = {
   busca: (params)         => api.get('/h2h', params),
 };
 
-// ApiBots - operações leves
-// list: paginada, sem JSONB pesado | get: completo pra editar
 export const ApiBots = {
   list:   (params) => api.get('/bots', params),
   get:    (id)     => api.get(`/bots/${id}`),
@@ -110,4 +107,29 @@ export const ApiTorneios = {
       Object.keys(params).length > 0 ? params : undefined
     );
   },
+};
+
+// ============================================================
+// ApiBacktest — Entrega 4
+// ============================================================
+//
+// POST /backtest/jobs        cria + dispara worker (BackgroundTasks)
+// GET  /backtest/jobs/:id    polling (incluir_detalhe=true qdo concluido)
+// GET  /backtest/bot/:botId  histórico
+// DELETE /backtest/jobs/:id
+//
+// Fluxo na UI:
+//   1. const { job_id } = await ApiBacktest.create({ bot_id, data_inicio, data_fim, stake_modo, stake_valor })
+//   2. Loop polling: setInterval(() => ApiBacktest.get(job_id), 1000)
+//   3. Quando status === 'concluido': re-fetch com incluir_detalhe=true
+//   4. Renderiza chart + métricas
+// ============================================================
+
+export const ApiBacktest = {
+  create: (body) => api.post('/backtest/jobs', body),
+  get:    (jobId, incluirDetalhe = false) =>
+    api.get(`/backtest/jobs/${jobId}`, incluirDetalhe ? { incluir_detalhe: 'true' } : null),
+  listByBot: (botId, limit = 10) =>
+    api.get(`/backtest/bot/${botId}`, { limit }),
+  delete: (jobId) => api.delete(`/backtest/jobs/${jobId}`),
 };
