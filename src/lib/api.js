@@ -92,17 +92,17 @@ export const ApiStats = {
 
 export const ApiTorneios = {
   // Lista as grades (variações) de um torneio
-  // Ex: 'Battle' → ['Battle Bundesliga (2x4 mins)', 'Battle - La Liga', ...]
   grades: (torneioId) =>
     api.get(`/torneios/${encodeURIComponent(torneioId)}/grades`),
 
   // Lista jogadores de um torneio
-  // grades opcional: array de grades específicas (vira ?grades=g1|g2|g3)
+  // options: { bookmaker, grades: ['g1','g2'], gradesModo: 'whitelist'|'blacklist' }
   participantes: (torneioId, options = {}) => {
     const params = {};
     if (options.bookmaker) params.bookmaker = options.bookmaker;
     if (options.grades && options.grades.length > 0) {
       params.grades = options.grades.join('|');
+      if (options.gradesModo) params.grades_modo = options.gradesModo;
     }
     return api.get(
       `/torneios/${encodeURIComponent(torneioId)}/participantes`,

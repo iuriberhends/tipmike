@@ -1291,6 +1291,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
   const [gradesSelecionadas, setGradesSelecionadas] = useState([]); // grades específicas escolhidas
   const [gradesDisponiveis, setGradesDisponiveis] = useState([]);   // todas as grades vindas da API
   const [gradesCarregando, setGradesCarregando] = useState(false);
+  const [gradesModo, setGradesModo] = useState('whitelist'); // 'whitelist' = só estas | 'blacklist' = ignorar estas
 
   // SECAO 4 - MERCADOS
   const [mercado, setMercado] = useState('over_under_ft');
@@ -1445,9 +1446,9 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     const torneio = torneios[0];
     setParticipantes(prev => ({ ...prev, carregando: true }));
 
-    // Se gradesAtivo e tem grades selecionadas, manda elas; senão agrega tudo
+    // Se gradesAtivo e tem grades selecionadas, manda elas + modo (whitelist/blacklist); senão agrega tudo
     const options = (gradesAtivo && gradesSelecionadas.length > 0)
-      ? { grades: gradesSelecionadas }
+      ? { grades: gradesSelecionadas, gradesModo }
       : {};
 
     ApiTorneios.participantes(torneio, options)
@@ -1461,7 +1462,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
       .catch(() => {
         setParticipantes({ jogadores: [], times: [], carregando: false });
       });
-  }, [torneios, torneioAtivo, gradesAtivo, gradesSelecionadas]);
+  }, [torneios, torneioAtivo, gradesAtivo, gradesSelecionadas, gradesModo]);
 
   // ============================================================
   // PERSISTENCIA LOCAL + AUTO-SAVE (defensivo)
@@ -1477,7 +1478,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
 
   // Coleta todo o form em um objeto
   const formState = {
-    nome, descricao, esporte, casa, torneioAtivo, torneios, gradesAtivo, gradesSelecionadas,
+    nome, descricao, esporte, casa, torneioAtivo, torneios, gradesAtivo, gradesSelecionadas, gradesModo,
     mercado, inner, linhaMin, linhaMax, limitarOddsAtivo, limitarOdds, proporcaoAtivo, proporcao,
     tipoProporcaoAtivo, tipoProporcao, limitePlacarAtivo, limitePlacar,
     extrasAtivo, extras, filtroMediasAtivo, filtroMedias,
@@ -1511,6 +1512,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     if (s.torneios !== undefined) setTorneios(s.torneios);
     if (s.gradesAtivo !== undefined) setGradesAtivo(s.gradesAtivo);
     if (s.gradesSelecionadas !== undefined) setGradesSelecionadas(s.gradesSelecionadas);
+    if (s.gradesModo !== undefined) setGradesModo(s.gradesModo);
     if (s.mercado !== undefined) setMercado(s.mercado);
     if (s.limitarOddsAtivo !== undefined) setLimitarOddsAtivo(s.limitarOddsAtivo);
     if (s.limitarOdds !== undefined) setLimitarOdds(s.limitarOdds);
@@ -1588,7 +1590,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     setNome(''); setDescricao('');
     setEsporte('fifa'); setCasa('bet365');
     setTorneioAtivo(false); setTorneios([]);
-    setGradesAtivo(false); setGradesSelecionadas([]);
+    setGradesAtivo(false); setGradesSelecionadas([]); setGradesModo('whitelist');
     setMercado('over_under_ft');
     setLimitarOddsAtivo(false); setLimitarOdds([1, 10]);
     setProporcaoAtivo(false); setProporcao([0, 10]);
@@ -2170,6 +2172,30 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
                 />
               )}
             </LinhaFiltro>
+          )}
+
+          {/* Checkboxes de modo whitelist/blacklist — só aparecem quando tem grades selecionadas */}
+          {torneioAtivo && torneios.length > 0 && gradesAtivo && gradesSelecionadas.length > 0 && (
+            <div className="flex items-center gap-6 ml-[212px] mt-1">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="mike-checkbox"
+                  checked={gradesModo === 'whitelist'}
+                  onChange={() => setGradesModo('whitelist')}
+                />
+                <span className="text-xs text-[--mike-fg-soft]">Enviar somente para estas grades</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="mike-checkbox"
+                  checked={gradesModo === 'blacklist'}
+                  onChange={() => setGradesModo('blacklist')}
+                />
+                <span className="text-xs text-[--mike-fg-soft]">Ignorar estas grades</span>
+              </label>
+            </div>
           )}
         </SecaoForm>
 
