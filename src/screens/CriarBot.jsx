@@ -897,6 +897,21 @@ function BlocoFiltrosHistorico({
                 value={c.value} onChange={c.onChange}
               />
             )}
+            {c.tipo === 'toggle_input' && (
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-1.5 cursor-pointer flex-shrink-0">
+                  <input type="checkbox" className="mike-checkbox" checked={!!c.ativo} onChange={(e) => c.onToggle(e.target.checked)} />
+                  <span className="text-[10px] text-[--mike-fg-soft]">Ativar</span>
+                </label>
+                <input type="number" placeholder={c.placeholder || ''}
+                  value={c.value ?? ''}
+                  disabled={!c.ativo}
+                  onChange={(e) => c.onChange(e.target.value === '' ? null : parseFloat(e.target.value))}
+                  className="mike-border-thin w-24 px-2 py-1.5 rounded text-xs text-center bg-transparent text-[--mike-fg] outline-none mike-no-spin"
+                  style={{ opacity: c.ativo ? 1 : 0.4 }} />
+                {!c.ativo && <span className="text-[10px]" style={{ color: '#10b981' }}>auto</span>}
+              </div>
+            )}
           </LinhaCampoHist>
         ))}
       </div>
@@ -1164,27 +1179,16 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
   const [filtrosHistAdicionados, setFiltrosHistAdicionados] = useState([]);
   const [filtroHistHover, setFiltroHistHover] = useState(null);
 
-  // FILTROS COMPLEMENTARES
+  // FILTROS COMPLEMENTARES — padrão chip igual BlocoFiltrosHistorico
   const [filtrosComplementaresAtivo, setFiltrosComplementaresAtivo] = useState(false);
-  // Média H2H — array de janelas: { janela, minAtivo, min, maxAtivo, max }
-  const [mediaAtivo, setMediaAtivo] = useState(false);
-  const [mediaFaixaMin, setMediaFaixaMin] = useState(null);   // faixa compartilhada por todas as janelas
-  const [mediaFaixaMax, setMediaFaixaMax] = useState(null);
-  const [mediaMinAtivo, setMediaMinAtivo] = useState(false);
-  const [mediaMaxAtivo, setMediaMaxAtivo] = useState(false);
-  const [mediaJanelas, setMediaJanelas] = useState([10]);      // array de números de jogos
-  const [mediaNovaJanela, setMediaNovaJanela] = useState(20);  // input para adicionar nova janela
-  // Gap de Médias — array de janelas: { janela, minAtivo, min, maxAtivo, max }
-  const [gapMediaAtivo, setGapMediaAtivo] = useState(false);
-  const [gapMediaJanelas, setGapMediaJanelas] = useState([{ janela: 10, minAtivo: false, min: null, maxAtivo: false, max: null }]);
-  const [gapMediaNovaJanela, setGapMediaNovaJanela] = useState(20);
-  // Gap de Linhas (linha inicial − linha atual)
-  const [gapLinhaAtivo, setGapLinhaAtivo] = useState(false);
-  const [gapLinhaMin, setGapLinhaMin] = useState(null);
-  const [gapLinhaMax, setGapLinhaMax] = useState(null);
-  // Tendência (média últimos 5 − média últimos 20)
-  const [tendenciaAtivo, setTendenciaAtivo] = useState(false);
-  const [tendenciaMin, setTendenciaMin] = useState(null);
+  const [compTipo, setCompTipo] = useState('media');
+  const [compJanela, setCompJanela] = useState(10);
+  const [compMinAtivo, setCompMinAtivo] = useState(false);
+  const [compMin, setCompMin] = useState(null);
+  const [compMaxAtivo, setCompMaxAtivo] = useState(false);
+  const [compMax, setCompMax] = useState(null);
+  const [filtrosCompAdicionados, setFiltrosCompAdicionados] = useState([]);
+  const [filtroCompHover, setFiltroCompHover] = useState(null);
 
   // CENARIOS
   const [cenarioPartidaAtivo, setCenarioPartidaAtivo] = useState(false);
@@ -1268,11 +1272,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     oponMesmaGradeAtivo, oponMesmaGradeWR, oponUlt8Ativo, oponUlt8WR,
     histVersao, histJanela, histTipo, histBase, histMinPartidas, histProb,
     filtrosHistAdicionados,
-    filtrosComplementaresAtivo,
-    mediaAtivo, mediaFaixaMin, mediaFaixaMax, mediaMinAtivo, mediaMaxAtivo, mediaJanelas,
-    gapMediaAtivo, gapMediaJanelas,
-    gapLinhaAtivo, gapLinhaMin, gapLinhaMax,
-    tendenciaAtivo, tendenciaMin,
+    filtrosComplementaresAtivo, filtrosCompAdicionados,
     cenarioPartidaAtivo, cenarioPartida,
     casaFavoritoAtivo, casaFavorito, existeFavoritoAtivo, existeFavorito,
     alvoFavoritoAtivo, alvoFavorito, diferencaPlacarAtivo, diferencaPlacar,
@@ -1325,19 +1325,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     if (s.histProb !== undefined) setHistProb(s.histProb);
     if (s.filtrosHistAdicionados !== undefined) setFiltrosHistAdicionados(s.filtrosHistAdicionados);
     if (s.filtrosComplementaresAtivo !== undefined) setFiltrosComplementaresAtivo(s.filtrosComplementaresAtivo);
-    if (s.mediaAtivo !== undefined) setMediaAtivo(s.mediaAtivo);
-    if (s.mediaFaixaMin !== undefined) setMediaFaixaMin(s.mediaFaixaMin);
-    if (s.mediaFaixaMax !== undefined) setMediaFaixaMax(s.mediaFaixaMax);
-    if (s.mediaMinAtivo !== undefined) setMediaMinAtivo(s.mediaMinAtivo);
-    if (s.mediaMaxAtivo !== undefined) setMediaMaxAtivo(s.mediaMaxAtivo);
-    if (s.mediaJanelas !== undefined) setMediaJanelas(s.mediaJanelas);
-    if (s.gapMediaAtivo !== undefined) setGapMediaAtivo(s.gapMediaAtivo);
-    if (s.gapMediaJanelas !== undefined) setGapMediaJanelas(s.gapMediaJanelas);
-    if (s.gapLinhaAtivo !== undefined) setGapLinhaAtivo(s.gapLinhaAtivo);
-    if (s.gapLinhaMin !== undefined) setGapLinhaMin(s.gapLinhaMin);
-    if (s.gapLinhaMax !== undefined) setGapLinhaMax(s.gapLinhaMax);
-    if (s.tendenciaAtivo !== undefined) setTendenciaAtivo(s.tendenciaAtivo);
-    if (s.tendenciaMin !== undefined) setTendenciaMin(s.tendenciaMin);
+    if (s.filtrosCompAdicionados !== undefined) setFiltrosCompAdicionados(s.filtrosCompAdicionados);
     if (s.cenarioPartidaAtivo !== undefined) setCenarioPartidaAtivo(s.cenarioPartidaAtivo);
     if (s.cenarioPartida !== undefined) setCenarioPartida(s.cenarioPartida);
     if (s.casaFavoritoAtivo !== undefined) setCasaFavoritoAtivo(s.casaFavoritoAtivo);
@@ -1397,11 +1385,9 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     setHistBase('match'); setHistMinPartidas(1); setHistProb([0, 100]);
     setFiltrosHistAdicionados([]);
     setFiltrosComplementaresAtivo(false);
-    setMediaAtivo(false); setMediaFaixaMin(null); setMediaFaixaMax(null);
-    setMediaMinAtivo(false); setMediaMaxAtivo(false); setMediaJanelas([10]); setMediaNovaJanela(20);
-    setGapMediaAtivo(false); setGapMediaJanelas([{ janela: 10, minAtivo: false, min: null, maxAtivo: false, max: null }]); setGapMediaNovaJanela(20);
-    setGapLinhaAtivo(false); setGapLinhaMin(null); setGapLinhaMax(null);
-    setTendenciaAtivo(false); setTendenciaMin(null);
+    setCompTipo('media'); setCompJanela(10);
+    setCompMinAtivo(false); setCompMin(null); setCompMaxAtivo(false); setCompMax(null);
+    setFiltrosCompAdicionados([]);
     setCenarioPartidaAtivo(false); setCenarioPartida('');
     setCasaFavoritoAtivo(false); setCasaFavorito('sim');
     setExisteFavoritoAtivo(false); setExisteFavorito('sim');
@@ -1795,7 +1781,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
                 cenarioPartidaAtivo, casaFavoritoAtivo, existeFavoritoAtivo, alvoFavoritoAtivo, diferencaPlacarAtivo,
                 tempoAtivo, ataquesAtivo, chutesAtivo, cantosAtivo, cartVermelhosAtivo,
                 placaresAtivo, ataquesPerigososAtivo, chutesGolAtivo, cartAmarelosAtivo,
-                torneioAtivo, filtrosComplementaresAtivo, mediaAtivo, gapMediaAtivo, gapLinhaAtivo, tendenciaAtivo,
+                torneioAtivo, filtrosComplementaresAtivo,
               ].filter(Boolean).length;
               const totalFilters = filtrosHistAdicionados.length;
               return (
@@ -1990,217 +1976,61 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
         </SecaoForm>
 
         {/* FILTROS COMPLEMENTARES */}
-        <SecaoForm titulo="Filtros complementares" descricao="Média H2H, Gap de Médias e Gap de Linhas calculados sobre o histórico H2H dos jogadores.">
-          <div className="rounded-lg p-4" style={{ backgroundColor: 'rgba(60, 85, 130, 0.08)', border: '0.5px solid rgba(60, 85, 130, 0.4)' }}>
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-semibold text-[--mike-fg-soft] flex-1">Filtros complementares</span>
-              <Switch ativo={filtrosComplementaresAtivo} onChange={setFiltrosComplementaresAtivo} />
-            </div>
-
-            <Collapse aberto={filtrosComplementaresAtivo}>
-              <div className="pt-4 mt-4 space-y-4" style={{ borderTop: '0.5px solid rgba(60, 85, 130, 0.3)' }}>
-
-                {/* ── MÉDIA H2H ── */}
-                <div className="rounded-lg p-3" style={{ backgroundColor: 'rgba(60,85,130,0.08)', border: '0.5px solid rgba(60,85,130,0.3)' }}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Switch ativo={mediaAtivo} onChange={setMediaAtivo} />
-                    <PillLabel texto="Média H2H" ativo={mediaAtivo}
-                      info="Média de pontos totais (A+B) dos últimos N jogos H2H. Você pode adicionar múltiplas janelas — todas usam a mesma faixa. Sem faixa: verifica se linha ≤ média (casa subestimando)." />
-                  </div>
-                  <div className={`space-y-3 mike-transition-all ${!mediaAtivo ? 'opacity-40 pointer-events-none' : ''}`}>
-
-                    {/* Janelas ativas */}
-                    {mediaJanelas.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mb-1">
-                        {mediaJanelas.map((j, idx) => (
-                          <span key={idx}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold"
-                            style={{ backgroundColor: 'rgba(16,185,129,0.15)', color: '#10b981', border: '0.5px solid rgba(16,185,129,0.4)' }}>
-                            últ. {j}
-                            <button onClick={() => setMediaJanelas(mediaJanelas.filter((_, i) => i !== idx))}
-                              className="hover:text-rose-400 transition"><X className="w-2.5 h-2.5" /></button>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Adicionar janela */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold px-2 py-1 rounded flex-shrink-0 w-28 text-center" style={{ backgroundColor: '#10b981', color: '#fff' }}>+ JANELA</span>
-                      <input type="number" min={3} max={100} value={mediaNovaJanela}
-                        onChange={(e) => setMediaNovaJanela(parseInt(e.target.value) || 10)}
-                        className="mike-border-thin w-20 px-2 py-1.5 rounded text-xs text-center bg-transparent text-[--mike-fg] outline-none mike-no-spin" />
-                      <span className="text-[10px] text-[--mike-fg-muted]">jogos</span>
-                      <button
-                        onClick={() => { if (!mediaJanelas.includes(mediaNovaJanela)) setMediaJanelas([...mediaJanelas, mediaNovaJanela]); }}
-                        className="px-2 py-1 rounded text-[10px] font-bold transition"
-                        style={{ backgroundColor: 'rgba(16,185,129,0.2)', color: '#10b981', border: '0.5px solid rgba(16,185,129,0.4)' }}>
-                        Adicionar
-                      </button>
-                    </div>
-
-                    {/* Faixa compartilhada */}
-                    <div className="rounded p-2 space-y-2" style={{ backgroundColor: 'rgba(60,85,130,0.1)', border: '0.5px solid rgba(60,85,130,0.3)' }}>
-                      <p className="text-[10px]" style={{ color: '#6b7691' }}>
-                        Faixa (compartilhada por todas as janelas). Sem faixa: verifica automaticamente se linha ao vivo ≤ média.
-                      </p>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <label className="flex items-center gap-1.5 cursor-pointer">
-                          <input type="checkbox" className="mike-checkbox" checked={mediaMinAtivo} onChange={(e) => setMediaMinAtivo(e.target.checked)} />
-                          <span className="text-[10px] text-[--mike-fg-soft]">Mín</span>
-                        </label>
-                        <input type="number" placeholder="Ex: 55" value={mediaFaixaMin ?? ''}
-                          onChange={(e) => setMediaFaixaMin(e.target.value === '' ? null : parseFloat(e.target.value))}
-                          disabled={!mediaMinAtivo}
-                          className="mike-border-thin w-20 px-2 py-1.5 rounded text-xs text-center bg-transparent text-[--mike-fg] outline-none mike-no-spin mike-transition-all"
-                          style={{ opacity: mediaMinAtivo ? 1 : 0.4 }} />
-                        <span className="text-[10px] text-[--mike-fg-muted] mx-1">até</span>
-                        <label className="flex items-center gap-1.5 cursor-pointer">
-                          <input type="checkbox" className="mike-checkbox" checked={mediaMaxAtivo} onChange={(e) => setMediaMaxAtivo(e.target.checked)} />
-                          <span className="text-[10px] text-[--mike-fg-soft]">Máx</span>
-                        </label>
-                        <input type="number" placeholder="Ex: 70" value={mediaFaixaMax ?? ''}
-                          onChange={(e) => setMediaFaixaMax(e.target.value === '' ? null : parseFloat(e.target.value))}
-                          disabled={!mediaMaxAtivo}
-                          className="mike-border-thin w-20 px-2 py-1.5 rounded text-xs text-center bg-transparent text-[--mike-fg] outline-none mike-no-spin mike-transition-all"
-                          style={{ opacity: mediaMaxAtivo ? 1 : 0.4 }} />
-                      </div>
-                      {!mediaMinAtivo && !mediaMaxAtivo && mediaJanelas.length > 0 && (
-                        <p className="text-[10px]" style={{ color: '#10b981' }}>
-                          ✅ Verificação automática: linha ao vivo ≤ média de cada janela
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* ── GAP DE MÉDIAS ── */}
-                <div className="rounded-lg p-3" style={{ backgroundColor: 'rgba(60,85,130,0.08)', border: '0.5px solid rgba(60,85,130,0.3)' }}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Switch ativo={gapMediaAtivo} onChange={setGapMediaAtivo} />
-                    <PillLabel texto="Gap de Médias" ativo={gapMediaAtivo}
-                      info="Gap = média H2H (janela N) − linha ao vivo. Cada janela tem faixa própria. Sem faixa: verifica se gap > 0 (linha abaixo da média). Todos os gaps configurados precisam passar." />
-                  </div>
-                  <div className={`space-y-3 mike-transition-all ${!gapMediaAtivo ? 'opacity-40 pointer-events-none' : ''}`}>
-                    <p className="text-[10px]" style={{ color: '#6b7691' }}>
-                      Gap = média(N jogos) − linha ao vivo. Positivo = linha abaixo da média. Todos os gaps precisam passar.
-                    </p>
-
-                    {/* Lista de janelas configuradas */}
-                    {gapMediaJanelas.map((item, idx) => (
-                      <div key={idx} className="rounded p-2 space-y-2" style={{ backgroundColor: 'rgba(60,85,130,0.1)', border: '0.5px solid rgba(60,85,130,0.3)' }}>
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-bold" style={{ color: '#10b981' }}>Janela: últimos {item.janela} jogos</span>
-                          {gapMediaJanelas.length > 1 && (
-                            <button onClick={() => setGapMediaJanelas(gapMediaJanelas.filter((_, i) => i !== idx))}
-                              className="text-[--mike-fg-muted] hover:text-rose-400 transition"><X className="w-3 h-3" /></button>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <label className="flex items-center gap-1.5 cursor-pointer">
-                            <input type="checkbox" className="mike-checkbox"
-                              checked={item.minAtivo}
-                              onChange={(e) => setGapMediaJanelas(gapMediaJanelas.map((g, i) => i === idx ? { ...g, minAtivo: e.target.checked } : g))} />
-                            <span className="text-[10px] text-[--mike-fg-soft]">Mín</span>
-                          </label>
-                          <input type="number" placeholder="Ex: 7"
-                            value={item.min ?? ''}
-                            disabled={!item.minAtivo}
-                            onChange={(e) => setGapMediaJanelas(gapMediaJanelas.map((g, i) => i === idx ? { ...g, min: e.target.value === '' ? null : parseFloat(e.target.value) } : g))}
-                            className="mike-border-thin w-20 px-2 py-1.5 rounded text-xs text-center bg-transparent text-[--mike-fg] outline-none mike-no-spin"
-                            style={{ opacity: item.minAtivo ? 1 : 0.4 }} />
-                          <span className="text-[10px] text-[--mike-fg-muted] mx-1">até</span>
-                          <label className="flex items-center gap-1.5 cursor-pointer">
-                            <input type="checkbox" className="mike-checkbox"
-                              checked={item.maxAtivo}
-                              onChange={(e) => setGapMediaJanelas(gapMediaJanelas.map((g, i) => i === idx ? { ...g, maxAtivo: e.target.checked } : g))} />
-                            <span className="text-[10px] text-[--mike-fg-soft]">Máx</span>
-                          </label>
-                          <input type="number" placeholder="Ex: 14"
-                            value={item.max ?? ''}
-                            disabled={!item.maxAtivo}
-                            onChange={(e) => setGapMediaJanelas(gapMediaJanelas.map((g, i) => i === idx ? { ...g, max: e.target.value === '' ? null : parseFloat(e.target.value) } : g))}
-                            className="mike-border-thin w-20 px-2 py-1.5 rounded text-xs text-center bg-transparent text-[--mike-fg] outline-none mike-no-spin"
-                            style={{ opacity: item.maxAtivo ? 1 : 0.4 }} />
-                        </div>
-                        {!item.minAtivo && !item.maxAtivo && (
-                          <p className="text-[10px]" style={{ color: '#10b981' }}>✅ Verificação automática: gap &gt; 0 (média acima da linha)</p>
-                        )}
-                      </div>
-                    ))}
-
-                    {/* Adicionar nova janela de gap */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold px-2 py-1 rounded flex-shrink-0 w-28 text-center" style={{ backgroundColor: '#10b981', color: '#fff' }}>+ JANELA</span>
-                      <input type="number" min={3} max={100} value={gapMediaNovaJanela}
-                        onChange={(e) => setGapMediaNovaJanela(parseInt(e.target.value) || 20)}
-                        className="mike-border-thin w-20 px-2 py-1.5 rounded text-xs text-center bg-transparent text-[--mike-fg] outline-none mike-no-spin" />
-                      <span className="text-[10px] text-[--mike-fg-muted]">jogos</span>
-                      <button
-                        onClick={() => {
-                          if (!gapMediaJanelas.find(g => g.janela === gapMediaNovaJanela)) {
-                            setGapMediaJanelas([...gapMediaJanelas, { janela: gapMediaNovaJanela, minAtivo: false, min: null, maxAtivo: false, max: null }]);
-                          }
-                        }}
-                        className="px-2 py-1 rounded text-[10px] font-bold transition"
-                        style={{ backgroundColor: 'rgba(16,185,129,0.2)', color: '#10b981', border: '0.5px solid rgba(16,185,129,0.4)' }}>
-                        Adicionar
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* ── GAP DE LINHAS ── */}
-                <div className="rounded-lg p-3" style={{ backgroundColor: 'rgba(60,85,130,0.08)', border: '0.5px solid rgba(60,85,130,0.3)' }}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Switch ativo={gapLinhaAtivo} onChange={setGapLinhaAtivo} />
-                    <PillLabel texto="Gap de Linhas" ativo={gapLinhaAtivo}
-                      info="Gap = linha do 1º tick − linha atual. Ex: abriu em 58.5, agora 55.5 → gap +3.0. A casa moveu a linha pra baixo — pressão de apostas no Over." />
-                  </div>
-                  <div className={`space-y-2 mike-transition-all ${!gapLinhaAtivo ? 'opacity-40 pointer-events-none' : ''}`}>
-                    <p className="text-[10px]" style={{ color: '#6b7691' }}>Gap = linha inicial (1º tick) − linha atual. Positivo = linha caiu desde a abertura.</p>
-                    <div className="flex items-center gap-3">
-                      <span className="text-[10px] font-bold px-2 py-1 rounded flex-shrink-0 w-24 text-center" style={{ backgroundColor: '#10b981', color: '#fff' }}>QUEDA MÍN</span>
-                      <input type="number" placeholder="Ex: 2" value={gapLinhaMin ?? ''}
-                        onChange={(e) => setGapLinhaMin(e.target.value === '' ? null : parseFloat(e.target.value))}
-                        className="mike-border-thin w-24 px-2 py-1.5 rounded text-xs text-center bg-transparent text-[--mike-fg] outline-none mike-no-spin" />
-                      <span className="text-[10px] text-[--mike-fg-muted]">linha caiu ≥ N pontos desde a abertura</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-[10px] font-bold px-2 py-1 rounded flex-shrink-0 w-24 text-center" style={{ backgroundColor: '#10b981', color: '#fff' }}>QUEDA MÁX</span>
-                      <input type="number" placeholder="Ex: 8" value={gapLinhaMax ?? ''}
-                        onChange={(e) => setGapLinhaMax(e.target.value === '' ? null : parseFloat(e.target.value))}
-                        className="mike-border-thin w-24 px-2 py-1.5 rounded text-xs text-center bg-transparent text-[--mike-fg] outline-none mike-no-spin" />
-                      <span className="text-[10px] text-[--mike-fg-muted]">queda acima disso pode indicar outro padrão</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* ── TENDÊNCIA ── */}
-                <div className="rounded-lg p-3" style={{ backgroundColor: 'rgba(60,85,130,0.08)', border: '0.5px solid rgba(60,85,130,0.3)' }}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Switch ativo={tendenciaAtivo} onChange={setTendenciaAtivo} />
-                    <PillLabel texto="Tendência" ativo={tendenciaAtivo}
-                      info="Tendência = média últ.5 − média últ.20. Positivo = jogos recentes mais pontuados (aquecendo ✅). Negativo = esfriando ❌. Operador define apenas o valor mínimo aceitável." />
-                  </div>
-                  <div className={`space-y-2 mike-transition-all ${!tendenciaAtivo ? 'opacity-40 pointer-events-none' : ''}`}>
-                    <p className="text-[10px]" style={{ color: '#6b7691' }}>
-                      Tendência = média últ.5 − média últ.20 · Positivo = aquecendo ✅ · Negativo = esfriando ❌
-                    </p>
-                    <div className="flex items-center gap-3">
-                      <span className="text-[10px] font-bold px-2 py-1 rounded flex-shrink-0 w-24 text-center" style={{ backgroundColor: '#10b981', color: '#fff' }}>MÍN</span>
-                      <input type="number" placeholder="Ex: 0"
-                        value={tendenciaMin ?? ''}
-                        onChange={(e) => setTendenciaMin(e.target.value === '' ? null : parseFloat(e.target.value))}
-                        className="mike-border-thin w-24 px-2 py-1.5 rounded text-xs text-center bg-transparent text-[--mike-fg] outline-none mike-no-spin" />
-                      <span className="text-[10px] text-[--mike-fg-muted]">tendência ≥ N (0 = últimos 5 devem estar ≥ média geral)</span>
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-            </Collapse>
-          </div>
+        <SecaoForm titulo="Filtros complementares" descricao="Adicione filtros de Média H2H, Gap de Médias, Gap de Linhas e Tendência. Cada filtro adicionado vira um chip removível.">
+          <BlocoFiltrosHistorico
+            campos={[
+              {
+                tipo: 'select', label: 'Tipo',
+                value: compTipo, onChange: setCompTipo,
+                options: [
+                  { value: 'media',     label: 'Média H2H' },
+                  { value: 'gap_media', label: 'Gap de Médias' },
+                  { value: 'gap_linha', label: 'Gap de Linhas' },
+                  { value: 'tendencia', label: 'Tendência' },
+                ],
+              },
+              ...(compTipo !== 'gap_linha' && compTipo !== 'tendencia' ? [{
+                tipo: 'slider', label: 'Janela (jogos)',
+                value: compJanela, onChange: setCompJanela,
+                min: 3, max: 100, sufixoMax: '100',
+              }] : []),
+              {
+                tipo: 'toggle_input', label: 'Mín',
+                ativo: compMinAtivo, onToggle: setCompMinAtivo,
+                value: compMin, onChange: setCompMin,
+                placeholder: compTipo === 'gap_linha' ? 'Ex: 2' : compTipo === 'gap_media' ? 'Ex: 7' : compTipo === 'tendencia' ? 'Ex: 0' : 'Ex: 55',
+              },
+              ...(compTipo !== 'tendencia' ? [{
+                tipo: 'toggle_input', label: 'Máx',
+                ativo: compMaxAtivo, onToggle: setCompMaxAtivo,
+                value: compMax, onChange: setCompMax,
+                placeholder: compTipo === 'gap_linha' ? 'Ex: 8' : compTipo === 'gap_media' ? 'Ex: 14' : 'Ex: 70',
+              }] : []),
+            ]}
+            filtrosAdicionados={filtrosCompAdicionados}
+            onAdicionar={() => {
+              setFiltrosCompAdicionados([...filtrosCompAdicionados, {
+                tipo: compTipo, janela: compJanela,
+                minAtivo: compMinAtivo, min: compMin,
+                maxAtivo: compMaxAtivo, max: compMax,
+              }]);
+              adicionarToast('Filtro complementar adicionado', 'success');
+            }}
+            onRemover={(idx) => {
+              setFiltrosCompAdicionados(filtrosCompAdicionados.filter((_, i) => i !== idx));
+              adicionarToast('Filtro complementar removido', 'warn');
+            }}
+            hover={filtroCompHover}
+            onHoverChange={setFiltroCompHover}
+            detalhesParaTooltip={(f) => {
+              const tipoLabel = { media: 'Média H2H', gap_media: 'Gap de Médias', gap_linha: 'Gap de Linhas', tendencia: 'Tendência' }[f.tipo] || f.tipo;
+              const d = [{ label: 'Tipo', valor: tipoLabel }];
+              if (f.tipo !== 'gap_linha' && f.tipo !== 'tendencia') d.push({ label: 'Janela', valor: `últ. ${f.janela} jogos` });
+              d.push({ label: 'Mín', valor: f.minAtivo ? f.min : f.tipo === 'gap_media' ? 'auto (gap > 0)' : f.tipo === 'media' ? 'auto (linha ≤ média)' : '—' });
+              if (f.tipo !== 'tendencia') d.push({ label: 'Máx', valor: f.maxAtivo ? f.max : '—' });
+              return d;
+            }}
+          />
         </SecaoForm>
 
         {/* CENARIOS */}
@@ -2376,31 +2206,36 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
           </label>
 
           {/* Max tips por jogo */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <label className="inline-flex items-center gap-1.5 cursor-pointer flex-shrink-0">
-              <input type="checkbox" className="mike-checkbox" checked={maxTipsPorJogo !== 'ilimitado'} onChange={(e) => setMaxTipsPorJogo(e.target.checked ? '2' : 'ilimitado')} />
-              <span className="text-xs text-[--mike-fg-soft]">Aceito receber no máximo</span>
+              <input type="checkbox" className="mike-checkbox"
+                checked={maxTipsPorJogo !== 'ilimitado'}
+                onChange={(e) => setMaxTipsPorJogo(e.target.checked ? '2' : 'ilimitado')} />
+              <span className="text-xs text-[--mike-fg-soft]">Limitar tips por jogo</span>
             </label>
-            <div className="w-36">
-              <MikeSelect
-                value={maxTipsPorJogo}
-                onChange={setMaxTipsPorJogo}
-                disabled={maxTipsPorJogo === 'ilimitado'}
-                options={[
-                  { value: 'ilimitado', label: 'ilimitadas' },
-                  { value: '2',  label: 'até 2' },
-                  { value: '3',  label: 'até 3' },
-                  { value: '4',  label: 'até 4' },
-                  { value: '5',  label: 'até 5' },
-                  { value: '6',  label: 'até 6' },
-                  { value: '7',  label: 'até 7' },
-                  { value: '8',  label: 'até 8' },
-                  { value: '9',  label: 'até 9' },
-                  { value: '10', label: 'até 10' },
-                ]}
-              />
-            </div>
-            <span className="text-xs text-[--mike-fg-soft] flex-shrink-0">tips para o mesmo jogo</span>
+            {maxTipsPorJogo !== 'ilimitado' && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-[--mike-fg-muted]">máximo de</span>
+                <div className="w-28">
+                  <MikeSelect
+                    value={maxTipsPorJogo}
+                    onChange={setMaxTipsPorJogo}
+                    options={[
+                      { value: '2',  label: 'até 2' },
+                      { value: '3',  label: 'até 3' },
+                      { value: '4',  label: 'até 4' },
+                      { value: '5',  label: 'até 5' },
+                      { value: '6',  label: 'até 6' },
+                      { value: '7',  label: 'até 7' },
+                      { value: '8',  label: 'até 8' },
+                      { value: '9',  label: 'até 9' },
+                      { value: '10', label: 'até 10' },
+                    ]}
+                  />
+                </div>
+                <span className="text-xs text-[--mike-fg-soft]">tips para o mesmo jogo</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -2527,9 +2362,8 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
                       partes.push(<p key="fh">→ {filtrosHistAdicionados.length} filtro(s) de histórico aplicado(s)</p>);
                     }
 
-                    if (filtrosComplementaresAtivo && (mediaAtivo || gapMediaAtivo || gapLinhaAtivo || tendenciaAtivo)) {
-                      const ativos = [mediaAtivo && 'Média H2H', gapMediaAtivo && 'Gap de Médias', gapLinhaAtivo && 'Gap de Linhas', tendenciaAtivo && 'Tendência'].filter(Boolean).join(', ');
-                      partes.push(<p key="fc">→ Filtros complementares: <span className="text-amber-400">{ativos}</span></p>);
+                    if (filtrosCompAdicionados && filtrosCompAdicionados.length > 0) {
+                      partes.push(<p key="fc">→ {filtrosCompAdicionados.length} filtro(s) complementar(es)</p>);
                     }
 
                     const filtrosLiveAtivos = [
