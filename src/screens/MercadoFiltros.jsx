@@ -163,6 +163,19 @@ const sliderStyle = `
   .mf-range::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #10b981; cursor: pointer; pointer-events: auto; border: 2px solid #0b0f1a; }
 `;
 
+// Helper: verifica se valor está dentro do range (vals[] ou min/max/step)
+function valorValidoParaRange(v, range) {
+  if (v === null || v === undefined || isNaN(v)) return false;
+  if (range.vals) {
+    // Tolerância de ponto flutuante: aceita match com qualquer val em ±0.01
+    return range.vals.some(rv => Math.abs(rv - v) < 0.01);
+  }
+  if (range.min !== undefined && range.max !== undefined) {
+    return v >= range.min && v <= range.max;
+  }
+  return false;
+}
+
 export default function MercadoFiltros({ mercado, esporte = 'fifa', inner, onInnerChange, linhaMin, linhaMax, onLinhaChange, mostrarDescricao = true }) {
   const cfg = getConfigMercado(mercado, esporte);
 
@@ -170,16 +183,32 @@ export default function MercadoFiltros({ mercado, esporte = 'fifa', inner, onInn
   const primeiroValor = (r) => r.vals ? r.vals[0] : r.min;
   const ultimoValor   = (r) => r.vals ? r.vals[r.vals.length - 1] : r.max;
 
+  // Reset inteligente: só sobrescreve linha/inner quando os valores atuais
+  // são INCOMPATÍVEIS com o mercado/esporte selecionado.
+  // Em modo edição, os valores vêm do banco e devem ser preservados.
   useEffect(() => {
+    // Inner: se o mercado tem opções, garante que `inner` é uma delas
     if (cfg.inner) {
       if (!inner || !cfg.inner.includes(inner)) onInnerChange(cfg.inner[0]);
     } else {
       if (inner) onInnerChange(null);
     }
+
+    // Linha: só faz reset quando precisa
     if (cfg.range) {
-      onLinhaChange(primeiroValor(cfg.range), ultimoValor(cfg.range));
+      // Tem range — verifica se linha atual é compatível
+      const minOk = valorValidoParaRange(linhaMin, cfg.range);
+      const maxOk = valorValidoParaRange(linhaMax, cfg.range);
+      if (!minOk || !maxOk) {
+        // Linha atual incompatível com o range deste mercado: reseta pros extremos
+        onLinhaChange(primeiroValor(cfg.range), ultimoValor(cfg.range));
+      }
+      // Senão: linha do banco/usuário é válida, preserva (não chama onLinhaChange)
     } else {
-      onLinhaChange(null, null);
+      // Mercado sem linha (ex: ml_ft) — limpa
+      if (linhaMin !== null || linhaMax !== null) {
+        onLinhaChange(null, null);
+      }
     }
   }, [mercado, esporte]); // eslint-disable-line
 
