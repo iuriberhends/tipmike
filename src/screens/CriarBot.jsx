@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import MikeHeader from '../shared/MikeHeader.jsx';
 import MercadoFiltros from './MercadoFiltros';
+import { ApiTorneios } from '../lib/api';
 
 // ============================================================
 // CONSTANTES (opcoes dos dropdowns)
@@ -941,6 +942,141 @@ function BlocoFiltrosHistorico({
 }
 
 // ============================================================
+// FILTRAR PARTIDAS — caixa verde (apenas) ou rosa (ignorar)
+// ============================================================
+function CaixaFiltrarPartidas({ cor, titulo, ativo, onToggle, jogadores, times, carregando, estado, onChange }) {
+  const isVerde = cor === 'verde';
+  const corPrimaria = isVerde ? '#10b981' : '#f43f5e';
+  const corBg = ativo
+    ? (isVerde ? 'rgba(16, 185, 129, 0.08)' : 'rgba(244, 63, 94, 0.08)')
+    : 'transparent';
+  const corBorda = ativo
+    ? (isVerde ? 'rgba(16, 185, 129, 0.5)' : 'rgba(244, 63, 94, 0.5)')
+    : (isVerde ? 'rgba(16, 185, 129, 0.3)' : 'rgba(244, 63, 94, 0.3)');
+
+  const opcoesJogadores = jogadores.map(j => ({ value: j, label: j }));
+  const opcoesTimes = times.map(t => ({ value: t, label: t }));
+  const setField = (field, value) => onChange({ ...estado, [field]: value });
+
+  return (
+    <div className="rounded-lg p-4 space-y-3" style={{ backgroundColor: corBg, border: `0.5px solid ${corBorda}` }}>
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-bold" style={{ color: corPrimaria }}>{titulo}</span>
+        <Switch ativo={ativo} onChange={onToggle} />
+      </div>
+      <Collapse aberto={ativo}>
+        <div className="pt-3 space-y-3">
+          <p className="text-[10px] leading-relaxed" style={{ color: '#6b7691' }}>
+            Você pode adicionar um jogador ou um time sozinho, além de todas as combinações possíveis. Adicione múltiplas entradas separando com vírgula.
+          </p>
+
+          {carregando && (
+            <div className="flex items-center gap-2 text-[10px]" style={{ color: '#6b7691' }}>
+              <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.3"/>
+                <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
+              </svg>
+              Carregando participantes...
+            </div>
+          )}
+
+          {/* Jogador 1 */}
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-1.5 flex-shrink-0 cursor-pointer">
+              <input type="checkbox" className="mike-checkbox" checked={estado.j1Ativo} onChange={(e) => setField('j1Ativo', e.target.checked)} />
+              <span className="text-[10px] font-bold px-2 py-1 rounded text-white" style={{ backgroundColor: corPrimaria, minWidth: 64, textAlign: 'center' }}>Jogador 1</span>
+            </label>
+            <div className={`flex-1 mike-transition-all ${!estado.j1Ativo ? 'opacity-40 pointer-events-none' : ''}`}>
+              <MikeSelect value={estado.j1} onChange={(v) => setField('j1', v)} options={[{ value: '', label: 'Selecione...' }, ...opcoesJogadores]} disabled={!estado.j1Ativo} />
+            </div>
+            <button onClick={() => setField('j1', '')} className="p-1 text-[--mike-fg-muted] hover:text-rose-400 transition flex-shrink-0" title="Limpar"><Trash2 className="w-3.5 h-3.5" /></button>
+          </div>
+
+          {/* Jogador 2 */}
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-1.5 flex-shrink-0 cursor-pointer">
+              <input type="checkbox" className="mike-checkbox" checked={estado.j2Ativo} onChange={(e) => setField('j2Ativo', e.target.checked)} />
+              <span className="text-[10px] font-bold px-2 py-1 rounded text-white" style={{ backgroundColor: corPrimaria, minWidth: 64, textAlign: 'center' }}>Jogador 2</span>
+            </label>
+            <div className={`flex-1 mike-transition-all ${!estado.j2Ativo ? 'opacity-40 pointer-events-none' : ''}`}>
+              <MikeSelect value={estado.j2} onChange={(v) => setField('j2', v)} options={[{ value: '', label: 'Selecione...' }, ...opcoesJogadores]} disabled={!estado.j2Ativo} />
+            </div>
+            <button onClick={() => setField('j2', '')} className="p-1 text-[--mike-fg-muted] hover:text-rose-400 transition flex-shrink-0" title="Limpar"><Trash2 className="w-3.5 h-3.5" /></button>
+          </div>
+
+          {/* Time 1 */}
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-1.5 flex-shrink-0 cursor-pointer">
+              <input type="checkbox" className="mike-checkbox" checked={estado.t1Ativo} onChange={(e) => setField('t1Ativo', e.target.checked)} />
+              <span className="text-[10px] font-bold px-2 py-1 rounded text-white" style={{ backgroundColor: corPrimaria, minWidth: 64, textAlign: 'center' }}>Time 1</span>
+            </label>
+            <div className={`flex-1 mike-transition-all ${!estado.t1Ativo ? 'opacity-40 pointer-events-none' : ''}`}>
+              <MikeSelect value={estado.t1} onChange={(v) => setField('t1', v)} options={[{ value: '', label: 'Selecione...' }, ...opcoesTimes]} disabled={!estado.t1Ativo} />
+            </div>
+            <button onClick={() => setField('t1', '')} className="p-1 text-[--mike-fg-muted] hover:text-rose-400 transition flex-shrink-0" title="Limpar"><Trash2 className="w-3.5 h-3.5" /></button>
+          </div>
+
+          {/* Time 2 */}
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-1.5 flex-shrink-0 cursor-pointer">
+              <input type="checkbox" className="mike-checkbox" checked={estado.t2Ativo} onChange={(e) => setField('t2Ativo', e.target.checked)} />
+              <span className="text-[10px] font-bold px-2 py-1 rounded text-white" style={{ backgroundColor: corPrimaria, minWidth: 64, textAlign: 'center' }}>Time 2</span>
+            </label>
+            <div className={`flex-1 mike-transition-all ${!estado.t2Ativo ? 'opacity-40 pointer-events-none' : ''}`}>
+              <MikeSelect value={estado.t2} onChange={(v) => setField('t2', v)} options={[{ value: '', label: 'Selecione...' }, ...opcoesTimes]} disabled={!estado.t2Ativo} />
+            </div>
+            <button onClick={() => setField('t2', '')} className="p-1 text-[--mike-fg-muted] hover:text-rose-400 transition flex-shrink-0" title="Limpar"><Trash2 className="w-3.5 h-3.5" /></button>
+          </div>
+
+          {/* Fixar como casa/visitante */}
+          <div className="space-y-1.5 pt-1">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" className="mike-checkbox" checked={estado.fixarJ1Casa} onChange={(e) => setField('fixarJ1Casa', e.target.checked)} />
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded" style={{ backgroundColor: isVerde ? 'rgba(16,185,129,0.15)' : 'rgba(244,63,94,0.15)', color: corPrimaria, border: `0.5px solid ${corPrimaria}40` }}>Fixar Jogador 1/Time 1 como casa</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" className="mike-checkbox" checked={estado.fixarJ2Visit} onChange={(e) => setField('fixarJ2Visit', e.target.checked)} />
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded" style={{ backgroundColor: isVerde ? 'rgba(16,185,129,0.15)' : 'rgba(244,63,94,0.15)', color: corPrimaria, border: `0.5px solid ${corPrimaria}40` }}>Fixar Jogador 2/Time 2 como visitante</span>
+            </label>
+          </div>
+
+          {/* Radio Todas / Somente a favor / Somente contra */}
+          <div className="space-y-1 pt-1">
+            {['todas', 'somente_favor', 'somente_contra'].map((v) => (
+              <label key={v} className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" className="mike-radio" checked={estado.direcao === v} onChange={() => setField('direcao', v)} />
+                <span className="text-xs text-[--mike-fg-soft]">
+                  {v === 'todas' ? 'Todas' : v === 'somente_favor' ? 'Somente a favor' : 'Somente contra'}
+                </span>
+              </label>
+            ))}
+          </div>
+
+          {/* Botões */}
+          <div className="flex items-center justify-between pt-1">
+            <button
+              onClick={() => onChange({ ...estado, j1: '', j2: '', t1: '', t2: '', j1Ativo: false, j2Ativo: false, t1Ativo: false, t2Ativo: false, fixarJ1Casa: false, fixarJ2Visit: false, direcao: 'todas' })}
+              className="text-[10px] font-bold transition hover:opacity-80"
+              style={{ color: corPrimaria }}
+            >
+              LIMPAR LISTA
+            </button>
+            <button
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold text-white transition hover:scale-105 active:scale-95"
+              style={{ backgroundColor: corPrimaria, boxShadow: `0 4px 12px ${corPrimaria}40` }}
+              onClick={() => {}}
+            >
+              <Plus className="w-3 h-3" strokeWidth={3} />
+              ADICIONAR JOGADORES
+            </button>
+          </div>
+        </div>
+      </Collapse>
+    </div>
+  );
+}
+
+// ============================================================
 // API CLIENT + HOOKS (plug-and-play)
 //
 // 🔌 BACKEND: ver lib/BACKEND.md no projeto principal.
@@ -1233,8 +1369,13 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
   const [cartVermelhos, setCartVermelhos] = useState(0);
 
   // FILTRAR PARTIDAS
+  const ESTADO_FP_INICIAL = { j1: '', j2: '', t1: '', t2: '', j1Ativo: false, j2Ativo: false, t1Ativo: false, t2Ativo: false, fixarJ1Casa: false, fixarJ2Visit: false, direcao: 'todas' };
   const [apenasEspecificasAtivo, setApenasEspecificasAtivo] = useState(false);
+  const [apenasEspecificasEstado, setApenasEspecificasEstado] = useState(ESTADO_FP_INICIAL);
   const [ignorarEspecificasAtivo, setIgnorarEspecificasAtivo] = useState(false);
+  const [ignorarEspecificasEstado, setIgnorarEspecificasEstado] = useState(ESTADO_FP_INICIAL);
+  // Participantes do torneio (jogadores e times) — vem da API
+  const [participantes, setParticipantes] = useState({ jogadores: [], times: [], carregando: false });
 
   // EVITAR LINHAS SEQ
   const [evitarLinhasSeq, setEvitarLinhasSeq] = useState(true);
@@ -1248,6 +1389,27 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     setToasts((prev) => [...prev, { id, mensagem, tipo }]);
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3500);
   };
+
+  // Busca participantes do torneio quando torneioAtivo muda ou torneios mudam
+  useEffect(() => {
+    if (!torneioAtivo || torneios.length === 0) {
+      setParticipantes({ jogadores: [], times: [], carregando: false });
+      return;
+    }
+    const torneio = torneios[0]; // primeiro torneio selecionado
+    setParticipantes(prev => ({ ...prev, carregando: true }));
+    ApiTorneios.participantes(torneio)
+      .then(data => {
+        setParticipantes({
+          jogadores: data.jogadores || [],
+          times: data.times || [],
+          carregando: false,
+        });
+      })
+      .catch(() => {
+        setParticipantes({ jogadores: [], times: [], carregando: false });
+      });
+  }, [torneios, torneioAtivo]);
 
   // ============================================================
   // PERSISTENCIA LOCAL + AUTO-SAVE (defensivo)
@@ -1281,7 +1443,8 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     cantosAtivo, cantos, cartVermelhosAtivo, cartVermelhos,
     placaresAtivo, placares, ataquesPerigososAtivo, ataquesPerigosos,
     chutesGolAtivo, chutesGol, cartAmarelosAtivo, cartAmarelos,
-    apenasEspecificasAtivo, ignorarEspecificasAtivo,
+    apenasEspecificasAtivo, apenasEspecificasEstado,
+    ignorarEspecificasAtivo, ignorarEspecificasEstado,
     evitarLinhasSeq, maxTipsPorJogo,
   };
 
@@ -1359,7 +1522,9 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     if (s.cartAmarelosAtivo !== undefined) setCartAmarelosAtivo(s.cartAmarelosAtivo);
     if (s.cartAmarelos !== undefined) setCartAmarelos(s.cartAmarelos);
     if (s.apenasEspecificasAtivo !== undefined) setApenasEspecificasAtivo(s.apenasEspecificasAtivo);
+    if (s.apenasEspecificasEstado !== undefined) setApenasEspecificasEstado(s.apenasEspecificasEstado);
     if (s.ignorarEspecificasAtivo !== undefined) setIgnorarEspecificasAtivo(s.ignorarEspecificasAtivo);
+    if (s.ignorarEspecificasEstado !== undefined) setIgnorarEspecificasEstado(s.ignorarEspecificasEstado);
     if (s.evitarLinhasSeq !== undefined) setEvitarLinhasSeq(s.evitarLinhasSeq);
     if (s.maxTipsPorJogo !== undefined) setMaxTipsPorJogo(s.maxTipsPorJogo);
   };
@@ -1404,7 +1569,8 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     setAtaquesPerigososAtivo(false); setAtaquesPerigosos(0);
     setChutesGolAtivo(false); setChutesGol(0);
     setCartAmarelosAtivo(false); setCartAmarelos(0);
-    setApenasEspecificasAtivo(false); setIgnorarEspecificasAtivo(false);
+    setApenasEspecificasAtivo(false); setApenasEspecificasEstado(ESTADO_FP_INICIAL);
+    setIgnorarEspecificasAtivo(false); setIgnorarEspecificasEstado(ESTADO_FP_INICIAL);
     setEvitarLinhasSeq(true);
     setMaxTipsPorJogo('ilimitado');
   };
@@ -2176,25 +2342,26 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
 
         {/* FILTRAR PARTIDAS */}
         <SecaoForm titulo="Filtrar Partidas" descricao="Adicione ou remova partidas específicas do seu filtro">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {/* Apenas partidas específicas (verde) */}
-            <div className="rounded-lg p-3 flex items-center justify-between gap-3" style={{
-              backgroundColor: apenasEspecificasAtivo ? 'rgba(16, 185, 129, 0.08)' : 'transparent',
-              border: `0.5px solid ${apenasEspecificasAtivo ? 'rgba(16, 185, 129, 0.5)' : 'rgba(16, 185, 129, 0.3)'}`,
-            }}>
-              <span className="text-xs font-semibold text-[--mike-accent]">Apenas partidas específicas</span>
-              <Switch ativo={apenasEspecificasAtivo} onChange={setApenasEspecificasAtivo} />
+          {!torneioAtivo || torneios.length === 0 ? (
+            <div className="text-center py-4 text-[11px]" style={{ color: '#6b7691' }}>
+              Selecione um torneio na seção "Torneio e Grade" para habilitar os filtros de partidas.
             </div>
-
-            {/* Ignorar partidas específicas (vermelho/rosa) */}
-            <div className="rounded-lg p-3 flex items-center justify-between gap-3" style={{
-              backgroundColor: ignorarEspecificasAtivo ? 'rgba(244, 63, 94, 0.08)' : 'transparent',
-              border: `0.5px solid ${ignorarEspecificasAtivo ? 'rgba(244, 63, 94, 0.5)' : 'rgba(244, 63, 94, 0.3)'}`,
-            }}>
-              <span className="text-xs font-semibold text-rose-400">Ignorar partidas específicas</span>
-              <Switch ativo={ignorarEspecificasAtivo} onChange={setIgnorarEspecificasAtivo} />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <CaixaFiltrarPartidas
+                cor="verde" titulo="Apenas partidas específicas"
+                ativo={apenasEspecificasAtivo} onToggle={setApenasEspecificasAtivo}
+                jogadores={participantes.jogadores} times={participantes.times} carregando={participantes.carregando}
+                estado={apenasEspecificasEstado} onChange={setApenasEspecificasEstado}
+              />
+              <CaixaFiltrarPartidas
+                cor="rosa" titulo="Ignorar partidas específicas"
+                ativo={ignorarEspecificasAtivo} onToggle={setIgnorarEspecificasAtivo}
+                jogadores={participantes.jogadores} times={participantes.times} carregando={participantes.carregando}
+                estado={ignorarEspecificasEstado} onChange={setIgnorarEspecificasEstado}
+              />
             </div>
-          </div>
+          )}
         </SecaoForm>
 
         {/* EVITAR LINHAS SEQ + MAX TIPS POR JOGO */}
