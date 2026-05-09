@@ -100,3 +100,11 @@ export const ApiStats = {
   bots:      ()   => api.get('/stats/bots'),
   bot:       (id) => api.get(`/stats/bots/${id}`),
 };
+
+export const ApiTorneios = {
+  participantes: (torneioId, bookmaker) =>
+    api.get(
+      `/torneios/${encodeURIComponent(torneioId)}/participantes`,
+      bookmaker ? { bookmaker } : undefined
+    ),
+};
