@@ -74,6 +74,10 @@ export const ApiBots = {
   start:  (id)     => api.post(`/bots/${id}/start`),
   stop:   (id)     => api.post(`/bots/${id}/stop`),
   clone:  (id)     => api.post(`/bots/${id}/clone`),
+  // Entrega 7C - estatisticas e historico
+  stats:     (id, modo = 'simulado') => api.get(`/bots/${id}/stats`, { modo }),
+  historico: (id, periodo = '30d', modo = 'simulado', limiteTips = 60) =>
+    api.get(`/bots/${id}/historico`, { periodo, modo, limite_tips: limiteTips }),
 };
 
 export const ApiApostas = {
@@ -111,18 +115,6 @@ export const ApiTorneios = {
 
 // ============================================================
 // ApiBacktest — Entrega 4
-// ============================================================
-//
-// POST /backtest/jobs        cria + dispara worker (BackgroundTasks)
-// GET  /backtest/jobs/:id    polling (incluir_detalhe=true qdo concluido)
-// GET  /backtest/bot/:botId  histórico
-// DELETE /backtest/jobs/:id
-//
-// Fluxo na UI:
-//   1. const { job_id } = await ApiBacktest.create({ bot_id, data_inicio, data_fim, stake_modo, stake_valor })
-//   2. Loop polling: setInterval(() => ApiBacktest.get(job_id), 1000)
-//   3. Quando status === 'concluido': re-fetch com incluir_detalhe=true
-//   4. Renderiza chart + métricas
 // ============================================================
 
 export const ApiBacktest = {

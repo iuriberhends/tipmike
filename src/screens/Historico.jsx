@@ -1,15 +1,10 @@
 // ============================================================
-// tipmike_historico_v2.jsx
-//
-// Modal de Histórico do Bot - DARK THEME + arquitetura plug-and-play
-// Single-file pra rodar em artifact React. Quando migrar pro projeto
-// real, segue o mesmo padrão de quebrar em lib/data/hooks/screens.
+// Historico.jsx — Modal de Histórico do Bot (v3 - API REAL)
 //
 // USO:
 //   <ModalHistorico botId={5} aberto={true} onClose={() => ...} />
 //
-// 🔌 BACKEND: GET /bots/:id/historico?periodo=...
-//             retorna { bot, resultadosDiarios, tips, totais }
+// DATA: GET /bots/:id/historico?periodo=...&modo=simulado
 // ============================================================
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
@@ -18,6 +13,7 @@ import {
   Download, Maximize2, Minimize2, Info, History,
   ChevronUp, ChevronDown, RefreshCw, AlertCircle,
 } from 'lucide-react';
+import { ApiBots } from '../lib/api';
 
 // ============================================================
 // 1. CONSTANTES
@@ -32,214 +28,40 @@ const PERIODOS = [
   { v: 'todas', l: 'Tudo',         dias: 90 },
 ];
 
-const PLAYERS = [
-  'Galaxy', 'Hyper', 'Scorch', 'Abyss', 'Tranquility', 'Hawk', 'Omen', 'Jd',
-  'Immortal', 'Arachne', 'Ultimate', 'Legacy', 'Airforce', 'Cypher', 'Raptor',
-  'Sonic', 'Specter', 'Pacifier', 'Vandal', 'Rend', 'Punisher', 'Phantom',
-];
-
-// Bots conhecidos (mesma lista do tipmike_bots_v2)
-const MOCK_BOTS_INFO = {
-  1: { id: 1, nome: 'Bot OFT Betano e-Soccer',         casa: 'Betano',     mercado: 'Over First Time',     liga: 'Battle / GT League' },
-  2: { id: 2, nome: 'Bot Under HT Betano Adriatic',    casa: 'Betano',     mercado: 'Under Half Time',     liga: 'Adriatic NextGen' },
-  3: { id: 3, nome: 'Bot Over FT Superbet Adriatic',   casa: 'Superbet',   mercado: 'Over Full Time',      liga: 'Adriatic League' },
-  4: { id: 4, nome: 'Bot HC FT Live Arena Superbet',   casa: 'Superbet',   mercado: 'Handicap Full Time',  liga: 'FIFA TM Live Arena' },
-  5: { id: 5, nome: 'Bot OHT Bet365 e-Soccer',         casa: 'Bet365',     mercado: 'Over Half Time',      liga: 'Multi-ligas' },
-  6: { id: 6, nome: 'Bot ML Estrelabet Battle',        casa: 'Estrelabet', mercado: 'Money Line',          liga: 'Battle' },
-  7: { id: 7, nome: 'Bot HC H2H Estrelabet Valhalla',  casa: 'Estrelabet', mercado: 'Handicap H2H',        liga: 'Valhalla' },
-  8: { id: 8, nome: 'Bot O/U Novibet Multi-Liga',      casa: 'Novibet',    mercado: 'Over/Under',          liga: 'Multi-ligas' },
-  9: { id: 9, nome: 'Bot OFT Vupi e-Basket',           casa: 'Vupi',       mercado: 'Over First Time',     liga: 'eBasket Battle' },
-};
-
 // ============================================================
-// 2. HELPERS DETERMINISTICOS
+// 2. HOOK que busca dados da API REAL
 // ============================================================
 
-function hashStr(s) {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) { h = (h ^ s.charCodeAt(i)) * 16777619; h = h >>> 0; }
-  return h;
-}
-
-function seeded(seed) {
-  let st = seed >>> 0;
-  return () => { st = (st * 1664525 + 1013904223) >>> 0; return st / 0xffffffff; };
-}
-
-function gerarDatas(diasAtras, hoje = new Date()) {
-  const datas = [];
-  for (let i = diasAtras - 1; i >= 0; i--) {
-    const d = new Date(hoje);
-    d.setDate(hoje.getDate() - i);
-    datas.push({
-      iso: d.toISOString().slice(0, 10),
-      label: `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`,
-    });
-  }
-  return datas;
-}
-
-function gerarResultadosDiarios(botId, dias) {
-  const r = seeded(hashStr(`historico-${botId}`));
-  const datas = gerarDatas(dias);
-  return datas.map((d, i) => {
-    // Curva determinística baseada no ID + dia
-    const baseGreens = 60 + Math.sin(i * 0.6 + botId) * 15 + (r() - 0.5) * 10;
-    const baseReds = 32 + Math.cos(i * 0.4 + botId) * 8 + (r() - 0.5) * 6;
-    const greens = Math.max(0, Math.round(baseGreens));
-    const reds = Math.max(0, Math.round(baseReds));
-    return {
-      ...d,
-      greens, meiosGreens: 0, meiosReds: 0, reds,
-      devolvidas: 0, canceladas: 0,
-      total: greens + reds,
-      lucro: +(greens * 0.78 - reds * 1.0).toFixed(2),
-    };
-  });
-}
-
-function gerarTips(botId, qtd = 60) {
-  const r = seeded(hashStr(`tips-${botId}`));
-  const tips = [];
-  let h = new Date();
-  for (let i = 0; i < qtd; i++) {
-    const a = PLAYERS[Math.floor(r() * PLAYERS.length)];
-    let b;
-    do { b = PLAYERS[Math.floor(r() * PLAYERS.length)]; } while (b === a);
-    const escolhido = r() > 0.5 ? a : b;
-    const linha = (r() * 8 + 6).toFixed(1);
-    const isGreen = r() > 0.34;
-    const odd = +(1.7 + r() * 0.4).toFixed(2);
-    const unidades = isGreen ? +(odd - 1).toFixed(2) : -1;
-    tips.push({
-      dataHora: `${String(h.getDate()).padStart(2,'0')}/${String(h.getMonth()+1).padStart(2,'0')} ${String(h.getHours()).padStart(2,'0')}:${String(h.getMinutes()).padStart(2,'0')}`,
-      confronto: `${a} x ${b}`,
-      selecao: `${escolhido} (${linha})`,
-      odd,
-      unidades,
-      status: isGreen ? 'green' : 'red',
-    });
-    h = new Date(h.getTime() - (r() * 90 + 20) * 60000);
-  }
-  return tips;
-}
-
-// ============================================================
-// 3. MOCK API + HOOK
-// ============================================================
-
-const MOCK_LATENCY = { min: 80, max: 250 };
-function simularLatencia() {
-  const ms = MOCK_LATENCY.min + Math.random() * (MOCK_LATENCY.max - MOCK_LATENCY.min);
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-// Cache deterministico (mesma seed = mesmo resultado, calc 1x)
-const cacheResultados = {};
-const cacheTips = {};
-
-const mockResponses = {
-  // 🔌 BACKEND: GET /bots/:id/historico?periodo=...
-  '/bots/:id/historico': ({ id, periodo = '30d' }) => {
-    const bot = MOCK_BOTS_INFO[id];
-    if (!bot) throw new Error(`Bot ${id} não encontrado`);
-
-    const dias = (PERIODOS.find(p => p.v === periodo) || PERIODOS[4]).dias;
-    const cacheKey = `${id}-${dias}`;
-
-    if (!cacheResultados[cacheKey]) {
-      cacheResultados[cacheKey] = gerarResultadosDiarios(id, dias);
-    }
-    if (!cacheTips[id]) {
-      cacheTips[id] = gerarTips(id, 60);
-    }
-
-    const resultadosDiarios = cacheResultados[cacheKey];
-    const tips = cacheTips[id];
-
-    // Cálculo dos totais
-    const totais = {
-      greens: resultadosDiarios.reduce((s, r) => s + r.greens, 0),
-      reds: resultadosDiarios.reduce((s, r) => s + r.reds, 0),
-      meiosGreens: 0, meiosReds: 0, devolvidas: 0, canceladas: 0,
-    };
-    totais.total = totais.greens + totais.reds;
-    totais.lucro = +resultadosDiarios.reduce((s, r) => s + r.lucro, 0).toFixed(2);
-    totais.roi = totais.total > 0 ? +((totais.lucro / totais.total) * 100).toFixed(2) : 0;
-    totais.oddMedia = 1.82;
-    totais.wr = totais.total > 0 ? +((totais.greens / totais.total) * 100).toFixed(1) : 0;
-
-    return { bot, resultadosDiarios, tips, totais, dias };
-  },
-};
-
-async function apiGet(endpoint, params) {
-  await simularLatencia();
-  // Resolve :id wildcard
-  let handler = mockResponses[endpoint];
-  if (!handler) {
-    const matchKey = Object.keys(mockResponses).find(k => {
-      const pattern = k.replace(/:[a-z]+/g, '[^/]+');
-      const re = new RegExp('^' + pattern + '$');
-      return re.test(endpoint);
-    });
-    if (matchKey) {
-      handler = mockResponses[matchKey];
-      const idMatch = endpoint.match(/\/(\d+)/);
-      if (idMatch) params = { id: Number(idMatch[1]), ...params };
-    }
-  }
-  if (!handler) throw new Error(`[MOCK] Endpoint não implementado: GET ${endpoint}`);
-  return handler(params || {});
-}
-
-function useApiQuery(endpoint, params, opts = {}) {
-  const { enabled = true } = opts;
-  const [state, setState] = useState({ data: null, loading: enabled, error: null });
-  const lastReqRef = useRef(0);
-  const paramsKey = JSON.stringify(params);
+function useBotHistorico(botId, periodo, modo = 'simulado') {
+  const [state, setState] = useState({ data: null, loading: !!botId, error: null });
 
   const fetchData = useCallback(async () => {
-    if (!enabled) return;
-    const reqId = ++lastReqRef.current;
+    if (!botId) return;
     setState(s => ({ ...s, loading: true, error: null }));
     try {
-      const data = await apiGet(endpoint, params);
-      if (reqId === lastReqRef.current) {
-        setState({ data, loading: false, error: null });
-      }
+      const data = await ApiBots.historico(botId, periodo, modo, 60);
+      setState({ data, loading: false, error: null });
     } catch (error) {
-      if (reqId === lastReqRef.current) {
-        setState({ data: null, loading: false, error });
-      }
+      setState({ data: null, loading: false, error });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [endpoint, paramsKey, enabled]);
+  }, [botId, periodo, modo]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  return { data: state.data, loading: state.loading, error: state.error, refetch: fetchData };
-}
-
-// Hook público: pra outras telas usarem
-function useBotHistorico(botId, periodo) {
-  const { data, loading, error, refetch } = useApiQuery(
-    `/bots/${botId}/historico`,
-    { periodo },
-    { enabled: !!botId },
-  );
   return {
-    bot: data?.bot,
-    resultadosDiarios: data?.resultadosDiarios || [],
-    tips: data?.tips || [],
-    totais: data?.totais,
-    dias: data?.dias || 0,
-    loading, error, refetch,
+    bot: state.data?.bot,
+    resultadosDiarios: state.data?.resultadosDiarios || [],
+    tips: state.data?.tips || [],
+    totais: state.data?.totais,
+    dias: state.data?.dias || 0,
+    loading: state.loading,
+    error: state.error,
+    refetch: fetchData,
   };
 }
 
 // ============================================================
-// 4. GRAFICO BARRAS EMPILHADAS (DARK)
+// 3. GRAFICO BARRAS EMPILHADAS (DARK)
 // ============================================================
 function GraficoBarras({ data }) {
   const [hoverIdx, setHoverIdx] = useState(null);
@@ -248,13 +70,20 @@ function GraficoBarras({ data }) {
   const innerW = width - paddingL - paddingR;
   const innerH = height - paddingT - paddingB;
 
-  const maxTotal = Math.max(...data.map((d) => d.total), 60);
-  const yMax = Math.ceil(maxTotal / 15) * 15;
+  if (!data || data.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-[280px] text-[--mike-fg-muted] text-xs">
+        Sem dados no período selecionado
+      </div>
+    );
+  }
+
+  const maxTotal = Math.max(...data.map((d) => d.total || 0), 10);
+  const yMax = Math.ceil(maxTotal / 5) * 5;
   const stepX = innerW / data.length;
   const barW = stepX * 0.7;
   const yTicks = [0, yMax * 0.25, yMax * 0.5, yMax * 0.75, yMax].map((v) => Math.round(v));
 
-  // Cores DARK — fundo escuro requer cores um pouco mais saturadas
   const cores = {
     devolvidas:  { fill: '#64748b', label: 'Devolvidas' },
     canceladas:  { fill: '#334155', label: 'Canceladas' },
@@ -300,12 +129,12 @@ function GraficoBarras({ data }) {
           const isHover = hoverIdx === i;
 
           const segmentos = [
-            { cat: 'greens', valor: d.greens },
-            { cat: 'meiosGreens', valor: d.meiosGreens },
-            { cat: 'meiosReds', valor: d.meiosReds },
-            { cat: 'reds', valor: d.reds },
-            { cat: 'canceladas', valor: d.canceladas },
-            { cat: 'devolvidas', valor: d.devolvidas },
+            { cat: 'greens', valor: d.greens || 0 },
+            { cat: 'meiosGreens', valor: d.meiosGreens || 0 },
+            { cat: 'meiosReds', valor: d.meiosReds || 0 },
+            { cat: 'reds', valor: d.reds || 0 },
+            { cat: 'canceladas', valor: d.canceladas || 0 },
+            { cat: 'devolvidas', valor: d.devolvidas || 0 },
           ].filter((s) => s.valor > 0);
 
           let acumY = yBase;
@@ -365,7 +194,7 @@ function GraficoBarras({ data }) {
 }
 
 // ============================================================
-// 5. GRAFICO LINHA (DARK)
+// 4. GRAFICO LINHA (DARK)
 // ============================================================
 function GraficoLinha({ data, campo, sufixo = '', cor = '#10b981' }) {
   const [hoverIdx, setHoverIdx] = useState(null);
@@ -374,11 +203,19 @@ function GraficoLinha({ data, campo, sufixo = '', cor = '#10b981' }) {
   const innerW = width - paddingL - paddingR;
   const innerH = height - paddingT - paddingB;
 
-  const valores = data.map((d) => d[campo]);
+  if (!data || data.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-[280px] text-[--mike-fg-muted] text-xs">
+        Sem dados
+      </div>
+    );
+  }
+
+  const valores = data.map((d) => d[campo] || 0);
   const min = Math.min(...valores, 0);
   const max = Math.max(...valores, 1);
   const yRange = max - min;
-  const yPadding = yRange * 0.08;
+  const yPadding = yRange * 0.08 || 1;
   const yMin = Math.floor((min - yPadding) / 3) * 3;
   const yMax = Math.ceil((max + yPadding) / 3) * 3;
 
@@ -474,7 +311,7 @@ function GraficoLinha({ data, campo, sufixo = '', cor = '#10b981' }) {
 }
 
 // ============================================================
-// 6. CARD METRICA (DARK)
+// 5. CARD METRICA
 // ============================================================
 function CardMetrica({ icone: Icone, iconeColor, label, valor }) {
   return (
@@ -492,18 +329,18 @@ function CardMetrica({ icone: Icone, iconeColor, label, valor }) {
 }
 
 // ============================================================
-// 7. LISTA DADOS GERAIS (DARK)
+// 6. LISTA DADOS GERAIS
 // ============================================================
 function ListaDadosGerais({ totais }) {
   const items = [
-    { label: 'Greens',     valor: totais.greens,      bg: '#10b981', text: '#0b0f1a' },
-    { label: '1/2 Greens', valor: totais.meiosGreens, bg: '#86efac', text: '#0b0f1a' },
-    { label: '1/2 Reds',   valor: totais.meiosReds,   bg: '#fb923c', text: '#0b0f1a' },
-    { label: 'Reds',       valor: totais.reds,        bg: '#f43f5e', text: '#fff' },
-    { label: 'Devolvidas', valor: totais.devolvidas,  bg: '#64748b', text: '#fff' },
-    { label: 'Canceladas', valor: totais.canceladas,  bg: '#334155', text: '#fff' },
+    { label: 'Greens',     valor: totais.greens || 0,      bg: '#10b981', text: '#0b0f1a' },
+    { label: '1/2 Greens', valor: totais.meiosGreens || 0, bg: '#86efac', text: '#0b0f1a' },
+    { label: '1/2 Reds',   valor: totais.meiosReds || 0,   bg: '#fb923c', text: '#0b0f1a' },
+    { label: 'Reds',       valor: totais.reds || 0,        bg: '#f43f5e', text: '#fff' },
+    { label: 'Devolvidas', valor: totais.devolvidas || 0,  bg: '#64748b', text: '#fff' },
+    { label: 'Pendentes',  valor: totais.pendentes || 0,   bg: '#0891b2', text: '#fff' },
   ];
-  const wrPct = totais.total > 0 ? (totais.greens / totais.total) * 100 : 0;
+  const wrPct = totais.wr || 0;
 
   return (
     <div className="flex flex-col gap-2.5 h-full">
@@ -531,37 +368,41 @@ function ListaDadosGerais({ totais }) {
 }
 
 // ============================================================
-// 8. TIP CARD (DARK)
+// 7. TIP CARD
 // ============================================================
 function TipCard({ tip }) {
   const isGreen = tip.status === 'green';
+  const isPendente = tip.status === 'pendente';
+  const cor = isGreen ? '#10b981' : (isPendente ? '#0891b2' : '#f43f5e');
   return (
     <div className="rounded-md flex items-center overflow-hidden mike-tip-in" style={{
       backgroundColor: 'rgba(20, 26, 40, 0.4)',
       border: '0.5px solid rgba(60, 85, 130, 0.3)',
     }}>
-      <div className="self-stretch flex-shrink-0" style={{ width: '4px', backgroundColor: isGreen ? '#10b981' : '#f43f5e' }} />
+      <div className="self-stretch flex-shrink-0" style={{ width: '4px', backgroundColor: cor }} />
       <div className="px-3 py-2.5 text-[11px] text-slate-400 font-mono w-[100px] flex-shrink-0">{tip.dataHora}</div>
       <div className="flex-1 px-3 py-2.5 min-w-0">
         <div className="text-[12px] font-bold text-white truncate">{tip.confronto}</div>
       </div>
       <div className="px-3 py-2.5 text-[12px] text-slate-300 w-[140px] flex-shrink-0 text-center truncate">{tip.selecao}</div>
-      <div className="px-3 py-2.5 text-[10px] text-slate-400 font-mono w-[60px] flex-shrink-0 text-center hidden sm:block">@{tip.odd}</div>
+      <div className="px-3 py-2.5 text-[10px] text-slate-400 font-mono w-[60px] flex-shrink-0 text-center hidden sm:block">@{tip.odd?.toFixed(2)}</div>
       <div className="px-3 py-2.5 w-[100px] flex-shrink-0 flex flex-col items-center gap-0.5">
-        <div className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase text-white tracking-wide" style={{ backgroundColor: isGreen ? '#10b981' : '#f43f5e' }}>
-          {isGreen ? 'Green' : 'Red'}
+        <div className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase text-white tracking-wide" style={{ backgroundColor: cor }}>
+          {isGreen ? 'Green' : isPendente ? 'Aguard.' : 'Red'}
         </div>
-        <div className={`flex items-center gap-0.5 text-[10px] font-mono font-bold ${isGreen ? 'text-emerald-400' : 'text-rose-400'}`}>
-          {isGreen ? <ChevronUp className="w-3 h-3" strokeWidth={3} /> : <ChevronDown className="w-3 h-3" strokeWidth={3} />}
-          {isGreen ? '+' : ''}{tip.unidades.toFixed(2)}u
-        </div>
+        {!isPendente && (
+          <div className={`flex items-center gap-0.5 text-[10px] font-mono font-bold ${isGreen ? 'text-emerald-400' : 'text-rose-400'}`}>
+            {isGreen ? <ChevronUp className="w-3 h-3" strokeWidth={3} /> : <ChevronDown className="w-3 h-3" strokeWidth={3} />}
+            {isGreen ? '+' : ''}{(tip.unidades || 0).toFixed(2)}u
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
 // ============================================================
-// 9. MODAL HISTORICO (componente principal exportado)
+// 8. MODAL HISTORICO
 // ============================================================
 export function ModalHistorico({ botId, aberto = true, onClose = () => {} }) {
   const [periodoSelecionado, setPeriodoSelecionado] = useState('30d');
@@ -569,17 +410,15 @@ export function ModalHistorico({ botId, aberto = true, onClose = () => {} }) {
 
   const { bot, resultadosDiarios, tips, totais, dias, loading, error } = useBotHistorico(botId, periodoSelecionado);
 
-  // Acumulado pra gráfico de linha
   const acumulado = useMemo(() => {
     let lucroAcum = 0, stakeAcum = 0;
     return resultadosDiarios.map((r) => {
-      lucroAcum += r.lucro;
-      stakeAcum += r.total;
+      lucroAcum += (r.lucro || 0);
+      stakeAcum += (r.total || 0);
       return { ...r, lucroAcum, stakeAcum, roiAcum: stakeAcum > 0 ? (lucroAcum / stakeAcum) * 100 : 0 };
     });
   }, [resultadosDiarios]);
 
-  // Esc + lock scroll
   useEffect(() => {
     if (!aberto) return;
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
@@ -602,19 +441,20 @@ export function ModalHistorico({ botId, aberto = true, onClose = () => {} }) {
       '',
       'RESULTADOS DIARIOS',
       'Data,Greens,Reds,Total,Lucro',
-      ...resultadosDiarios.map((r) => `${r.iso},${r.greens},${r.reds},${r.total},${r.lucro.toFixed(2)}`),
+      ...resultadosDiarios.map((r) => `${r.iso},${r.greens},${r.reds},${r.total},${(r.lucro || 0).toFixed(2)}`),
       '',
       'TOTAIS',
       `Total,${totais.total}`,
       `Greens,${totais.greens}`,
       `Reds,${totais.reds}`,
-      `Lucro,${totais.lucro.toFixed(2)}`,
-      `ROI,${totais.roi.toFixed(2)}%`,
-      `WR,${totais.wr.toFixed(1)}%`,
+      `Pendentes,${totais.pendentes || 0}`,
+      `Lucro,${(totais.lucro || 0).toFixed(2)}`,
+      `ROI,${(totais.roi || 0).toFixed(2)}%`,
+      `WR,${(totais.wr || 0).toFixed(1)}%`,
       '',
-      'TIPS ENVIADAS',
+      'TIPS RECENTES',
       'Data/Hora,Confronto,Selecao,Odd,Status,Unidades',
-      ...tips.map((t) => `${t.dataHora},"${t.confronto}","${t.selecao}",${t.odd},${t.status},${t.unidades.toFixed(2)}`),
+      ...tips.map((t) => `${t.dataHora},"${t.confronto}","${t.selecao}",${t.odd},${t.status},${(t.unidades || 0).toFixed(2)}`),
     ].join('\n');
     const blob = new Blob([linhas], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -663,7 +503,6 @@ export function ModalHistorico({ botId, aberto = true, onClose = () => {} }) {
         <div className="flex-1 overflow-y-auto mike-scroll-dark">
           <div className="px-6 lg:px-8 py-5">
 
-            {/* TOPO: Botões */}
             <div className="flex items-start justify-between gap-4 mb-3">
               <button
                 onClick={baixarPlanilha}
@@ -685,7 +524,6 @@ export function ModalHistorico({ botId, aberto = true, onClose = () => {} }) {
               </div>
             </div>
 
-            {/* Loading state */}
             {loading && (
               <div className="flex items-center justify-center py-32 gap-3 text-slate-400">
                 <RefreshCw className="w-5 h-5 mike-spin" />
@@ -693,7 +531,6 @@ export function ModalHistorico({ botId, aberto = true, onClose = () => {} }) {
               </div>
             )}
 
-            {/* Error state */}
             {error && !loading && (
               <div className="rounded-md p-6 text-center" style={{ backgroundColor: 'rgba(244, 63, 94, 0.1)', border: '0.5px solid rgba(244, 63, 94, 0.4)' }}>
                 <AlertCircle className="w-8 h-8 text-rose-400 mx-auto mb-2" />
@@ -702,7 +539,6 @@ export function ModalHistorico({ botId, aberto = true, onClose = () => {} }) {
               </div>
             )}
 
-            {/* Conteúdo */}
             {!loading && !error && bot && totais && (
               <>
                 <div className="text-[11px] text-slate-500 mb-1 font-mono">id: #{bot.id.toString().padStart(6, '0')}</div>
@@ -718,7 +554,7 @@ export function ModalHistorico({ botId, aberto = true, onClose = () => {} }) {
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-[12px] font-medium text-white" style={{ backgroundColor: '#334155' }}>
                     {bot.casa}
                   </span>
-                  <span className="text-[12px] text-slate-400">{bot.liga}</span>
+                  {bot.liga && <span className="text-[12px] text-slate-400">{bot.liga}</span>}
                 </div>
 
                 <div className="mb-5">
@@ -741,16 +577,16 @@ export function ModalHistorico({ botId, aberto = true, onClose = () => {} }) {
                 </div>
 
                 <div className="flex gap-3 flex-wrap mb-4">
-                  <CardMetrica icone={Send} iconeColor="#0891b2" label="Tips enviadas" valor={totais.total.toLocaleString('pt-BR')} />
-                  <CardMetrica icone={Percent} iconeColor="#fb923c" label="Odd média" valor={totais.oddMedia.toFixed(2)} />
+                  <CardMetrica icone={Send} iconeColor="#0891b2" label="Tips enviadas" valor={(totais.total || 0).toLocaleString('pt-BR')} />
+                  <CardMetrica icone={Percent} iconeColor="#fb923c" label="Odd média" valor={(totais.oddMedia || 0).toFixed(2)} />
                   <CardMetrica icone={DollarSign} iconeColor="#10b981" label="Lucro" valor={
-                    <span className={totais.lucro >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
-                      {totais.lucro >= 0 ? '+' : ''}{totais.lucro.toFixed(2)}u
+                    <span className={(totais.lucro || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                      {(totais.lucro || 0) >= 0 ? '+' : ''}{(totais.lucro || 0).toFixed(2)}u
                     </span>
                   } />
                   <CardMetrica icone={TrendingUp} iconeColor="#10b981" label="ROI" valor={
-                    <span className={totais.roi >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
-                      {totais.roi >= 0 ? '+' : ''}{totais.roi.toFixed(1)}%
+                    <span className={(totais.roi || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                      {(totais.roi || 0) >= 0 ? '+' : ''}{(totais.roi || 0).toFixed(1)}%
                     </span>
                   } />
                 </div>
@@ -761,42 +597,59 @@ export function ModalHistorico({ botId, aberto = true, onClose = () => {} }) {
                   color: '#67e8f9',
                 }}>
                   <Info className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span>Todos os gráficos usam os dados dos últimos {dias} dias</span>
+                  <span>Todos os gráficos usam os dados dos últimos {dias} dias · Modo: <strong>simulado</strong></span>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4 mb-5">
-                  <div className="rounded-md p-4" style={{ backgroundColor: 'rgba(20, 26, 40, 0.4)', border: '0.5px solid rgba(60, 85, 130, 0.4)' }}>
-                    <h3 className="text-[14px] font-bold text-white mb-2">Resultados por dia</h3>
-                    <GraficoBarras data={resultadosDiarios} />
-                  </div>
+                {resultadosDiarios.length > 0 ? (
+                  <>
+                    <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4 mb-5">
+                      <div className="rounded-md p-4" style={{ backgroundColor: 'rgba(20, 26, 40, 0.4)', border: '0.5px solid rgba(60, 85, 130, 0.4)' }}>
+                        <h3 className="text-[14px] font-bold text-white mb-2">Resultados por dia</h3>
+                        <GraficoBarras data={resultadosDiarios} />
+                      </div>
 
-                  <div className="rounded-md p-4 flex flex-col" style={{ backgroundColor: 'rgba(20, 26, 40, 0.4)', border: '0.5px solid rgba(60, 85, 130, 0.4)' }}>
-                    <h3 className="text-[14px] font-bold text-white mb-3">Dados gerais</h3>
-                    <ListaDadosGerais totais={totais} />
-                  </div>
-                </div>
+                      <div className="rounded-md p-4 flex flex-col" style={{ backgroundColor: 'rgba(20, 26, 40, 0.4)', border: '0.5px solid rgba(60, 85, 130, 0.4)' }}>
+                        <h3 className="text-[14px] font-bold text-white mb-3">Dados gerais</h3>
+                        <ListaDadosGerais totais={totais} />
+                      </div>
+                    </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-                  <div className="rounded-md p-4" style={{ backgroundColor: 'rgba(20, 26, 40, 0.4)', border: '0.5px solid rgba(60, 85, 130, 0.4)' }}>
-                    <h3 className="text-[14px] font-bold text-white mb-2">ROI Acumulado</h3>
-                    <GraficoLinha data={acumulado} campo="roiAcum" sufixo="%" cor="#10b981" />
-                  </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+                      <div className="rounded-md p-4" style={{ backgroundColor: 'rgba(20, 26, 40, 0.4)', border: '0.5px solid rgba(60, 85, 130, 0.4)' }}>
+                        <h3 className="text-[14px] font-bold text-white mb-2">ROI Acumulado</h3>
+                        <GraficoLinha data={acumulado} campo="roiAcum" sufixo="%" cor="#10b981" />
+                      </div>
 
-                  <div className="rounded-md p-4" style={{ backgroundColor: 'rgba(20, 26, 40, 0.4)', border: '0.5px solid rgba(60, 85, 130, 0.4)' }}>
-                    <h3 className="text-[14px] font-bold text-white mb-2">Lucro Acumulado</h3>
-                    <GraficoLinha data={acumulado} campo="lucroAcum" sufixo="u" cor="#0891b2" />
+                      <div className="rounded-md p-4" style={{ backgroundColor: 'rgba(20, 26, 40, 0.4)', border: '0.5px solid rgba(60, 85, 130, 0.4)' }}>
+                        <h3 className="text-[14px] font-bold text-white mb-2">Lucro Acumulado</h3>
+                        <GraficoLinha data={acumulado} campo="lucroAcum" sufixo="u" cor="#0891b2" />
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="rounded-md p-8 text-center mb-5" style={{
+                    backgroundColor: 'rgba(20, 26, 40, 0.3)',
+                    border: '0.5px solid rgba(60, 85, 130, 0.3)',
+                  }}>
+                    <p className="text-sm text-[--mike-fg-muted]">
+                      Nenhuma aposta resolvida no período. O bot precisa rodar e ter apostas finalizadas pra mostrar gráficos.
+                    </p>
                   </div>
-                </div>
+                )}
 
                 <div className="mb-3">
-                  <h3 className="text-[12px] font-medium text-slate-400 mb-2.5 uppercase tracking-wider">Últimas tips enviadas ({tips.length})</h3>
-                  <div className="space-y-1.5">
-                    {tips.slice(0, 30).map((tip, i) => (
-                      <div key={i} style={{ animationDelay: `${i * 0.025}s` }}>
-                        <TipCard tip={tip} />
-                      </div>
-                    ))}
-                  </div>
+                  <h3 className="text-[12px] font-medium text-slate-400 mb-2.5 uppercase tracking-wider">Últimas tips ({tips.length})</h3>
+                  {tips.length > 0 ? (
+                    <div className="space-y-1.5">
+                      {tips.slice(0, 30).map((tip, i) => (
+                        <div key={tip.id || i} style={{ animationDelay: `${i * 0.025}s` }}>
+                          <TipCard tip={tip} />
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-slate-500 italic text-center py-6">Sem apostas registradas pra esse bot ainda.</p>
+                  )}
                 </div>
               </>
             )}
@@ -809,11 +662,11 @@ export function ModalHistorico({ botId, aberto = true, onClose = () => {} }) {
 }
 
 // ============================================================
-// 10. APP DEMO (rota standalone pra testar no artifact)
+// APP DEMO (rota standalone pra debug)
 // ============================================================
 export default function App() {
   const [aberto, setAberto] = useState(false);
-  const [botId, setBotId] = useState(1);
+  const [botId, setBotId] = useState(11);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-6 p-8" style={{ backgroundColor: '#0b0f1a', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
@@ -830,16 +683,13 @@ export default function App() {
       </div>
 
       <div className="rounded-lg p-4" style={{ backgroundColor: 'rgba(20, 26, 40, 0.6)', border: '0.5px solid rgba(60, 85, 130, 0.4)' }}>
-        <label className="block text-[10px] uppercase tracking-wider text-slate-400 mb-2 font-bold">Selecione um bot</label>
-        <select
+        <label className="block text-[10px] uppercase tracking-wider text-slate-400 mb-2 font-bold">Bot ID</label>
+        <input
+          type="number"
           value={botId}
           onChange={(e) => setBotId(Number(e.target.value))}
           className="bg-slate-800 text-white text-sm rounded-md px-3 py-2 border border-slate-600 focus:border-emerald-500 outline-none w-full min-w-[300px]"
-        >
-          {Object.values(MOCK_BOTS_INFO).map(b => (
-            <option key={b.id} value={b.id}>#{b.id} · {b.nome}</option>
-          ))}
-        </select>
+        />
       </div>
 
       <button
@@ -850,10 +700,6 @@ export default function App() {
         <History className="w-4 h-4" strokeWidth={2.5} />
         Ver Histórico do Bot
       </button>
-
-      <p className="text-[10px] text-slate-500 max-w-md text-center">
-        ESC ou clique fora pra fechar. Clique no ícone de tela cheia pra expandir.
-      </p>
 
       <ModalHistorico botId={botId} aberto={aberto} onClose={() => setAberto(false)} />
     </div>
