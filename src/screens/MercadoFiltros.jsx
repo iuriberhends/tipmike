@@ -13,9 +13,9 @@ import { Info } from 'lucide-react';
 // Over/Under gols: APENAS valores .5 (0.5, 1.5, 2.5...)
 const R_OU_GOLS          = { vals: Array.from({length: 31}, (_, i) => 0.5 + i)         }; // 0.5–30.5
 const R_OU_GOLS_HT       = { vals: Array.from({length: 19}, (_, i) => 0.5 + i)         }; // 0.5–18.5
-// Asiático: valores .25 (0.25, 0.5, 0.75, 1.0, 1.25...)  — inclui inteiros, é correto
-const R_ASIATICO_GOLS    = { min: 0.25,  max: 15.75, step: 0.25 };
-const R_ASIATICO_GOLS_HT = { min: 0.25,  max: 9.75,  step: 0.25 };
+// Asiático Gols: começa em 0.5, step 0.25 (0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0...)
+const R_ASIATICO_GOLS    = { vals: Array.from({length: 121}, (_, i) => 0.5 + i * 0.25) }; // 0.5–30.5 step 0.25
+const R_ASIATICO_GOLS_HT = { vals: Array.from({length: 73}, (_, i) => 0.5 + i * 0.25)  }; // 0.5–18.5 step 0.25
 // Basquete
 const R_OU_PONTOS_FT     = { min: 79.5,  max: 249.5, step: 5.0  };
 const R_OU_PONTOS_HT     = { min: 34.5,  max: 124.5, step: 5.0  };
@@ -52,8 +52,8 @@ export function getConfigMercado(mercadoValue, esporte = 'fifa') {
     ml_btts_ht:                  { inner: ['Casa/Sim','Casa/Não','Empate/Sim','Empate/Não','Fora/Sim','Fora/Não'], range: null,                     descricao: 'Combinação resultado 1ºT + ambos marcam.' },
     odd_even_ft:                 { inner: ['Par','Ímpar'],                                           range: null,                               descricao: 'Total de gols da partida é par ou ímpar.' },
     odd_even_ht:                 { inner: ['Par','Ímpar'],                                           range: null,                               descricao: 'Total de gols do 1ºT é par ou ímpar.' },
-    asian_over_under_ft:         { inner: ['Over','Under'],                                          range: R_ASIATICO_GOLS,                     descricao: 'Over/Under asiático FT — step 0.25 (inclui 0.75, 1.25, 1.75...).' },
-    asian_over_under_ht:         { inner: ['Over','Under'],                                          range: R_ASIATICO_GOLS_HT,                  descricao: 'Over/Under asiático HT — step 0.25.' },
+    asian_over_under_ft:         { inner: ['Over','Under'],                                          range: R_ASIATICO_GOLS,                     descricao: 'Over/Under asiático FT — começa em 0.5, step 0.25 (0.5, 0.75, 1.0, 1.25...).' },
+    asian_over_under_ht:         { inner: ['Over','Under'],                                          range: R_ASIATICO_GOLS_HT,                  descricao: 'Over/Under asiático HT — começa em 0.5, step 0.25 (0.5, 0.75, 1.0, 1.25...).' },
     double_ml_ft:                { inner: ['Casa/Empate','Fora/Empate','Casa/Fora'],                     range: null,                               descricao: 'Duas das três possibilidades de resultado final.' },
     next_goal:                   { inner: ['Casa','Fora','Sem Gol'],                                 range: null,                               descricao: 'Quem marca o próximo gol da partida.' },
   };
