@@ -1251,9 +1251,12 @@ function formStateToPayload(s) {
     payload.torneios_excluir = s.gradesSelecionadas;
   }
 
-  // Linhas
-  if (s.linhaMin !== null && s.linhaMin !== undefined) payload.linha_min = s.linhaMin;
-  if (s.linhaMax !== null && s.linhaMax !== undefined) payload.linha_max = s.linhaMax;
+  // Linhas - so envia se o toggle 'linhaAtivo' estiver ON (ou ausente = legado)
+  const linhaAtivoFlag = s.linhaAtivo === undefined ? true : !!s.linhaAtivo;
+  if (linhaAtivoFlag) {
+    if (s.linhaMin !== null && s.linhaMin !== undefined) payload.linha_min = s.linhaMin;
+    if (s.linhaMax !== null && s.linhaMax !== undefined) payload.linha_max = s.linhaMax;
+  }
 
   // Odds
   if (s.limitarOddsAtivo && Array.isArray(s.limitarOdds) && s.limitarOdds.length === 2) {
@@ -1292,10 +1295,14 @@ function formStateToPayload(s) {
     'Par': 'par', 'Ímpar': 'impar', 'Impar': 'impar',
   };
 
+  // Lados (filtro de seleção) - só envia se o toggle 'selecaoAtivo' estiver ON
+  const selecaoAtivoFlag = s.selecaoAtivo === undefined ? true : !!s.selecaoAtivo;
   const innerArr = Array.isArray(s.inner) ? s.inner : (s.inner ? [s.inner] : []);
-  const lados = innerArr
-    .map(op => MAPA_INNER_LADO[op] || (typeof op === 'string' ? op.toLowerCase() : null))
-    .filter(Boolean);
+  const lados = selecaoAtivoFlag
+    ? innerArr
+        .map(op => MAPA_INNER_LADO[op] || (typeof op === 'string' ? op.toLowerCase() : null))
+        .filter(Boolean)
+    : [];  // toggle OFF: lista vazia = bot aceita qualquer lado
 
   // filtros JSONB: backup de TODO o formState pra reidratação fiel ao editar
   // (permite recuperar fixarJ1Casa, gradesModo, filtros hist, comp, live, etc)
@@ -1453,8 +1460,10 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
   // SECAO 4 - MERCADOS
   const [mercado, setMercado] = useState('over_under_ft');
   const [inner, setInner] = useState([]);  // array vazio = nenhum lado marcado = bot aceita ambos
+  const [selecaoAtivo, setSelecaoAtivo] = useState(true);  // toggle do filtro SELEÇÃO
   const [linhaMin, setLinhaMin] = useState(null);
   const [linhaMax, setLinhaMax] = useState(null);
+  const [linhaAtivo, setLinhaAtivo] = useState(true);  // toggle do filtro LINHA
 
   const [limitarOddsAtivo, setLimitarOddsAtivo] = useState(false);
   const [limitarOdds, setLimitarOdds] = useState([1, 10]);
@@ -1636,7 +1645,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
   // Coleta todo o form em um objeto
   const formState = {
     nome, descricao, esporte, casa, torneioAtivo, torneios, gradesAtivo, gradesSelecionadas, gradesModo,
-    mercado, inner, linhaMin, linhaMax, limitarOddsAtivo, limitarOdds, proporcaoAtivo, proporcao,
+    mercado, inner, selecaoAtivo, linhaMin, linhaMax, linhaAtivo, limitarOddsAtivo, limitarOdds, proporcaoAtivo, proporcao,
     tipoProporcaoAtivo, tipoProporcao, limitePlacarAtivo, limitePlacar,
     extrasAtivo, extras, filtroMediasAtivo, filtroMedias,
     filtroMediasContraAtivo, filtroMediasContra,
@@ -1672,8 +1681,10 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     if (s.gradesModo !== undefined) setGradesModo(s.gradesModo);
     if (s.mercado !== undefined) setMercado(s.mercado);
     if (s.inner !== undefined) setInner(s.inner);
+    if (s.selecaoAtivo !== undefined) setSelecaoAtivo(s.selecaoAtivo);
     if (s.linhaMin !== undefined) setLinhaMin(s.linhaMin);
     if (s.linhaMax !== undefined) setLinhaMax(s.linhaMax);
+    if (s.linhaAtivo !== undefined) setLinhaAtivo(s.linhaAtivo);
     if (s.limitarOddsAtivo !== undefined) setLimitarOddsAtivo(s.limitarOddsAtivo);
     if (s.limitarOdds !== undefined) setLimitarOdds(s.limitarOdds);
     if (s.proporcaoAtivo !== undefined) setProporcaoAtivo(s.proporcaoAtivo);
@@ -1753,6 +1764,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     setGradesAtivo(false); setGradesSelecionadas([]); setGradesModo('whitelist');
     setMercado('over_under_ft');
     setInner([]);                              // reset pra nenhum marcado
+    setSelecaoAtivo(true); setLinhaAtivo(true); // toggles ativos por default
     setLinhaMin(null); setLinhaMax(null);
     setLimitarOddsAtivo(false); setLimitarOdds([1, 10]);
     setProporcaoAtivo(false); setProporcao([0, 10]);
@@ -2373,9 +2385,13 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
               esporte={esporte}
               inner={inner}
               onInnerChange={setInner}
+              selecaoAtivo={selecaoAtivo}
+              onSelecaoAtivoChange={setSelecaoAtivo}
               linhaMin={linhaMin}
               linhaMax={linhaMax}
               onLinhaChange={(min, max) => { setLinhaMin(min); setLinhaMax(max); }}
+              linhaAtivo={linhaAtivo}
+              onLinhaAtivoChange={setLinhaAtivo}
             />
           </div>
 

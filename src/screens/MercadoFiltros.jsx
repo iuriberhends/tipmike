@@ -1,12 +1,24 @@
 /**
- * MercadoFiltros.jsx — v7
- * Checkboxes multi-select pra SELEÇÃO (Over/Under, Sim/Não, Casa/Empate/Fora, etc)
- * `inner` agora aceita array (recomendado) ou string (legado, compatibilidade)
- * Default: nenhum marcado = bot aceita qualquer lado (default 'ambos')
+ * MercadoFiltros.jsx — v8
+ *
+ * NOVIDADES v8:
+ * - Toggle (switch) no pill SELEÇÃO: quando OFF, ignora filtro de lado
+ * - Toggle (switch) no pill LINHA: quando OFF, ignora filtro de linha (qualquer linha aceita)
+ * - Visual: quando inativo, conteúdo fica esmaecido e não-interativo
+ * - Compatibilidade com versões anteriores: se props selecaoAtivo/linhaAtivo
+ *   não forem passadas, assume ATIVO (comportamento antigo).
+ *
+ * `inner` aceita array (recomendado) ou string (legado, compatibilidade).
+ * `inner = []` + selecaoAtivo=true: bot aceita qualquer lado (default ambos).
+ * `selecaoAtivo = false`: bot ignora completamente o filtro de seleção.
  */
 
 import { useEffect, useMemo } from 'react';
 import { Info } from 'lucide-react';
+
+// ════════════════════════════════════════════════════════════════════
+// RANGES
+// ════════════════════════════════════════════════════════════════════
 
 const R_OU_GOLS          = { vals: Array.from({length: 31}, (_, i) => 0.5 + i)         };
 const R_OU_GOLS_HT       = { vals: Array.from({length: 19}, (_, i) => 0.5 + i)         };
@@ -65,6 +77,9 @@ function normalizeInner(inner) {
   return [];
 }
 
+// ════════════════════════════════════════════════════════════════════
+// SLIDERS (inalterados de v7)
+// ════════════════════════════════════════════════════════════════════
 function MappedRangeSlider({ vals, valueMin, valueMax, onChange, primeiroInner }) {
   const idxMin = vals.indexOf(valueMin);
   const idxMax = vals.indexOf(valueMax);
@@ -163,6 +178,36 @@ const sliderStyle = `
     border-width: 0 2px 2px 0;
     transform: rotate(45deg);
   }
+
+  /* Switch pequeno pra ativar/desativar filtros */
+  .mf-switch {
+    position: relative;
+    width: 32px;
+    height: 18px;
+    border-radius: 9999px;
+    cursor: pointer;
+    transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+    border: none;
+    padding: 0;
+  }
+  .mf-switch.off { background-color: #4a5470; }
+  .mf-switch.on  { background-color: #10b981; box-shadow: 0 0 10px rgba(16, 185, 129, 0.35); }
+  .mf-switch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: white;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
+  .mf-switch.on::after {
+    transform: translateX(14px);
+    box-shadow: 0 2px 5px rgba(16, 185, 129, 0.45);
+  }
 `;
 
 function valorValidoParaRange(v, range) {
@@ -172,13 +217,54 @@ function valorValidoParaRange(v, range) {
   return false;
 }
 
-export default function MercadoFiltros({ mercado, esporte = 'fifa', inner, onInnerChange, linhaMin, linhaMax, onLinhaChange, mostrarDescricao = true }) {
+// ════════════════════════════════════════════════════════════════════
+// Switch (toggle on/off pequeno)
+// ════════════════════════════════════════════════════════════════════
+function Switch({ ativo, onChange, title }) {
+  return (
+    <button
+      type="button"
+      className={`mf-switch ${ativo ? 'on' : 'off'}`}
+      onClick={() => onChange(!ativo)}
+      title={title || (ativo ? 'Filtro ativo (clique pra desativar)' : 'Filtro desativado (clique pra ativar)')}
+      aria-label={title}
+    />
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Componente principal
+// ════════════════════════════════════════════════════════════════════
+export default function MercadoFiltros({
+  mercado,
+  esporte = 'fifa',
+  inner,
+  onInnerChange,
+  linhaMin,
+  linhaMax,
+  onLinhaChange,
+  mostrarDescricao = true,
+
+  // NOVAS props (v8) - opcionais pra retro-compatibilidade
+  selecaoAtivo,           // bool: filtro de seleção (lado) ativo
+  onSelecaoAtivoChange,   // fn(bool)
+  linhaAtivo,             // bool: filtro de linha ativo
+  onLinhaAtivoChange,     // fn(bool)
+}) {
   const cfg = getConfigMercado(mercado, esporte);
   const innerArr = useMemo(() => normalizeInner(inner), [inner]);
+
+  // Se a prop não veio (componente usado em outro lugar sem upgrade), assume ATIVO
+  const selecaoAtivoEff = selecaoAtivo === undefined ? true : !!selecaoAtivo;
+  const linhaAtivoEff = linhaAtivo === undefined ? true : !!linhaAtivo;
+
+  const temToggleSelecao = onSelecaoAtivoChange !== undefined;
+  const temToggleLinha = onLinhaAtivoChange !== undefined;
 
   const primeiroValor = (r) => r.vals ? r.vals[0] : r.min;
   const ultimoValor   = (r) => r.vals ? r.vals[r.vals.length - 1] : r.max;
 
+  // Reset inteligente quando muda mercado/esporte
   useEffect(() => {
     if (cfg.inner) {
       const validas = innerArr.filter(op => cfg.inner.includes(op));
@@ -211,8 +297,17 @@ export default function MercadoFiltros({ mercado, esporte = 'fifa', inner, onInn
     }
   };
 
-  const pill = (t) => (
-    <span className="text-[10px] font-bold px-2 py-1 rounded flex-shrink-0" style={{ backgroundColor: '#10b981', color: '#fff' }}>{t}</span>
+  const pill = (texto, ativo = true) => (
+    <span
+      className="text-[10px] font-bold px-2 py-1 rounded flex-shrink-0 transition"
+      style={{
+        backgroundColor: ativo ? '#10b981' : '#4a5470',
+        color: '#fff',
+        opacity: ativo ? 1 : 0.7,
+      }}
+    >
+      {texto}
+    </span>
   );
 
   const primeiroInner = innerArr[0] || (cfg.inner ? cfg.inner[0] : null);
@@ -226,11 +321,19 @@ export default function MercadoFiltros({ mercado, esporte = 'fifa', inner, onInn
     return <ContinuousRangeSlider min={r.min} max={r.max} step={r.step} valueMin={linhaMin} valueMax={linhaMax} onChange={onLinhaChange} primeiroInner={primeiroInner} />;
   };
 
-  const hintLado = innerArr.length === 0
+  // Hint da seleção
+  const hintLado = !selecaoAtivoEff
+    ? 'Filtro de seleção desativado: o bot aceita qualquer lado'
+    : innerArr.length === 0
     ? 'Nenhum lado marcado: o bot aceita qualquer lado (padrão: ambos)'
     : innerArr.length === 1
     ? `O bot só vai apostar em ${innerArr[0]}`
     : `O bot vai apostar em: ${innerArr.join(', ')}`;
+
+  // Hint da linha
+  const hintLinha = !linhaAtivoEff
+    ? 'Filtro de linha desativado: o bot aceita qualquer linha'
+    : null;
 
   return (
     <div className="space-y-3 pt-2">
@@ -244,11 +347,26 @@ export default function MercadoFiltros({ mercado, esporte = 'fifa', inner, onInn
         </div>
       )}
 
+      {/* SELEÇÃO (checkbox múltiplo, com toggle on/off opcional) */}
       {cfg.inner && cfg.inner.length > 0 && (
         <div className="space-y-1.5">
           <div className="flex items-center gap-3 flex-wrap">
-            {pill('SELEÇÃO')}
-            <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+            {/* Toggle opcional (só aparece se a prop foi passada) */}
+            {temToggleSelecao && (
+              <Switch
+                ativo={selecaoAtivoEff}
+                onChange={onSelecaoAtivoChange}
+                title={selecaoAtivoEff ? 'Filtro de seleção ATIVO — clique pra desativar (aceita qualquer lado)' : 'Filtro de seleção DESATIVADO — clique pra ativar'}
+              />
+            )}
+            {pill('SELEÇÃO', selecaoAtivoEff)}
+            <div
+              className="flex flex-wrap gap-x-4 gap-y-1.5 transition"
+              style={{
+                opacity: selecaoAtivoEff ? 1 : 0.35,
+                pointerEvents: selecaoAtivoEff ? 'auto' : 'none',
+              }}
+            >
               {cfg.inner.map(op => {
                 const ativo = innerArr.includes(op);
                 return (
@@ -259,6 +377,7 @@ export default function MercadoFiltros({ mercado, esporte = 'fifa', inner, onInn
                       className="mf-check"
                       checked={ativo}
                       onChange={() => toggleOpcao(op)}
+                      disabled={!selecaoAtivoEff}
                     />
                     <span className="text-[11px] font-semibold" style={{ color: ativo ? '#10b981' : '#b8c0d4' }}>
                       {op}
@@ -268,16 +387,49 @@ export default function MercadoFiltros({ mercado, esporte = 'fifa', inner, onInn
               })}
             </div>
           </div>
-          <div className="text-[10px] italic ml-[78px]" style={{ color: innerArr.length === 0 ? '#6b7691' : '#10b981', opacity: 0.8 }}>
+          <div
+            className="text-[10px] italic ml-[78px] transition"
+            style={{
+              color: !selecaoAtivoEff
+                ? '#6b7691'
+                : (innerArr.length === 0 ? '#6b7691' : '#10b981'),
+              opacity: 0.85,
+            }}
+          >
             {hintLado}
           </div>
         </div>
       )}
 
+      {/* LINHA (slider, com toggle on/off opcional) */}
       {cfg.range && linhaMin !== null && linhaMin !== undefined && (
-        <div className="flex items-start gap-3">
-          {pill('LINHA')}
-          <div className="flex-1">{renderSlider()}</div>
+        <div className="space-y-1.5">
+          <div className="flex items-start gap-3">
+            {temToggleLinha && (
+              <div className="pt-1">
+                <Switch
+                  ativo={linhaAtivoEff}
+                  onChange={onLinhaAtivoChange}
+                  title={linhaAtivoEff ? 'Filtro de linha ATIVO — clique pra desativar (aceita qualquer linha)' : 'Filtro de linha DESATIVADO — clique pra ativar'}
+                />
+              </div>
+            )}
+            <div className="pt-1">{pill('LINHA', linhaAtivoEff)}</div>
+            <div
+              className="flex-1 transition"
+              style={{
+                opacity: linhaAtivoEff ? 1 : 0.35,
+                pointerEvents: linhaAtivoEff ? 'auto' : 'none',
+              }}
+            >
+              {renderSlider()}
+            </div>
+          </div>
+          {hintLinha && (
+            <div className="text-[10px] italic ml-[78px]" style={{ color: '#6b7691', opacity: 0.85 }}>
+              {hintLinha}
+            </div>
+          )}
         </div>
       )}
 
