@@ -1282,9 +1282,24 @@ function formStateToPayload(s) {
     if (!isNaN(n)) payload.max_apostas_partida = n;
   }
 
+  // Mapeia inner (UI: ['Over','Under']) -> lados (backend canonico: ['over','under'])
+  // Backend usa minusculo, sem acentos. Bot_executor le filtros.lados pra filtrar
+  // pelo lado da selecao do tick (over/under/sim/nao/casa/empate/fora/par/impar).
+  const MAPA_INNER_LADO = {
+    'Over': 'over', 'Under': 'under',
+    'Sim': 'sim', 'Não': 'nao', 'Nao': 'nao',
+    'Casa': 'casa', 'Empate': 'empate', 'Fora': 'fora',
+    'Par': 'par', 'Ímpar': 'impar', 'Impar': 'impar',
+  };
+
+  const innerArr = Array.isArray(s.inner) ? s.inner : (s.inner ? [s.inner] : []);
+  const lados = innerArr
+    .map(op => MAPA_INNER_LADO[op] || (typeof op === 'string' ? op.toLowerCase() : null))
+    .filter(Boolean);
+
   // filtros JSONB: backup de TODO o formState pra reidratação fiel ao editar
   // (permite recuperar fixarJ1Casa, gradesModo, filtros hist, comp, live, etc)
-  payload.filtros = { ...s };
+  payload.filtros = { ...s, lados };  // adiciona 'lados' (canonico) no JSONB
 
   return payload;
 }
@@ -1437,7 +1452,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
 
   // SECAO 4 - MERCADOS
   const [mercado, setMercado] = useState('over_under_ft');
-  const [inner, setInner] = useState('Over');
+  const [inner, setInner] = useState([]);  // array vazio = nenhum lado marcado = bot aceita ambos
   const [linhaMin, setLinhaMin] = useState(null);
   const [linhaMax, setLinhaMax] = useState(null);
 
@@ -1737,6 +1752,8 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     setTorneioAtivo(false); setTorneios([]);
     setGradesAtivo(false); setGradesSelecionadas([]); setGradesModo('whitelist');
     setMercado('over_under_ft');
+    setInner([]);                              // reset pra nenhum marcado
+    setLinhaMin(null); setLinhaMax(null);
     setLimitarOddsAtivo(false); setLimitarOdds([1, 10]);
     setProporcaoAtivo(false); setProporcao([0, 10]);
     setTipoProporcaoAtivo(true); setTipoProporcao('>');
