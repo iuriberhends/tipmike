@@ -78,6 +78,9 @@ export const ApiBots = {
   stats:     (id, modo = 'simulado') => api.get(`/bots/${id}/stats`, { modo }),
   historico: (id, periodo = '30d', modo = 'simulado', limiteTips = 60) =>
     api.get(`/bots/${id}/historico`, { periodo, modo, limite_tips: limiteTips }),
+  // Telegram: liga/desliga modo treinamento (true = NAO envia, false = envia)
+  treinamento: (id, ativo) =>
+    api.patch(`/bots/${id}/treinamento`, { em_treinamento: !!ativo }),
 };
 
 export const ApiApostas = {

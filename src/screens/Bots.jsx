@@ -160,12 +160,19 @@ function CorpoExpandido({ bot, stats, statsLoading, onAcao, loadingAcao, isAtivo
         </button>
 
         <button
-          disabled
-          className="px-3 py-2 rounded-md text-[11px] font-bold uppercase tracking-wider transition opacity-40 cursor-not-allowed"
-          style={{ backgroundColor: '#3b82f6', color: '#fff' }}
-          title="Em breve"
+          onClick={() => onAcao('treinamento', bot.id)}
+          disabled={loadingAcao}
+          className="px-3 py-2 rounded-md text-[11px] font-bold uppercase tracking-wider transition disabled:opacity-50"
+          style={{
+            backgroundColor: bot.em_treinamento ? '#3b82f6' : 'rgba(59, 130, 246, 0.15)',
+            color: bot.em_treinamento ? '#fff' : '#60a5fa',
+            border: bot.em_treinamento ? 'none' : '0.5px solid rgba(59, 130, 246, 0.4)',
+          }}
+          title={bot.em_treinamento
+            ? 'Modo treinamento ATIVO - bot simula mas NAO envia Telegram. Clique pra desligar.'
+            : 'Modo producao - bot envia tips no Telegram. Clique pra ligar treinamento.'}
         >
-          Treinamento
+          {bot.em_treinamento ? '🎓 Treinando' : 'Treinamento'}
         </button>
 
         <button
@@ -245,6 +252,16 @@ function LinhaBot({ bot, expandido, onToggleExpand, onAcao, loadingAcao, onAbrir
           {isAtivo ? <Activity className="w-3 h-3" /> : <Power className="w-3 h-3" />}
           {isAtivo ? 'Apostando' : 'Automatizar'}
         </div>
+
+        {bot.em_treinamento && (
+          <div className="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 flex-shrink-0" style={{
+            backgroundColor: 'rgba(59, 130, 246, 0.15)',
+            color: '#60a5fa',
+            border: '0.5px solid rgba(59, 130, 246, 0.4)',
+          }} title="Modo treinamento - bot simula mas NAO envia tips no Telegram">
+            🎓 Treinando
+          </div>
+        )}
 
         <span className="text-[11px] text-[--mike-fg-muted] font-mono flex-shrink-0">
           {bot.id.toString().padStart(6, '0')}
@@ -491,6 +508,26 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
           }
         },
       });
+      return;
+    }
+
+    if (acao === 'treinamento') {
+      setLoadingAcao(prev => ({ ...prev, [botId]: true }));
+      try {
+        const novoEstado = !bot.em_treinamento;
+        await ApiBots.treinamento(botId, novoEstado);
+        adicionarToast(
+          novoEstado
+            ? `Bot "${bot.nome}" em treinamento (sem Telegram)`
+            : `Bot "${bot.nome}" voltou pra produção (com Telegram)`,
+          novoEstado ? 'warn' : 'success'
+        );
+        fetchBots();
+      } catch (e) {
+        adicionarToast(`Erro: ${e.message}`, 'error');
+      } finally {
+        setLoadingAcao(prev => { const n = { ...prev }; delete n[botId]; return n; });
+      }
       return;
     }
 
