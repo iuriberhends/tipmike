@@ -1240,9 +1240,33 @@ function formStateToPayload(s) {
     mercado: s.mercado,
   };
 
-  // Torneios (whitelist)
+  // Torneios (whitelist) - EXPANDE pais em grades reais
+  // O bot_executor faz match exato com tick.liga, entao precisa salvar as grades reais
+  // nao o nome do pai (que eh apenas pra UI).
   if (s.torneioAtivo && Array.isArray(s.torneios) && s.torneios.length > 0) {
-    payload.torneios = s.torneios;
+    // Se tem gradesAtivo + gradesSelecionadas (whitelist), usa as grades selecionadas
+    if (s.gradesAtivo && s.gradesModo === 'whitelist'
+        && Array.isArray(s.gradesSelecionadas) && s.gradesSelecionadas.length > 0) {
+      payload.torneios = s.gradesSelecionadas;
+    } else if (Array.isArray(s.torneiosReais) && s.torneiosReais.length > 0) {
+      // Senao, expande cada pai em TODAS as suas grades reais
+      const gradesExpandidas = [];
+      for (const paiSelecionado of s.torneios) {
+        const paiObj = s.torneiosReais.find(
+          t => t.nome_pai === paiSelecionado || t.nome_pai_real === paiSelecionado
+        );
+        if (paiObj && paiObj.grades) {
+          gradesExpandidas.push(...paiObj.grades.map(g => g.nome));
+        } else {
+          // Pai nao encontrado em torneiosReais (fallback hardcoded) - salva como veio
+          gradesExpandidas.push(paiSelecionado);
+        }
+      }
+      payload.torneios = gradesExpandidas;
+    } else {
+      // Sem torneiosReais (fallback) - salva nomes pai como veio
+      payload.torneios = s.torneios;
+    }
   }
 
   // Grades como blacklist → torneios_excluir
@@ -1586,7 +1610,9 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3500);
   };
 
-  // 0) Quando casa OU esporte mudam → busca torneios REAIS do banco
+  // 0) Quando casa OU esporte mudam → busca torneios PAI agrupados do banco
+  // Cada item: {nome_pai, nome_pai_real, ticks_total, grades: [{nome, ticks}]}
+  // O dropdown de torneio mostra so os nomes pai. A lista de grades vem ja agrupada.
   useEffect(() => {
     if (!casa || !esporte) {
       setTorneiosReais([]);
@@ -1605,41 +1631,67 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
       });
   }, [casa, esporte]);
 
-  // 1) Quando torneio é ativado/escolhido → busca as grades disponíveis
+  // 1) Quando torneio (pai) eh selecionado → pega as grades do pai escolhido
+  // As grades JA vieram no /disponiveis, nao precisa chamar /grades de novo
   useEffect(() => {
     if (!torneioAtivo || torneios.length === 0) {
       setGradesDisponiveis([]);
       setGradesSelecionadas([]);
       return;
     }
-    const torneio = torneios[0];
-    setGradesCarregando(true);
-    ApiTorneios.grades(torneio)
-      .then(data => {
-        setGradesDisponiveis(data.grades || []);
-        setGradesCarregando(false);
-      })
-      .catch(() => {
-        setGradesDisponiveis([]);
-        setGradesCarregando(false);
-      });
-  }, [torneios, torneioAtivo]);
+    // Para cada pai selecionado, agrega as grades dele de torneiosReais
+    const todasGrades = [];
+    for (const paiSelecionado of torneios) {
+      const paiObj = torneiosReais.find(
+        t => t.nome_pai === paiSelecionado || t.nome_pai_real === paiSelecionado
+      );
+      if (paiObj && paiObj.grades) {
+        todasGrades.push(...paiObj.grades);
+      }
+    }
+    setGradesDisponiveis(todasGrades);
+  }, [torneios, torneioAtivo, torneiosReais]);
 
   // 2) Quando torneio OU grades mudam → busca participantes
+  // Como o usuario seleciona um PAI, precisamos passar as GRADES reais pro endpoint
+  // /participantes (que aceita lista de grades exatas)
   useEffect(() => {
     if (!torneioAtivo || torneios.length === 0) {
       setParticipantes({ jogadores: [], times: [], carregando: false });
       return;
     }
-    const torneio = torneios[0];
+
+    // Resolve as grades reais a partir do pai selecionado
+    const gradesReaisDoPai = [];
+    for (const paiSelecionado of torneios) {
+      const paiObj = torneiosReais.find(
+        t => t.nome_pai === paiSelecionado || t.nome_pai_real === paiSelecionado
+      );
+      if (paiObj && paiObj.grades) {
+        gradesReaisDoPai.push(...paiObj.grades.map(g => g.nome));
+      }
+    }
+
+    // Se o usuario filtrou por grades especificas, usa elas; senao usa todas do pai
+    const gradesParaConsulta = (gradesAtivo && gradesSelecionadas.length > 0)
+      ? gradesSelecionadas
+      : gradesReaisDoPai;
+
+    if (gradesParaConsulta.length === 0) {
+      setParticipantes({ jogadores: [], times: [], carregando: false });
+      return;
+    }
+
     setParticipantes(prev => ({ ...prev, carregando: true }));
 
-    // Se gradesAtivo e tem grades selecionadas, manda elas + modo (whitelist/blacklist); senão agrega tudo
-    const options = (gradesAtivo && gradesSelecionadas.length > 0)
-      ? { grades: gradesSelecionadas, gradesModo }
-      : {};
+    // Usa a primeira grade como torneio_id no path (endpoint exige), passa todas como filtro
+    const torneioId = gradesParaConsulta[0];
+    const options = {
+      grades: gradesParaConsulta,
+      gradesModo: (gradesAtivo && gradesSelecionadas.length > 0) ? gradesModo : 'whitelist',
+    };
 
-    ApiTorneios.participantes(torneio, options)
+    ApiTorneios.participantes(torneioId, options)
       .then(data => {
         setParticipantes({
           jogadores: data.jogadores || [],
@@ -1650,7 +1702,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
       .catch(() => {
         setParticipantes({ jogadores: [], times: [], carregando: false });
       });
-  }, [torneios, torneioAtivo, gradesAtivo, gradesSelecionadas, gradesModo]);
+  }, [torneios, torneioAtivo, gradesAtivo, gradesSelecionadas, gradesModo, torneiosReais]);
 
   // ============================================================
   // PERSISTENCIA LOCAL + AUTO-SAVE (defensivo)
@@ -1665,8 +1717,9 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
   const primeiraRender = useRef(true);
 
   // Coleta todo o form em um objeto
+  // torneiosReais incluso pra formStateToPayload expandir pai em grades reais
   const formState = {
-    nome, descricao, esporte, casa, torneioAtivo, torneios, gradesAtivo, gradesSelecionadas, gradesModo,
+    nome, descricao, esporte, casa, torneioAtivo, torneios, torneiosReais, gradesAtivo, gradesSelecionadas, gradesModo,
     mercado, inner, selecaoAtivo, linhaMin, linhaMax, linhaAtivo, limitarOddsAtivo, limitarOdds, proporcaoAtivo, proporcao,
     tipoProporcaoAtivo, tipoProporcao, limitePlacarAtivo, limitePlacar,
     extrasAtivo, extras, filtroMediasAtivo, filtroMedias,
@@ -1952,11 +2005,11 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     '--mike-accent-2': '#0891b2',
   };
 
-  // Lista de torneios disponiveis pro dropdown:
-  // - Se tem torneios reais do banco (API), usa esses (com nomes exatos do que esta chegando)
+  // Lista de torneios PAI disponiveis pro dropdown:
+  // - Se tem torneios reais do banco (API), usa nome_pai (Battle, GT, EAL etc) - SEM grades
   // - Senao, fallback pros hardcoded (caso API falhe ou casa sem volume)
   const torneiosDisp = (torneiosReais.length > 0)
-    ? torneiosReais.map(t => t.nome)
+    ? torneiosReais.map(t => t.nome_pai)
     : (TORNEIOS_POR_ESPORTE[esporte] || []);
   const mercadosDisp = MERCADOS_POR_ESPORTE[esporte] || [];
   const capacidades = CAPACIDADES[esporte] || CAPACIDADES.fifa;
@@ -2338,7 +2391,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
           <LinhaFiltro
             ativo={torneioAtivo} onToggle={setTorneioAtivo} label="Torneio"
             info={torneiosCarregando ? "Buscando torneios disponiveis na casa..." :
-                  torneiosReais.length > 0 ? `${torneiosReais.length} torneios com volume nos ultimos 7 dias` :
+                  torneiosReais.length > 0 ? `${torneiosReais.length} torneio(s) pai com ${torneiosReais.reduce((s,t) => s + (t.grades?.length || 0), 0)} grade(s) total nos ultimos 7 dias` :
                   "Sem dados recentes da casa - usando lista padrao"}
             comAcoes
             onCopiar={() => { navigator.clipboard?.writeText(torneios.join(', ')); adicionarToast('Torneios copiados', 'success'); }}
@@ -2358,7 +2411,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
                 onChange={setTorneios}
                 opcoes={torneiosDisp}
                 placeholder={torneiosReais.length > 0
-                  ? `${torneiosReais.length} torneio(s) reais disponiveis`
+                  ? `${torneiosReais.length} torneio(s) pai - selecione um`
                   : "Selecione um torneio"}
               />
             )}
