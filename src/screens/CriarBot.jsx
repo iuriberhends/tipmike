@@ -1451,6 +1451,9 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
   // SECAO 3 — Torneio + Grade (variações específicas dentro do torneio)
   const [torneioAtivo, setTorneioAtivo] = useState(false);
   const [torneios, setTorneios] = useState([]);
+  // Torneios REAIS buscados do banco (via /torneios/disponiveis)
+  const [torneiosReais, setTorneiosReais] = useState([]);  // [{nome, ticks}]
+  const [torneiosCarregando, setTorneiosCarregando] = useState(false);
   const [gradesAtivo, setGradesAtivo] = useState(false);
   const [gradesSelecionadas, setGradesSelecionadas] = useState([]); // grades específicas escolhidas
   const [gradesDisponiveis, setGradesDisponiveis] = useState([]);   // todas as grades vindas da API
@@ -1582,6 +1585,25 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     setToasts((prev) => [...prev, { id, mensagem, tipo }]);
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3500);
   };
+
+  // 0) Quando casa OU esporte mudam → busca torneios REAIS do banco
+  useEffect(() => {
+    if (!casa || !esporte) {
+      setTorneiosReais([]);
+      return;
+    }
+    setTorneiosCarregando(true);
+    ApiTorneios.disponiveis(casa, esporte)
+      .then(data => {
+        setTorneiosReais(data.torneios || []);
+        setTorneiosCarregando(false);
+      })
+      .catch(err => {
+        console.warn('Erro buscando torneios reais:', err);
+        setTorneiosReais([]);
+        setTorneiosCarregando(false);
+      });
+  }, [casa, esporte]);
 
   // 1) Quando torneio é ativado/escolhido → busca as grades disponíveis
   useEffect(() => {
@@ -1930,7 +1952,12 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     '--mike-accent-2': '#0891b2',
   };
 
-  const torneiosDisp = TORNEIOS_POR_ESPORTE[esporte] || [];
+  // Lista de torneios disponiveis pro dropdown:
+  // - Se tem torneios reais do banco (API), usa esses (com nomes exatos do que esta chegando)
+  // - Senao, fallback pros hardcoded (caso API falhe ou casa sem volume)
+  const torneiosDisp = (torneiosReais.length > 0)
+    ? torneiosReais.map(t => t.nome)
+    : (TORNEIOS_POR_ESPORTE[esporte] || []);
   const mercadosDisp = MERCADOS_POR_ESPORTE[esporte] || [];
   const capacidades = CAPACIDADES[esporte] || CAPACIDADES.fifa;
   const cenariosDisp = capacidades.cenariosFull ? CENARIOS_FULL : CENARIOS_REDUZIDO;
@@ -2310,11 +2337,31 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
         <SecaoForm titulo="Torneio e Grade" descricao="Escolha o torneio e, opcionalmente, grades específicas (variações). Sem grade selecionada, agrega todas as variações.">
           <LinhaFiltro
             ativo={torneioAtivo} onToggle={setTorneioAtivo} label="Torneio"
+            info={torneiosCarregando ? "Buscando torneios disponiveis na casa..." :
+                  torneiosReais.length > 0 ? `${torneiosReais.length} torneios com volume nos ultimos 7 dias` :
+                  "Sem dados recentes da casa - usando lista padrao"}
             comAcoes
             onCopiar={() => { navigator.clipboard?.writeText(torneios.join(', ')); adicionarToast('Torneios copiados', 'success'); }}
             onColar={async () => { try { const t = await navigator.clipboard?.readText(); if (t) setTorneios(t.split(',').map((x) => x.trim()).filter(Boolean)); } catch {} }}
           >
-            <MultiTagInput valores={torneios} onChange={setTorneios} opcoes={torneiosDisp} placeholder="Selecione um torneio" />
+            {torneiosCarregando ? (
+              <div className="flex items-center gap-2 text-[10px] text-[--mike-fg-muted] py-2">
+                <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.3"/>
+                  <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
+                </svg>
+                Carregando torneios reais de {casa}/{esporte}...
+              </div>
+            ) : (
+              <MultiTagInput
+                valores={torneios}
+                onChange={setTorneios}
+                opcoes={torneiosDisp}
+                placeholder={torneiosReais.length > 0
+                  ? `${torneiosReais.length} torneio(s) reais disponiveis`
+                  : "Selecione um torneio"}
+              />
+            )}
           </LinhaFiltro>
 
           {/* Linha de Grade — só aparece se torneio ativo + tem ao menos 1 torneio selecionado */}

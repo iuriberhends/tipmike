@@ -99,6 +99,11 @@ export const ApiStats = {
 };
 
 export const ApiTorneios = {
+  // Lista TORNEIOS REAIS que estao chegando ticks naquela casa+esporte
+  // Retorna nomes exatos como aparecem no banco, com volume
+  disponiveis: (casa, esporte, dias = 7, minTicks = 100) =>
+    api.get('/torneios/disponiveis', { casa, esporte, dias, min_ticks: minTicks }),
+
   grades: (torneioId) =>
     api.get(`/torneios/${encodeURIComponent(torneioId)}/grades`),
 
