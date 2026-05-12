@@ -1208,7 +1208,7 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
       id: jogo.id,
       jogadorA: jogo.jogadorA,
       jogadorB: jogo.jogadorB,
-      esporte: esporteAtivo,
+      esporte: ESPORTE_PARA_PARTIDA[esporteAtivo] || 'e-Basket',
       torneio: jogo.liga || (ligaFiltro !== 'todas' ? ligaFiltro : null),
     };
     if (onNavegarExterno) {
@@ -1230,7 +1230,7 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
     const contexto = {
       jogadorA,
       jogadorB,
-      esporte: esporteAtivo,
+      esporte: ESPORTE_PARA_PARTIDA[esporteAtivo] || 'e-Basket',
       torneio: ligaFiltro !== 'todas' ? ligaFiltro : null,
     };
     if (onNavegarExterno) {
