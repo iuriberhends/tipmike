@@ -2493,6 +2493,23 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
               linhaAtivo={linhaAtivo}
               onLinhaAtivoChange={setLinhaAtivo}
             />
+
+            {/* LIMITAR ODDS - filtro de odds min/max */}
+            <LinhaFiltro
+              label="Limitar Odds"
+              info="Bot só apita tip se a odd estiver entre os valores definidos"
+              ativo={limitarOddsAtivo}
+              onToggle={setLimitarOddsAtivo}
+            >
+              <RangeSlider
+                min={1}
+                max={10}
+                step={0.05}
+                value={limitarOdds}
+                onChange={setLimitarOdds}
+                disabled={!limitarOddsAtivo}
+              />
+            </LinhaFiltro>
           </div>
 
           {/* CAIXA DOS FILTROS DE HISTORICO */}
