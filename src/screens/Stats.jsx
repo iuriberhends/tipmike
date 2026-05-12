@@ -26,6 +26,7 @@ import {
   CheckCircle2, Calendar, BarChart, ChevronLeft,
 } from 'lucide-react';
 import MikeHeader from '../shared/MikeHeader.jsx';
+import { ApiStats } from '../lib/api.js';
 
 // ============================================================
 // 1. CONSTANTES
@@ -402,7 +403,7 @@ function gerarDistribuicoes(esporteId) {
 // 4. API CLIENT + HOOKS (plug-and-play)
 // ============================================================
 
-const USE_MOCK = true;
+const USE_MOCK = false;  // v2: USAR BACKEND REAL via ApiStats
 const MOCK_LATENCY = { min: 80, max: 200 };
 
 function simularLatencia() {
@@ -482,6 +483,18 @@ const mockResponses = {
   },
 };
 
+// v2: roteador que mapeia endpoints pra ApiStats real
+const apiRouter = {
+  '/stats/overview':        (p) => ApiStats.overview(p.esporte),
+  '/stats/proximos':        (p) => ApiStats.proximos(p.esporte, { busca: p.busca, liga: p.liga, page: p.page, pageSize: p.pageSize }),
+  '/stats/ultimos':         (p) => ApiStats.ultimos(p.esporte, { busca: p.busca, liga: p.liga, page: p.page, pageSize: p.pageSize }),
+  '/stats/heatmap':         (p) => ApiStats.heatmap(p.esporte),
+  '/stats/distribuicoes':   (p) => ApiStats.distribuicoes(p.esporte),
+  '/stats/jogadores':       (p) => ApiStats.jogadores(p.esporte, p.busca),
+  '/stats/torneios':        (p) => ApiStats.torneios(p.esporte),
+  '/stats/preview-jogador': (p) => ApiStats.previewJogador(p.esporte, p.nome),
+};
+
 async function apiGet(endpoint, params) {
   if (USE_MOCK) {
     await simularLatencia();
@@ -489,6 +502,12 @@ async function apiGet(endpoint, params) {
     if (!handler) throw new Error(`[MOCK] Endpoint não implementado: GET ${endpoint}`);
     return handler(params || {});
   }
+  // v2: usa ApiStats real
+  const handler = apiRouter[endpoint];
+  if (handler) {
+    return handler(params || {});
+  }
+  // Fallback (raro): chama direto
   const qs = new URLSearchParams(Object.entries(params || {}).filter(([_, v]) => v !== null && v !== undefined && v !== '')).toString();
   const res = await fetch(`${endpoint}${qs ? '?' + qs : ''}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);

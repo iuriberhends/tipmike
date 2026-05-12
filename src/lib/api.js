@@ -1,5 +1,7 @@
 /**
  * api.js — Cliente HTTP centralizado da TipMike API
+ *
+ * v2: ApiStats expandida com 8 endpoints novos pra tela Stats.jsx
  */
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://138.255.160.158:8000';
@@ -74,11 +76,9 @@ export const ApiBots = {
   start:  (id)     => api.post(`/bots/${id}/start`),
   stop:   (id)     => api.post(`/bots/${id}/stop`),
   clone:  (id)     => api.post(`/bots/${id}/clone`),
-  // Entrega 7C - estatisticas e historico
   stats:     (id, modo = 'simulado') => api.get(`/bots/${id}/stats`, { modo }),
   historico: (id, periodo = '30d', modo = 'simulado', limiteTips = 60) =>
     api.get(`/bots/${id}/historico`, { periodo, modo, limite_tips: limiteTips }),
-  // Telegram: liga/desliga modo treinamento (true = NAO envia, false = envia)
   treinamento: (id, ativo) =>
     api.patch(`/bots/${id}/treinamento`, { em_treinamento: !!ativo }),
 };
@@ -92,15 +92,27 @@ export const ApiApostas = {
   manual: (body)   => api.post('/apostas/manual', body),
 };
 
+// ============================================================
+// ApiStats v2 - tela Stats.jsx + dashboard antigo
+// ============================================================
 export const ApiStats = {
+  // Endpoints antigos (sistema/bots)
   dashboard: ()   => api.get('/stats/dashboard'),
   bots:      ()   => api.get('/stats/bots'),
   bot:       (id) => api.get(`/stats/bots/${id}`),
+
+  // v2 - tela Stats.jsx (jogadores/jogos por esporte)
+  overview:        (esporte)               => api.get('/stats/overview', { esporte }),
+  proximos:        (esporte, params = {})  => api.get('/stats/proximos', { esporte, ...params }),
+  ultimos:         (esporte, params = {})  => api.get('/stats/ultimos', { esporte, ...params }),
+  heatmap:         (esporte)               => api.get('/stats/heatmap', { esporte }),
+  distribuicoes:   (esporte)               => api.get('/stats/distribuicoes', { esporte }),
+  jogadores:       (esporte, busca)        => api.get('/stats/jogadores', { esporte, busca }),
+  torneios:        (esporte)               => api.get('/stats/torneios', { esporte }),
+  previewJogador:  (esporte, nome)         => api.get('/stats/preview-jogador', { esporte, nome }),
 };
 
 export const ApiTorneios = {
-  // Lista TORNEIOS REAIS que estao chegando ticks naquela casa+esporte
-  // Retorna nomes exatos como aparecem no banco, com volume
   disponiveis: (casa, esporte, dias = 7, minTicks = 100) =>
     api.get('/torneios/disponiveis', { casa, esporte, dias, min_ticks: minTicks }),
 
@@ -120,10 +132,6 @@ export const ApiTorneios = {
     );
   },
 };
-
-// ============================================================
-// ApiBacktest — Entrega 4
-// ============================================================
 
 export const ApiBacktest = {
   create: (body) => api.post('/backtest/jobs', body),
