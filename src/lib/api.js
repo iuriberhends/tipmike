@@ -2,6 +2,7 @@
  * api.js — Cliente HTTP centralizado da TipMike API
  *
  * v2: ApiStats expandida com 8 endpoints novos pra tela Stats.jsx
+ * v3: ApiBots ganha exportCsv (URL builder) + downloadCsv (fetch+blob+download)
  */
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://138.255.160.158:8000';
@@ -67,6 +68,35 @@ export const ApiH2H = {
   busca: (params)         => api.get('/h2h', params),
 };
 
+// ============================================================
+// Helper: download arbitrario via fetch+blob
+// ============================================================
+async function _downloadBlob(url, filenameFallback) {
+  const res = await fetch(url);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || `HTTP ${res.status}`);
+  }
+  // Tenta extrair filename do Content-Disposition
+  let filename = filenameFallback;
+  const cd = res.headers.get('Content-Disposition');
+  if (cd) {
+    const m = cd.match(/filename="?([^";\n]+)"?/i);
+    if (m && m[1]) filename = m[1].trim();
+  }
+  const blob = await res.blob();
+  const blobUrl = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = blobUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  // Pequeno delay antes do revoke pra alguns navegadores (Firefox) nao cancelarem o download
+  setTimeout(() => window.URL.revokeObjectURL(blobUrl), 1000);
+  return filename;
+}
+
 export const ApiBots = {
   list:   (params) => api.get('/bots', params),
   get:    (id)     => api.get(`/bots/${id}`),
@@ -81,6 +111,30 @@ export const ApiBots = {
     api.get(`/bots/${id}/historico`, { periodo, modo, limite_tips: limiteTips }),
   treinamento: (id, ativo) =>
     api.patch(`/bots/${id}/treinamento`, { em_treinamento: !!ativo }),
+
+  // ----------------------------------------------------------
+  // Export CSV
+  // ----------------------------------------------------------
+  // Monta a URL do CSV (uso opcional caso queira abrir em outra aba)
+  exportCsvUrl: (id, params = {}) => {
+    const qs = new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v !== null && v !== undefined && v !== '')
+    ).toString();
+    return `${BASE_URL}/bots/${id}/export.csv${qs ? `?${qs}` : ''}`;
+  },
+
+  // Baixa o CSV via fetch+blob (filename vem do Content-Disposition do backend).
+  // params default: { modo: 'simulado', excel: 'true', periodo: 'todas' }
+  downloadCsv: async (id, params = {}, filenameFallback) => {
+    const merged = {
+      modo: 'simulado',
+      excel: 'true',
+      periodo: 'todas',
+      ...params,
+    };
+    const url = ApiBots.exportCsvUrl(id, merged);
+    return _downloadBlob(url, filenameFallback || `bot_${id}_apostas.csv`);
+  },
 };
 
 export const ApiApostas = {

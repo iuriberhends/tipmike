@@ -212,7 +212,7 @@ function CorpoExpandido({ bot, stats, statsLoading, onAcao, loadingAcao, isAtivo
 // LINHA DO BOT
 // ============================================================
 
-function LinhaBot({ bot, expandido, onToggleExpand, onAcao, loadingAcao, onAbrirHistorico, stats, statsLoading }) {
+function LinhaBot({ bot, expandido, onToggleExpand, onAcao, loadingAcao, onAbrirHistorico, stats, statsLoading, onBaixarCsv, loadingCsv }) {
   const casa = CASAS[bot.casa] || { label: (bot.casa || '').toUpperCase(), color: '#64748b' };
   const esporte = ESPORTES[bot.esporte] || { label: (bot.esporte || '').toUpperCase(), cor: '#64748b' };
   const isAtivo = bot.status === 'ativo';
@@ -299,8 +299,13 @@ function LinhaBot({ bot, expandido, onToggleExpand, onAcao, loadingAcao, onAbrir
         <button className="p-1 text-[--mike-fg-muted] hover:text-[--mike-accent] transition flex-shrink-0" title="Configurar horários (em breve)">
           <Clock className="w-4 h-4" />
         </button>
-        <button className="p-1 text-[--mike-fg-muted] hover:text-[--mike-accent] transition flex-shrink-0" title="Baixar planilha (em breve)">
-          <Download className="w-4 h-4" />
+        <button
+          onClick={() => onBaixarCsv(bot.id, bot.nome)}
+          disabled={!!loadingCsv}
+          className="p-1 text-[--mike-fg-muted] hover:text-[--mike-accent] transition flex-shrink-0 disabled:opacity-40 disabled:cursor-wait"
+          title="Baixar CSV das apostas"
+        >
+          {loadingCsv ? <RefreshCw className="w-4 h-4 mike-spin" /> : <Download className="w-4 h-4" />}
         </button>
 
         <button
@@ -403,6 +408,7 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
   const LIMIT = 50;
 
   const [loadingAcao, setLoadingAcao] = useState({});
+  const [loadingCsv, setLoadingCsv] = useState({});
   const [toasts, setToasts] = useState([]);
   const adicionarToast = useCallback((mensagem, tipo = 'info') => {
     const id = Date.now() + Math.random();
@@ -550,6 +556,24 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
       setLoadingAcao(prev => { const n = { ...prev }; delete n[botId]; return n; });
     }
   }, [bots, adicionarToast, fetchBots, handleNavegar]);
+
+  const handleBaixarCsv = useCallback(async (botId, botNome) => {
+    setLoadingCsv(prev => ({ ...prev, [botId]: true }));
+    try {
+      const slug = (botNome || 'bot')
+        .toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+      const fallback = `bot_${botId}_${slug || 'apostas'}.csv`;
+      const filename = await ApiBots.downloadCsv(botId, {}, fallback);
+      adicionarToast(`CSV baixado: ${filename}`, 'success');
+    } catch (e) {
+      adicionarToast(`Erro ao baixar CSV: ${e.message}`, 'error');
+    } finally {
+      setLoadingCsv(prev => { const n = { ...prev }; delete n[botId]; return n; });
+    }
+  }, [adicionarToast]);
 
   useEffect(() => {
     const handler = (e) => {
@@ -735,6 +759,8 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
                 onAbrirHistorico={(id) => setHistoricoBotId(id)}
                 stats={statsPorBot[bot.id]}
                 statsLoading={!!statsLoadingBot[bot.id]}
+                onBaixarCsv={handleBaixarCsv}
+                loadingCsv={!!loadingCsv[bot.id]}
               />
             ))}
           </div>
