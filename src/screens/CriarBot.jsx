@@ -1687,6 +1687,8 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     // Usa a primeira grade como torneio_id no path (endpoint exige), passa todas como filtro
     const torneioId = gradesParaConsulta[0];
     const options = {
+      bookmaker: casa,
+      esporte,
       grades: gradesParaConsulta,
       gradesModo: (gradesAtivo && gradesSelecionadas.length > 0) ? gradesModo : 'whitelist',
     };
@@ -1702,7 +1704,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
       .catch(() => {
         setParticipantes({ jogadores: [], times: [], carregando: false });
       });
-  }, [torneios, torneioAtivo, gradesAtivo, gradesSelecionadas, gradesModo, torneiosReais]);
+  }, [torneios, torneioAtivo, gradesAtivo, gradesSelecionadas, gradesModo, torneiosReais, casa, esporte]);
 
   // ============================================================
   // PERSISTENCIA LOCAL + AUTO-SAVE (defensivo)

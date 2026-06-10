@@ -176,6 +176,7 @@ export const ApiTorneios = {
   participantes: (torneioId, options = {}) => {
     const params = {};
     if (options.bookmaker) params.bookmaker = options.bookmaker;
+    if (options.esporte) params.esporte = options.esporte;
     if (options.grades && options.grades.length > 0) {
       params.grades = options.grades.join('|');
       if (options.gradesModo) params.grades_modo = options.gradesModo;
