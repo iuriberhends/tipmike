@@ -176,16 +176,18 @@ function CorpoExpandido({ bot, stats, statsLoading, onAcao, loadingAcao, isAtivo
         </button>
 
         <button
-          disabled
-          className="px-3 py-2 rounded-md text-[10px] font-bold uppercase tracking-wider transition opacity-40 cursor-not-allowed text-center leading-tight"
+          onClick={() => onAcao('backtest', bot.id)}
+          disabled={loadingAcao}
+          className="px-3 py-2 rounded-md text-[11px] font-bold uppercase tracking-wider transition disabled:opacity-50 flex items-center justify-center gap-1.5"
           style={{
-            backgroundColor: 'transparent',
-            border: '0.5px solid rgba(60, 85, 130, 0.5)',
-            color: 'rgb(148, 163, 184)',
+            backgroundColor: 'rgba(6, 182, 212, 0.15)',
+            border: '0.5px solid rgba(6, 182, 212, 0.4)',
+            color: '#22d3ee',
           }}
-          title="Em breve"
+          title="Rodar backtest deste bot (banco ou upload de arquivo)"
         >
-          Stop não<br />configurado
+          <BarChart3 className="w-3.5 h-3.5" />
+          Backtest
         </button>
 
         <div className="flex items-center justify-between mt-auto pt-1">
