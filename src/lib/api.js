@@ -195,4 +195,22 @@ export const ApiBacktest = {
   listByBot: (botId, limit = 10) =>
     api.get(`/backtest/bot/${botId}`, { limit }),
   delete: (jobId) => api.delete(`/backtest/jobs/${jobId}`),
+
+  // v4: backtest por UPLOAD de arquivo parquet (ticks do HD).
+  // uploadTicks usa FormData (multipart) - nao passa pelo request() JSON.
+  uploadTicks: async (file) => {
+    const fd = new FormData();
+    fd.append('arquivo', file);
+    const res = await fetch(`${BASE_URL}/backtest/upload-ticks`, {
+      method: 'POST',
+      body: fd,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+    return res.json();
+  },
+  validarCruzado: (body) => api.post('/backtest/validar-cruzado', body),
+  createFromUpload: (body) => api.post('/backtest/jobs-upload', body),
 };

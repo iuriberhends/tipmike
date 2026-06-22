@@ -344,6 +344,14 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
   const [stakeValor, setStakeValor] = useState(10);
   const [bancaInicial, setBancaInicial] = useState(1000);
 
+  // v4: fonte dos ticks - 'banco' (periodo) ou 'arquivo' (upload parquet)
+  const [fonte, setFonte] = useState('banco');
+  const [arquivo, setArquivo] = useState(null);
+  const [uploadId, setUploadId] = useState(null);
+  const [resumoUpload, setResumoUpload] = useState(null);
+  const [validacao, setValidacao] = useState(null);
+  const [subindo, setSubindo] = useState(false);
+
   const pollRef = useRef(null);
 
   useEffect(() => {
@@ -352,6 +360,12 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
       setJobId(null);
       setJob(null);
       setErroMsg(null);
+      setFonte('banco');
+      setArquivo(null);
+      setUploadId(null);
+      setResumoUpload(null);
+      setValidacao(null);
+      setSubindo(false);
     }
     return () => {
       if (pollRef.current) {
@@ -396,33 +410,80 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
     };
   }, [jobId, estado]);
 
+  // v4: sobe o parquet, pega resumo + dispara validacao cruzada
+  const subirArquivo = useCallback(async (file) => {
+    if (!file) return;
+    setSubindo(true);
+    setErroMsg(null);
+    setResumoUpload(null);
+    setValidacao(null);
+    setUploadId(null);
+    try {
+      const res = await ApiBacktest.uploadTicks(file);
+      setUploadId(res.upload_id);
+      setResumoUpload(res);
+      // validacao cruzada (nao bloqueia - so informa)
+      if (bot?.id) {
+        try {
+          const val = await ApiBacktest.validarCruzado({
+            bot_id: bot.id,
+            upload_id: res.upload_id,
+          });
+          setValidacao(val);
+        } catch (e) {
+          // validacao falhar nao impede rodar - so nao mostra o aviso
+          console.warn('validacao cruzada falhou:', e.message);
+        }
+      }
+    } catch (e) {
+      setErroMsg(e.message);
+    } finally {
+      setSubindo(false);
+    }
+  }, [bot?.id]);
+
   const podeExecutar = useMemo(() => {
-    if (!dataInicio || !dataFim) return false;
-    if (new Date(dataFim) < new Date(dataInicio)) return false;
     if (stakeValor <= 0) return false;
     if (stakeModo === 'ratchet' && bancaInicial <= 0) return false;
+    if (fonte === 'arquivo') {
+      return !!uploadId && !subindo;
+    }
+    // fonte banco
+    if (!dataInicio || !dataFim) return false;
+    if (new Date(dataFim) < new Date(dataInicio)) return false;
     return true;
-  }, [dataInicio, dataFim, stakeValor, stakeModo, bancaInicial]);
+  }, [fonte, uploadId, subindo, dataInicio, dataFim, stakeValor, stakeModo, bancaInicial]);
 
   const executar = useCallback(async () => {
     if (!bot?.id || !podeExecutar) return;
     setErroMsg(null);
     try {
-      const res = await ApiBacktest.create({
-        bot_id: bot.id,
-        data_inicio: dataInicio,
-        data_fim: dataFim,
-        stake_modo: stakeModo,
-        stake_valor: stakeValor,
-        banca_inicial: bancaInicial,
-      });
+      let res;
+      if (fonte === 'arquivo') {
+        res = await ApiBacktest.createFromUpload({
+          bot_id: bot.id,
+          upload_id: uploadId,
+          stake_modo: stakeModo,
+          stake_valor: stakeValor,
+          banca_inicial: bancaInicial,
+        });
+      } else {
+        res = await ApiBacktest.create({
+          bot_id: bot.id,
+          data_inicio: dataInicio,
+          data_fim: dataFim,
+          stake_modo: stakeModo,
+          stake_valor: stakeValor,
+          banca_inicial: bancaInicial,
+        });
+      }
       setJobId(res.job_id);
       setEstado('rodando');
     } catch (e) {
       setErroMsg(e.message);
       setEstado('erro');
     }
-  }, [bot?.id, podeExecutar, dataInicio, dataFim, stakeModo, stakeValor, bancaInicial]);
+  }, [bot?.id, podeExecutar, fonte, uploadId, dataInicio, dataFim, stakeModo, stakeValor, bancaInicial]);
 
   const verJobAnterior = useCallback(async (id) => {
     setJobId(id);
@@ -502,6 +563,100 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
 
               <div>
                 <label className="flex items-center gap-1.5 text-[11px] font-bold text-[--mike-fg] mb-2">
+                  <Activity className="w-3.5 h-3.5 text-cyan-400" />
+                  Fonte dos ticks
+                </label>
+                <div className="flex items-center gap-2 mb-2">
+                  <button
+                    onClick={() => setFonte('banco')}
+                    className={`flex-1 px-3 py-2 rounded-md text-[11px] font-semibold transition ${
+                      fonte === 'banco' ? 'bg-cyan-500/15 text-cyan-300' : 'text-[--mike-fg-muted]'
+                    }`}
+                    style={{ border: '0.5px solid', borderColor: fonte === 'banco' ? 'rgba(6,182,212,0.5)' : 'rgba(60,85,130,0.4)' }}
+                  >
+                    Banco (período)
+                  </button>
+                  <button
+                    onClick={() => setFonte('arquivo')}
+                    className={`flex-1 px-3 py-2 rounded-md text-[11px] font-semibold transition ${
+                      fonte === 'arquivo' ? 'bg-cyan-500/15 text-cyan-300' : 'text-[--mike-fg-muted]'
+                    }`}
+                    style={{ border: '0.5px solid', borderColor: fonte === 'arquivo' ? 'rgba(6,182,212,0.5)' : 'rgba(60,85,130,0.4)' }}
+                  >
+                    Arquivo (.parquet)
+                  </button>
+                </div>
+
+                {fonte === 'arquivo' && (
+                  <div className="mt-2">
+                    <label className="block text-[10px] text-[--mike-fg-muted] mb-1">
+                      Arquivo de ticks (.parquet do HD)
+                    </label>
+                    <input
+                      type="file"
+                      accept=".parquet"
+                      onChange={e => {
+                        const f = e.target.files?.[0] || null;
+                        setArquivo(f);
+                        if (f) subirArquivo(f);
+                      }}
+                      className="w-full px-3 py-2 rounded-md text-[11px] text-white bg-transparent outline-none file:mr-3 file:px-2 file:py-1 file:rounded file:border-0 file:text-[10px] file:bg-cyan-500/20 file:text-cyan-300"
+                      style={{ border: '0.5px solid rgba(60,85,130,0.4)' }}
+                    />
+
+                    {subindo && (
+                      <div className="flex items-center gap-2 mt-2 text-[10px] text-cyan-300">
+                        <RefreshCw className="w-3 h-3 animate-spin" />
+                        Subindo e validando arquivo...
+                      </div>
+                    )}
+
+                    {resumoUpload && !subindo && (
+                      <div
+                        className="mt-2 p-2.5 rounded-md text-[10px]"
+                        style={{ backgroundColor: 'rgba(6,182,212,0.06)', border: '0.5px solid rgba(6,182,212,0.25)' }}
+                      >
+                        <div className="flex items-center gap-1.5 text-cyan-300 font-semibold mb-1">
+                          <CheckCircle2 className="w-3 h-3" />
+                          {Number(resumoUpload.linhas).toLocaleString('pt-BR')} ticks lidos
+                        </div>
+                        <div className="text-[--mike-fg-muted] leading-relaxed">
+                          {resumoUpload.ts_min && (
+                            <div>Período: {formatarDataHora(resumoUpload.ts_min)} → {formatarDataHora(resumoUpload.ts_max)}</div>
+                          )}
+                          {resumoUpload.casas?.length > 0 && <div>Casas: {resumoUpload.casas.join(', ')}</div>}
+                          {resumoUpload.ligas?.length > 0 && <div>Ligas: {resumoUpload.ligas.slice(0, 4).join(', ')}{resumoUpload.ligas.length > 4 ? '…' : ''}</div>}
+                        </div>
+                      </div>
+                    )}
+
+                    {validacao && !subindo && (
+                      <div
+                        className="mt-2 p-2.5 rounded-md text-[10px]"
+                        style={{
+                          backgroundColor: validacao.ok ? 'rgba(16,185,129,0.06)' : 'rgba(245,158,11,0.08)',
+                          border: `0.5px solid ${validacao.ok ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.4)'}`,
+                        }}
+                      >
+                        <div className={`flex items-center gap-1.5 font-semibold mb-1 ${validacao.ok ? 'text-emerald-300' : 'text-amber-300'}`}>
+                          {validacao.ok ? <CheckCircle2 className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
+                          {validacao.ok ? 'Validação cruzada OK' : 'Atenção: divergência com o banco'}
+                        </div>
+                        <div className="text-[--mike-fg-muted] leading-relaxed">
+                          {validacao.amostrados > 0 && (
+                            <div>{validacao.amostrados} jogos conferidos · {validacao.placar_divergente} placar divergente · {validacao.so_no_arquivo} só no arquivo</div>
+                          )}
+                          {validacao.erro && <div className="text-amber-300/90 mt-0.5">{validacao.erro}</div>}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {fonte === 'banco' && (
+              <div>
+                <label className="flex items-center gap-1.5 text-[11px] font-bold text-[--mike-fg] mb-2">
                   <Calendar className="w-3.5 h-3.5 text-cyan-400" />
                   Período
                 </label>
@@ -542,6 +697,7 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
                   ))}
                 </div>
               </div>
+              )}
 
               <div>
                 <label className="flex items-center gap-1.5 text-[11px] font-bold text-[--mike-fg] mb-2">
