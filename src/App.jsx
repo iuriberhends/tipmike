@@ -13,6 +13,7 @@ import Bots from './screens/Bots.jsx';
 import PartidaIndividual from './screens/PartidaIndividual.jsx';
 import CriarBot from './screens/CriarBot.jsx';
 import Stats from './screens/Stats.jsx';
+import BacktestAvulso from './screens/BacktestAvulso.jsx';
 import { ModalHistorico } from './screens/Historico.jsx';
 
 function TelaPlaceholder({ titulo, descricao }) {
@@ -85,6 +86,7 @@ function AppRoutes() {
       live:       '/live',
       bots:       '/bots',
       stats:      '/stats',
+      backtest:   '/backtest',
       marketplace:'/marketplace',
       tables:     '/tables',
       extras:     '/extras',
@@ -118,6 +120,7 @@ function AppRoutes() {
         <Route path="/partida" element={<PartidaIndividual partida={location.state} onNavegar={navegar} />} />
         <Route path="/criar-bot" element={<CriarBot botId={location.state?.botId || null} onSalvar={() => navigate('/bots')} onCancelar={() => navigate('/bots')} onNavegar={navegar} />} />
         <Route path="/stats" element={<Stats onNavegar={navegar} />} />
+        <Route path="/backtest" element={<BacktestAvulso onNavegar={navegar} />} />
         <Route path="/marketplace" element={<TelaPlaceholder titulo="Mercado de Bots" descricao="Loja para descobrir, comprar e vender estratégias de bots criadas pela comunidade." />} />
         <Route path="/tables" element={<TelaPlaceholder titulo="Tabelas" descricao="Tabelas detalhadas de classificação, ROI por liga, ranking de jogadores e estatísticas históricas." />} />
         <Route path="/extras" element={<TelaPlaceholder titulo="Extras" descricao="Configurações, integrações, calculadoras, calendário, perfil, suporte e ferramentas auxiliares." />} />

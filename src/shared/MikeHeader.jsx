@@ -13,7 +13,7 @@
 import { useState } from 'react';
 import {
   Bell, Settings,
-  Home, Activity, Store, Bot, Table2, BarChart3, Plus,
+  Home, Activity, Store, Bot, Table2, BarChart3, Plus, FlaskConical,
 } from 'lucide-react';
 
 export const NAV_ITEMS = [
@@ -23,6 +23,7 @@ export const NAV_ITEMS = [
   { id: 'bots',        label: 'Bots',            icon: Bot },
   { id: 'tables',      label: 'Tabelas',         icon: Table2 },
   { id: 'stats',       label: 'Estatísticas',    icon: BarChart3, novo: true },
+  { id: 'backtest',    label: 'Backtest',        icon: FlaskConical, novo: true },
   { id: 'extras',      label: 'Extras',          icon: Plus },
 ];
 
@@ -127,4 +128,3 @@ export default function MikeHeader({ telaAtiva, onNavegar }) {
     </header>
   );
 }
-
