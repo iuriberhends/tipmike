@@ -1,54 +1,160 @@
-// src/screens/BacktestAvulso.jsx
-// ABA STANDALONE de backtest: upload de parquet + filtros proprios (sem bot).
-// Filtros: mercado/lado, WR do H2H (%), placar (cenario+diff), tempo (quartos),
-// black/white list de nicks. Roda via POST /backtest/jobs-avulso e faz polling
-// do job ate terminar, mostrando ROI/WR/PnL/Drawdown + RESSALVAS de qualidade.
+// ============================================================
+// BacktestAvulso.jsx - Backtest standalone (sem bot)
 //
-// BLINDADO:
-//  - validacao client-side antes de enviar (numeros, faixas, mercado)
-//  - polling com timeout (nao roda pra sempre) e cleanup no unmount (sem leak)
-//  - le os campos REAIS do job (roi/win_rate sao fracao 0-1; pnl; drawdown_max;
-//    green/red/void_count; total_apostas; progresso_msg com as RESSALVAS)
-//  - tudo com fallback (resultado parcial nunca quebra a tela)
+// Sobe um parquet de ticks e testa filtros proprios (WR do H2H,
+// placar, tempo/quartos, black/white list de nicks, mercado/lado)
+// sem precisar de um bot. Roda via POST /backtest/jobs-avulso e faz
+// polling do job ate concluir, mostrando ROI/PnL/WR/Drawdown + ressalvas.
 //
-// Depende de ApiBacktest.uploadTicks (existe) + ApiBacktest.createAvulso (novo,
-// ver snippet no fim). Rota/menu: ver comentario no fim.
+// Segue o mesmo padrao visual das outras telas (MikeHeader, themeVars,
+// cards rgba, lucide-react, fonte mono nos numeros).
+//
+// 🔌 BACKEND:
+//   POST /backtest/upload-ticks  -> upload_id + resumo
+//   POST /backtest/jobs-avulso   -> job_id (dispara worker)
+//   GET  /backtest/jobs/:id      -> status + resultado (polling)
+// ============================================================
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { ApiBacktest } from '../lib/api';
+import {
+  Home, ChevronRight, FlaskConical, Upload, Filter, Play, RefreshCw,
+  AlertCircle, AlertTriangle, Target, Percent, DollarSign, Hash, Trophy,
+  TrendingDown, Layers, Ban, CheckCircle2, FileUp,
+} from 'lucide-react';
+import MikeHeader from '../shared/MikeHeader.jsx';
+import { ApiBacktest } from '../lib/api.js';
 
-const CASAS = ['betano', 'superbet', 'bet365', 'estrelabet', 'meridianbet'];
+// ============================================================
+// CONSTANTES
+// ============================================================
+
+const CASAS = [
+  { value: 'betano', label: 'Betano' },
+  { value: 'superbet', label: 'Superbet' },
+  { value: 'bet365', label: 'Bet365' },
+  { value: 'estrelabet', label: 'Estrelabet' },
+  { value: 'meridianbet', label: 'Meridianbet' },
+];
 const ESPORTES = [
-  { v: 'fifa', label: 'E-Football (FIFA)' },
-  { v: 'nba2k', label: 'E-Basketball (NBA2K)' },
+  { value: 'fifa', label: 'E-Football (FIFA)', icon: '⚽' },
+  { value: 'nba2k', label: 'E-Basketball (NBA2K)', icon: '🏀' },
 ];
 const MERCADOS = [
-  { v: 'over_under_ft', label: 'Over/Under FT (jogo todo)' },
-  { v: 'over_under_ht', label: 'Over/Under HT (1o tempo)' },
+  { value: 'over_under_ft', label: 'Over/Under FT (jogo todo)' },
+  { value: 'over_under_ht', label: 'Over/Under HT (1º tempo)' },
 ];
 const LADOS = [
-  { v: 'ambos', label: 'Ambos' },
-  { v: 'over', label: 'Over' },
-  { v: 'under', label: 'Under' },
+  { value: 'ambos', label: 'Ambos' },
+  { value: 'over', label: 'Over' },
+  { value: 'under', label: 'Under' },
 ];
 const CENARIOS = [
-  { v: '', label: '(qualquer)' },
-  { v: 'casa_vencendo', label: 'Casa vencendo' },
-  { v: 'casa_perdendo', label: 'Casa perdendo' },
-  { v: 'empate', label: 'Empate' },
+  { value: '', label: '(qualquer)' },
+  { value: 'casa_vencendo', label: 'Casa vencendo' },
+  { value: 'casa_perdendo', label: 'Casa perdendo' },
+  { value: 'empate', label: 'Empate' },
 ];
 
 const POLL_MS = 2000;
-const POLL_TIMEOUT_MS = 10 * 60 * 1000; // 10min: se passar disso, para e avisa
+const POLL_TIMEOUT_MS = 10 * 60 * 1000;
 
-// converte string de input num numero, ou null se vazio/invalido
+const themeVars = {
+  '--mike-bg': '#0b0f1a',
+  '--mike-bg-2': '#070a13',
+  '--mike-card': '#141a28',
+  '--mike-card-2': '#1a2030',
+  '--mike-card-hover': '#1c2336',
+  '--mike-border': '#222a3d',
+  '--mike-fg': '#eaeef7',
+  '--mike-fg-soft': '#b8c0d4',
+  '--mike-fg-muted': '#6b7691',
+  '--mike-accent': '#10b981',
+  '--mike-accent-2': '#0891b2',
+};
+
+// helper: string de input -> numero ou null
 function numOuNull(v) {
   if (v === '' || v == null) return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
 
-export default function BacktestAvulso() {
+// ============================================================
+// COMPONENTES BASE (mesmo estilo das outras telas)
+// ============================================================
+
+function Campo({ label, children, hint }) {
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="text-[11px] text-[--mike-fg-soft] font-medium">{label}</span>
+      {children}
+      {hint && <span className="text-[9px] text-[--mike-fg-muted]">{hint}</span>}
+    </label>
+  );
+}
+
+function Select({ value, onChange, options }) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="mike-border-thin bg-transparent text-xs text-[--mike-fg] px-3 py-2 rounded-md outline-none cursor-pointer w-full"
+      style={{ appearance: 'none', WebkitAppearance: 'none' }}
+    >
+      {options.map(o => (
+        <option key={o.value} value={o.value} style={{ background: '#141a28' }}>
+          {o.icon ? `${o.icon} ` : ''}{o.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function Input({ value, onChange, placeholder, type = 'text', min }) {
+  return (
+    <input
+      type={type}
+      min={min}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="mike-border-thin bg-transparent text-xs text-[--mike-fg] px-3 py-2 rounded-md outline-none w-full placeholder:text-[--mike-fg-muted]"
+    />
+  );
+}
+
+function SecaoTitulo({ icon: Icon, children }) {
+  return (
+    <div className="flex items-center gap-2 mb-3">
+      <div className="w-1 h-4 rounded-full bg-cyan-500" />
+      <h2 className="text-sm font-bold text-[--mike-fg] flex items-center gap-1.5">
+        {Icon && <Icon className="w-3.5 h-3.5 text-cyan-400" />}
+        {children}
+      </h2>
+    </div>
+  );
+}
+
+function StatCard({ icon: Icon, label, valor, cor = '#eaeef7' }) {
+  return (
+    <div className="rounded-lg p-3" style={{
+      backgroundColor: 'rgba(20, 26, 40, 0.4)',
+      border: '0.5px solid rgba(60, 85, 130, 0.4)',
+    }}>
+      <div className="flex items-center gap-1.5 mb-1.5">
+        {Icon && <Icon className="w-3 h-3 flex-shrink-0" style={{ color: cor }} />}
+        <span className="text-[9px] uppercase tracking-wider text-[--mike-fg-muted] font-bold truncate">{label}</span>
+      </div>
+      <div className="text-lg font-black font-mono leading-tight truncate" style={{ color: cor }}>{valor}</div>
+    </div>
+  );
+}
+
+// ============================================================
+// TELA
+// ============================================================
+
+export default function BacktestAvulso({ onNavegar } = {}) {
   // upload
   const [arquivo, setArquivo] = useState(null);
   const [subindo, setSubindo] = useState(false);
@@ -83,7 +189,6 @@ export default function BacktestAvulso() {
 
   const ehBasket = esporte === 'nba2k';
 
-  // cleanup geral no unmount: para o polling e marca desmontado
   useEffect(() => {
     montadoRef.current = true;
     return () => {
@@ -98,7 +203,6 @@ export default function BacktestAvulso() {
 
   const handleUpload = useCallback(async () => {
     if (!arquivo) return;
-    // valida extensao no cliente (o backend tambem valida)
     if (!arquivo.name?.toLowerCase().endsWith('.parquet')) {
       setErro('Selecione um arquivo .parquet'); return;
     }
@@ -106,13 +210,11 @@ export default function BacktestAvulso() {
     try {
       const res = await ApiBacktest.uploadTicks(arquivo);
       if (!montadoRef.current) return;
-      if (!res?.upload_id) {
-        setErro('Upload nao retornou um id valido.'); return;
-      }
+      if (!res?.upload_id) { setErro('Upload não retornou um id válido.'); return; }
       setUploadId(res.upload_id);
       setResumo(res);
       if (res.casas?.length === 1) setCasa(res.casas[0]);
-      if (res.linhas === 0) setErro('Aviso: o arquivo nao tem ticks apos leitura.');
+      if (res.linhas === 0) setErro('Aviso: o arquivo não tem ticks após leitura.');
     } catch (e) {
       if (montadoRef.current) setErro(e?.message || 'Falha no upload');
     } finally {
@@ -120,22 +222,18 @@ export default function BacktestAvulso() {
     }
   }, [arquivo]);
 
-  // validacao client-side dos filtros antes de enviar
   const validarFiltros = useCallback(() => {
     if (!uploadId) return 'Suba um arquivo primeiro.';
     if (!mercado) return 'Escolha um mercado.';
     const wr = numOuNull(wrMin);
-    if (wr != null && (wr < 0 || wr > 100)) return 'WR minimo deve estar entre 0 e 100.';
+    if (wr != null && (wr < 0 || wr > 100)) return 'WR mínimo deve estar entre 0 e 100.';
     const lmin = numOuNull(linhaMin), lmax = numOuNull(linhaMax);
-    if (lmin != null && lmax != null && lmin > lmax) return 'Linha min nao pode ser maior que a max.';
+    if (lmin != null && lmax != null && lmin > lmax) return 'Linha mín não pode ser maior que a máx.';
     const stake = numOuNull(stakeValor);
     if (stake == null || stake <= 0) return 'Stake deve ser maior que zero.';
     const banca = numOuNull(bancaInicial);
     if (banca == null || banca <= 0) return 'Banca inicial deve ser maior que zero.';
-    if (ehBasket) {
-      const algumQuarto = Object.values(quartos).some(Boolean);
-      if (!algumQuarto) return 'Selecione ao menos um quarto.';
-    }
+    if (ehBasket && !Object.values(quartos).some(Boolean)) return 'Selecione ao menos um quarto.';
     return null;
   }, [uploadId, mercado, wrMin, linhaMin, linhaMax, stakeValor, bancaInicial, ehBasket, quartos]);
 
@@ -171,17 +269,13 @@ export default function BacktestAvulso() {
       const res = await ApiBacktest.createAvulso(body);
       if (!montadoRef.current) return;
       const jobId = res?.job_id;
-      if (!jobId) { setRodando(false); setErro('Job nao foi criado.'); return; }
+      if (!jobId) { setRodando(false); setErro('Job não foi criado.'); return; }
 
       pollInicioRef.current = Date.now();
       pollRef.current = setInterval(async () => {
-        // timeout de seguranca
         if (Date.now() - pollInicioRef.current > POLL_TIMEOUT_MS) {
           limparPoll();
-          if (montadoRef.current) {
-            setRodando(false);
-            setErro('Backtest demorou demais (timeout). Veja o job no banco.');
-          }
+          if (montadoRef.current) { setRodando(false); setErro('Backtest demorou demais (timeout).'); }
           return;
         }
         try {
@@ -194,7 +288,6 @@ export default function BacktestAvulso() {
             limparPoll(); setRodando(false);
             setErro(job?.erro || job?.progresso_msg || 'Job falhou.');
           }
-          // senao (pendente/rodando): continua o polling
         } catch (e) {
           limparPoll();
           if (montadoRef.current) { setRodando(false); setErro(e?.message || 'Erro consultando job.'); }
@@ -207,8 +300,7 @@ export default function BacktestAvulso() {
       wrMinPartidas, cenario, difPlacar, quartos, ehBasket, linhaMin, linhaMax,
       blacklist, whitelist, stakeValor, bancaInicial]);
 
-  // --- helpers de formatacao de resultado (campos REAIS do job) ---
-  // roi e win_rate vem como FRACAO (0.21 = 21%). pnl/drawdown_max em unidades.
+  // helpers de resultado (campos REAIS do job: roi/win_rate sao fracao 0-1)
   const num = (v) => (v == null || Number.isNaN(Number(v)) ? null : Number(v));
   const pct = (frac) => { const n = num(frac); return n == null ? '-' : `${(n * 100).toFixed(2)}%`; };
   const u = (v, d = 2) => { const n = num(v); return n == null ? '-' : n.toFixed(d); };
@@ -217,7 +309,6 @@ export default function BacktestAvulso() {
   const roiN = num(r.roi);
   const pnlN = num(r.pnl);
   const ddN = num(r.drawdown_max);
-  // RESSALVAS: progresso_msg tem "RESSALVAS: ..." quando ha avisos de qualidade
   const ressalvas = (() => {
     const msg = r.progresso_msg || '';
     const i = msg.indexOf('RESSALVAS:');
@@ -225,220 +316,270 @@ export default function BacktestAvulso() {
   })();
   const semApostas = resultado && (num(r.total_apostas) ?? 0) === 0;
 
+  const cardStyle = {
+    backgroundColor: 'rgba(20, 26, 40, 0.4)',
+    border: '0.5px solid rgba(60, 85, 130, 0.4)',
+  };
+
   return (
-    <div style={{ padding: 24, maxWidth: 900, margin: '0 auto', color: '#e5e7eb' }}>
-      <h1 style={{ fontSize: 22, marginBottom: 4 }}>Backtest avulso</h1>
-      <p style={{ color: '#9ca3af', marginBottom: 20, fontSize: 14 }}>
-        Suba um parquet de ticks e teste filtros sem precisar de um bot.
-      </p>
+    <div className="min-h-screen pb-12" style={{
+      ...themeVars,
+      backgroundColor: 'var(--mike-bg)',
+      color: 'var(--mike-fg)',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+    }}>
+      <style>{`
+        .mike-border-thin { border: 0.5px solid rgba(60, 85, 130, 0.4) !important; }
+        .mike-border-thin:hover { border-color: rgba(80, 110, 170, 0.7) !important; }
+        .mike-border-thin:focus { border-color: rgba(16, 185, 129, 0.7) !important; outline: none; }
+        @keyframes mike-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .mike-spin { animation: mike-spin 0.8s linear infinite; }
+      `}</style>
 
-      {/* UPLOAD */}
-      <section style={card}>
-        <h3 style={h3}>1. Arquivo de ticks (.parquet)</h3>
-        <input type="file" accept=".parquet"
-          onChange={(e) => { setArquivo(e.target.files?.[0] || null); setResumo(null); setUploadId(null); setResultado(null); setErro(null); }}
-          style={{ marginBottom: 10 }} />
-        <button onClick={handleUpload} disabled={!arquivo || subindo} style={btn(!arquivo || subindo)}>
-          {subindo ? 'Subindo...' : 'Subir arquivo'}
-        </button>
-        {resumo && (
-          <div style={{ marginTop: 12, fontSize: 13, color: '#9ca3af' }}>
-            <div>{(resumo.linhas ?? 0).toLocaleString()} ticks · {resumo.ts_min?.slice(0, 10) || '?'} a {resumo.ts_max?.slice(0, 10) || '?'}</div>
-            <div>casas: {resumo.casas?.join(', ') || '-'} · esportes: {resumo.esportes?.join(', ') || '-'}</div>
-            {resumo.ligas?.length > 0 && (
-              <div>ligas: {resumo.ligas.slice(0, 8).join(', ')}{resumo.ligas.length > 8 ? '...' : ''}</div>
-            )}
-          </div>
-        )}
-      </section>
+      <MikeHeader telaAtiva="backtest" onNavegar={onNavegar} />
 
-      {/* FILTROS */}
-      <section style={card}>
-        <h3 style={h3}>2. Filtros</h3>
-        <div style={grid}>
-          <Campo label="Casa">
-            <select value={casa} onChange={(e) => setCasa(e.target.value)} style={inp}>
-              {CASAS.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </Campo>
-          <Campo label="Esporte">
-            <select value={esporte} onChange={(e) => setEsporte(e.target.value)} style={inp}>
-              {ESPORTES.map(s => <option key={s.v} value={s.v}>{s.label}</option>)}
-            </select>
-          </Campo>
-          <Campo label="Mercado">
-            <select value={mercado} onChange={(e) => setMercado(e.target.value)} style={inp}>
-              {MERCADOS.map(m => <option key={m.v} value={m.v}>{m.label}</option>)}
-            </select>
-          </Campo>
-          <Campo label="Lado">
-            <select value={lado} onChange={(e) => setLado(e.target.value)} style={inp}>
-              {LADOS.map(l => <option key={l.v} value={l.v}>{l.label}</option>)}
-            </select>
-          </Campo>
+      <main className="max-w-screen-xl mx-auto px-4 lg:px-8 py-6">
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-2 text-xs text-[--mike-fg-muted] mb-4">
+          <button onClick={() => onNavegar?.('today')} className="hover:text-[--mike-fg]">
+            <Home className="w-3 h-3" />
+          </button>
+          <ChevronRight className="w-3 h-3" />
+          <span className="text-[--mike-fg] font-semibold flex items-center gap-1">
+            <FlaskConical className="w-3 h-3" />
+            Backtest
+          </span>
         </div>
 
-        <h4 style={h4}>Porcentagem (WR do H2H)</h4>
-        <div style={grid}>
-          <Campo label="WR minimo (%)">
-            <input type="number" min="0" max="100" value={wrMin} onChange={(e) => setWrMin(e.target.value)}
-              placeholder="ex: 30" style={inp} />
-          </Campo>
-          <Campo label="Janela (0 = todas)">
-            <input type="number" min="0" value={wrJanela} onChange={(e) => setWrJanela(e.target.value)}
-              placeholder="0, 5, 10..." style={inp} />
-          </Campo>
-          <Campo label="Min. confrontos">
-            <input type="number" min="0" value={wrMinPartidas} onChange={(e) => setWrMinPartidas(e.target.value)}
-              style={inp} />
-          </Campo>
+        {/* Titulo */}
+        <div className="mb-5">
+          <h1 className="text-xl font-black text-[--mike-fg] flex items-center gap-2">
+            <FlaskConical className="w-5 h-5 text-cyan-400" />
+            Backtest avulso
+          </h1>
+          <p className="text-[11px] text-[--mike-fg-muted] mt-0.5">
+            Suba um parquet de ticks e teste filtros sem precisar de um bot.
+          </p>
         </div>
 
-        <h4 style={h4}>Placar</h4>
-        <div style={grid}>
-          <Campo label="Cenario">
-            <select value={cenario} onChange={(e) => setCenario(e.target.value)} style={inp}>
-              {CENARIOS.map(c => <option key={c.v} value={c.v}>{c.label}</option>)}
-            </select>
-          </Campo>
-          <Campo label="Diferenca de placar (min.)">
-            <input type="number" min="0" value={difPlacar} onChange={(e) => setDifPlacar(e.target.value)}
-              placeholder="ex: 2" style={inp} />
-          </Campo>
-        </div>
+        {/* GRID: coluna esquerda (config) + direita (resultado) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
 
-        {ehBasket && (
-          <>
-            <h4 style={h4}>Tempo (quartos)</h4>
-            <div style={{ display: 'flex', gap: 16 }}>
-              {['q1', 'q2', 'q3', 'q4'].map(q => (
-                <label key={q} style={{ fontSize: 14, cursor: 'pointer' }}>
-                  <input type="checkbox" checked={!!quartos[q]}
-                    onChange={(e) => setQuartos({ ...quartos, [q]: e.target.checked })}
-                    style={{ marginRight: 6 }} />
-                  {q.toUpperCase()}
+          {/* ESQUERDA: upload + filtros (2 colunas) */}
+          <div className="lg:col-span-2 space-y-4">
+
+            {/* UPLOAD */}
+            <section className="rounded-lg p-4" style={cardStyle}>
+              <SecaoTitulo icon={Upload}>1. Arquivo de ticks (.parquet)</SecaoTitulo>
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="flex items-center gap-2 px-3 py-2 rounded-md text-xs font-semibold cursor-pointer mike-border-thin text-[--mike-fg-soft] hover:text-[--mike-fg] transition">
+                  <FileUp className="w-3.5 h-3.5" />
+                  {arquivo ? arquivo.name : 'Escolher arquivo'}
+                  <input type="file" accept=".parquet" className="hidden"
+                    onChange={(e) => { setArquivo(e.target.files?.[0] || null); setResumo(null); setUploadId(null); setResultado(null); setErro(null); }}
+                  />
                 </label>
-              ))}
-            </div>
-          </>
-        )}
-
-        <h4 style={h4}>Linha (faixa)</h4>
-        <div style={grid}>
-          <Campo label="Linha min.">
-            <input type="number" value={linhaMin} onChange={(e) => setLinhaMin(e.target.value)} style={inp} />
-          </Campo>
-          <Campo label="Linha max.">
-            <input type="number" value={linhaMax} onChange={(e) => setLinhaMax(e.target.value)} style={inp} />
-          </Campo>
-        </div>
-
-        <h4 style={h4}>Listas de nicks (separa por virgula ou linha)</h4>
-        <div style={grid}>
-          <Campo label="Blacklist (bloqueia o nick em qualquer posicao)">
-            <textarea value={blacklist} onChange={(e) => setBlacklist(e.target.value)}
-              placeholder="Roma, Leyla, Ellen" rows={3} style={{ ...inp, resize: 'vertical' }} />
-          </Campo>
-          <Campo label="Whitelist (so permite estes nicks; vazio = todos)">
-            <textarea value={whitelist} onChange={(e) => setWhitelist(e.target.value)}
-              placeholder="(vazio = todos)" rows={3} style={{ ...inp, resize: 'vertical' }} />
-          </Campo>
-        </div>
-      </section>
-
-      {/* STAKE + RODAR */}
-      <section style={card}>
-        <h3 style={h3}>3. Stake e execucao</h3>
-        <div style={grid}>
-          <Campo label="Stake (R$)">
-            <input type="number" min="0" value={stakeValor} onChange={(e) => setStakeValor(e.target.value)} style={inp} />
-          </Campo>
-          <Campo label="Banca inicial (R$)">
-            <input type="number" min="0" value={bancaInicial} onChange={(e) => setBancaInicial(e.target.value)} style={inp} />
-          </Campo>
-        </div>
-        <button onClick={handleRodar} disabled={!uploadId || rodando} style={btn(!uploadId || rodando, true)}>
-          {rodando ? 'Rodando backtest...' : 'Rodar backtest'}
-        </button>
-      </section>
-
-      {erro && (
-        <div style={{ ...card, borderColor: '#7f1d1d', background: '#1f1414', color: '#fca5a5' }}>{erro}</div>
-      )}
-
-      {/* RESULTADO */}
-      {resultado && (
-        <section style={card}>
-          <h3 style={h3}>Resultado</h3>
-          {semApostas ? (
-            <div style={{ color: '#fbbf24', fontSize: 14 }}>
-              Nenhuma aposta gerada com esses filtros. Afrouxe os filtros ou confira
-              se a casa/esporte/mercado batem com os ticks do arquivo.
-            </div>
-          ) : (
-            <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
-                <Stat label="ROI" valor={pct(r.roi)} cor={roiN == null ? null : (roiN >= 0 ? '#34d399' : '#f87171')} />
-                <Stat label="PnL (u)" valor={u(r.pnl)} cor={pnlN == null ? null : (pnlN >= 0 ? '#34d399' : '#f87171')} />
-                <Stat label="WR" valor={pct(r.win_rate)} />
-                <Stat label="Apostas" valor={num(r.total_apostas) ?? '-'} />
-                <Stat label="Drawdown" valor={u(r.drawdown_max)} cor={ddN ? '#f87171' : null} />
-                <Stat label="Green" valor={num(r.green) ?? '-'} cor="#34d399" />
-                <Stat label="Red" valor={num(r.red) ?? '-'} cor="#f87171" />
-                <Stat label="Void" valor={num(r.void_count) ?? '-'} />
+                <button
+                  onClick={handleUpload}
+                  disabled={!arquivo || subindo}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-md text-xs font-bold transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ backgroundColor: (!arquivo || subindo) ? 'rgba(16,185,129,0.2)' : '#10b981', color: (!arquivo || subindo) ? '#6b7691' : '#0b0f1a' }}
+                >
+                  {subindo ? <><RefreshCw className="w-3.5 h-3.5 mike-spin" /> Subindo...</> : <><Upload className="w-3.5 h-3.5" /> Subir</>}
+                </button>
               </div>
-              <div style={{ marginTop: 10, fontSize: 13, color: '#9ca3af' }}>
-                Streak red max: {num(r.max_streak_red) ?? '-'} ·
-                {' '}Dias verdes: {num(r.dias_verdes) ?? '-'}/{num(r.dias_total) ?? '-'}
-              </div>
-              {ressalvas && (
-                <div style={{ marginTop: 12, padding: 10, borderRadius: 8, background: '#27200a', color: '#fbbf24', fontSize: 13 }}>
-                  ⚠️ Ressalvas: {ressalvas}
+              {resumo && (
+                <div className="mt-3 rounded-md p-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px]" style={{ backgroundColor: 'rgba(16,185,129,0.06)', border: '0.5px solid rgba(16,185,129,0.25)' }}>
+                  <span className="flex items-center gap-1 text-emerald-400 font-bold">
+                    <CheckCircle2 className="w-3 h-3" /> {(resumo.linhas ?? 0).toLocaleString()} ticks
+                  </span>
+                  <span className="text-[--mike-fg-muted]">{resumo.ts_min?.slice(0, 10) || '?'} a {resumo.ts_max?.slice(0, 10) || '?'}</span>
+                  <span className="text-[--mike-fg-muted]">casas: {resumo.casas?.join(', ') || '-'}</span>
+                  <span className="text-[--mike-fg-muted]">esportes: {resumo.esportes?.join(', ') || '-'}</span>
                 </div>
               )}
-            </>
-          )}
-        </section>
-      )}
+            </section>
+
+            {/* FILTROS */}
+            <section className="rounded-lg p-4" style={cardStyle}>
+              <SecaoTitulo icon={Filter}>2. Filtros</SecaoTitulo>
+
+              {/* mercado/lado */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                <Campo label="Casa"><Select value={casa} onChange={setCasa} options={CASAS} /></Campo>
+                <Campo label="Esporte"><Select value={esporte} onChange={setEsporte} options={ESPORTES} /></Campo>
+                <Campo label="Mercado"><Select value={mercado} onChange={setMercado} options={MERCADOS} /></Campo>
+                <Campo label="Lado"><Select value={lado} onChange={setLado} options={LADOS} /></Campo>
+              </div>
+
+              {/* WR H2H */}
+              <div className="flex items-center gap-1.5 mb-2 mt-4">
+                <Percent className="w-3 h-3 text-amber-400" />
+                <span className="text-[11px] uppercase tracking-wider text-[--mike-fg-muted] font-bold">Porcentagem (WR do H2H)</span>
+              </div>
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                <Campo label="WR mínimo (%)"><Input type="number" min="0" value={wrMin} onChange={setWrMin} placeholder="ex: 30" /></Campo>
+                <Campo label="Janela (0 = todas)"><Input type="number" min="0" value={wrJanela} onChange={setWrJanela} placeholder="0, 5, 10..." /></Campo>
+                <Campo label="Mín. confrontos"><Input type="number" min="0" value={wrMinPartidas} onChange={setWrMinPartidas} /></Campo>
+              </div>
+
+              {/* placar */}
+              <div className="flex items-center gap-1.5 mb-2 mt-4">
+                <Target className="w-3 h-3 text-cyan-400" />
+                <span className="text-[11px] uppercase tracking-wider text-[--mike-fg-muted] font-bold">Placar</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <Campo label="Cenário"><Select value={cenario} onChange={setCenario} options={CENARIOS} /></Campo>
+                <Campo label="Diferença de placar (mín.)"><Input type="number" min="0" value={difPlacar} onChange={setDifPlacar} placeholder="ex: 2" /></Campo>
+              </div>
+
+              {/* quartos (so basket) */}
+              {ehBasket && (
+                <>
+                  <div className="flex items-center gap-1.5 mb-2 mt-4">
+                    <Layers className="w-3 h-3 text-purple-400" />
+                    <span className="text-[11px] uppercase tracking-wider text-[--mike-fg-muted] font-bold">Tempo (quartos)</span>
+                  </div>
+                  <div className="flex items-center gap-2 mb-4">
+                    {['q1', 'q2', 'q3', 'q4'].map(q => {
+                      const ativo = !!quartos[q];
+                      return (
+                        <button
+                          key={q}
+                          onClick={() => setQuartos({ ...quartos, [q]: !ativo })}
+                          className={`px-3 py-1.5 rounded-md text-[11px] font-bold font-mono transition ${ativo ? 'bg-[--mike-accent]/15 text-[--mike-accent]' : 'mike-border-thin text-[--mike-fg-muted] hover:text-[--mike-fg]'}`}
+                        >
+                          {q.toUpperCase()}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+
+              {/* linha */}
+              <div className="flex items-center gap-1.5 mb-2 mt-4">
+                <Hash className="w-3 h-3 text-[--mike-fg-muted]" />
+                <span className="text-[11px] uppercase tracking-wider text-[--mike-fg-muted] font-bold">Linha (faixa)</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <Campo label="Linha mín."><Input type="number" value={linhaMin} onChange={setLinhaMin} /></Campo>
+                <Campo label="Linha máx."><Input type="number" value={linhaMax} onChange={setLinhaMax} /></Campo>
+              </div>
+
+              {/* listas */}
+              <div className="flex items-center gap-1.5 mb-2 mt-4">
+                <Ban className="w-3 h-3 text-rose-400" />
+                <span className="text-[11px] uppercase tracking-wider text-[--mike-fg-muted] font-bold">Listas de nicks (vírgula ou linha)</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Campo label="Blacklist (bloqueia nick em qualquer posição)">
+                  <textarea value={blacklist} onChange={(e) => setBlacklist(e.target.value)} rows={3} placeholder="Roma, Leyla, Ellen"
+                    className="mike-border-thin bg-transparent text-xs text-[--mike-fg] px-3 py-2 rounded-md outline-none w-full resize-y placeholder:text-[--mike-fg-muted]" />
+                </Campo>
+                <Campo label="Whitelist (só estes nicks; vazio = todos)">
+                  <textarea value={whitelist} onChange={(e) => setWhitelist(e.target.value)} rows={3} placeholder="(vazio = todos)"
+                    className="mike-border-thin bg-transparent text-xs text-[--mike-fg] px-3 py-2 rounded-md outline-none w-full resize-y placeholder:text-[--mike-fg-muted]" />
+                </Campo>
+              </div>
+            </section>
+
+            {/* STAKE + RODAR */}
+            <section className="rounded-lg p-4" style={cardStyle}>
+              <SecaoTitulo icon={DollarSign}>3. Stake e execução</SecaoTitulo>
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <Campo label="Stake (R$)"><Input type="number" min="0" value={stakeValor} onChange={setStakeValor} /></Campo>
+                <Campo label="Banca inicial (R$)"><Input type="number" min="0" value={bancaInicial} onChange={setBancaInicial} /></Campo>
+              </div>
+              <button
+                onClick={handleRodar}
+                disabled={!uploadId || rodando}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-sm font-bold transition disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ backgroundColor: (!uploadId || rodando) ? 'rgba(16,185,129,0.2)' : '#10b981', color: (!uploadId || rodando) ? '#6b7691' : '#0b0f1a', boxShadow: (!uploadId || rodando) ? 'none' : '0 4px 12px rgba(16,185,129,0.3)' }}
+              >
+                {rodando ? <><RefreshCw className="w-4 h-4 mike-spin" /> Rodando backtest...</> : <><Play className="w-4 h-4" /> Rodar backtest</>}
+              </button>
+            </section>
+          </div>
+
+          {/* DIREITA: resultado (sticky) */}
+          <div className="lg:col-span-1">
+            <div className="lg:sticky lg:top-16 space-y-4">
+
+              {erro && (
+                <div className="rounded-lg p-3 flex items-start gap-2" style={{ backgroundColor: 'rgba(244,63,94,0.08)', border: '0.5px solid rgba(244,63,94,0.35)' }}>
+                  <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+                  <span className="text-xs text-rose-300">{erro}</span>
+                </div>
+              )}
+
+              <section className="rounded-lg p-4" style={cardStyle}>
+                <SecaoTitulo icon={Trophy}>Resultado</SecaoTitulo>
+
+                {!resultado && !rodando && (
+                  <div className="text-center py-10 text-[--mike-fg-muted] text-xs">
+                    Configure os filtros e rode o backtest pra ver o resultado aqui.
+                  </div>
+                )}
+
+                {rodando && (
+                  <div className="flex items-center justify-center py-10 gap-2 text-[--mike-fg-muted] text-xs">
+                    <RefreshCw className="w-4 h-4 mike-spin" /> Processando...
+                  </div>
+                )}
+
+                {resultado && semApostas && (
+                  <div className="rounded-md p-3 flex items-start gap-2" style={{ backgroundColor: 'rgba(251,191,36,0.08)', border: '0.5px solid rgba(251,191,36,0.3)' }}>
+                    <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                    <span className="text-xs text-amber-300">Nenhuma aposta gerada. Afrouxe os filtros ou confira se casa/esporte/mercado batem com os ticks.</span>
+                  </div>
+                )}
+
+                {resultado && !semApostas && (
+                  <>
+                    <div className="grid grid-cols-2 gap-2">
+                      <StatCard icon={Percent} label="ROI" valor={pct(r.roi)} cor={roiN == null ? '#eaeef7' : (roiN >= 0 ? '#10b981' : '#f43f5e')} />
+                      <StatCard icon={DollarSign} label="PnL (u)" valor={u(r.pnl)} cor={pnlN == null ? '#eaeef7' : (pnlN >= 0 ? '#10b981' : '#f43f5e')} />
+                      <StatCard icon={Target} label="WR" valor={pct(r.win_rate)} cor="#fbbf24" />
+                      <StatCard icon={Hash} label="Apostas" valor={num(r.total_apostas) ?? '-'} cor="#0891b2" />
+                      <StatCard icon={TrendingDown} label="Drawdown" valor={u(r.drawdown_max)} cor={ddN ? '#f43f5e' : '#eaeef7'} />
+                      <StatCard icon={AlertTriangle} label="Streak red" valor={num(r.max_streak_red) ?? '-'} cor="#f43f5e" />
+                    </div>
+
+                    {/* green/red/void + dias */}
+                    <div className="grid grid-cols-3 gap-2 mt-2">
+                      <div className="rounded-md p-2 text-center" style={{ backgroundColor: 'rgba(16,185,129,0.08)', border: '0.5px solid rgba(16,185,129,0.25)' }}>
+                        <div className="text-[9px] uppercase tracking-wider text-emerald-400 font-bold">Green</div>
+                        <div className="text-sm font-black font-mono text-emerald-400">{num(r.green) ?? '-'}</div>
+                      </div>
+                      <div className="rounded-md p-2 text-center" style={{ backgroundColor: 'rgba(244,63,94,0.08)', border: '0.5px solid rgba(244,63,94,0.25)' }}>
+                        <div className="text-[9px] uppercase tracking-wider text-rose-400 font-bold">Red</div>
+                        <div className="text-sm font-black font-mono text-rose-400">{num(r.red) ?? '-'}</div>
+                      </div>
+                      <div className="rounded-md p-2 text-center" style={{ backgroundColor: 'rgba(60,85,130,0.1)', border: '0.5px solid rgba(60,85,130,0.3)' }}>
+                        <div className="text-[9px] uppercase tracking-wider text-[--mike-fg-muted] font-bold">Void</div>
+                        <div className="text-sm font-black font-mono text-[--mike-fg-soft]">{num(r.void_count) ?? '-'}</div>
+                      </div>
+                    </div>
+
+                    <div className="text-[10px] text-[--mike-fg-muted] mt-3 text-center font-mono">
+                      Dias verdes: {num(r.dias_verdes) ?? '-'}/{num(r.dias_total) ?? '-'}
+                    </div>
+
+                    {ressalvas && (
+                      <div className="mt-3 rounded-md p-2.5 flex items-start gap-2" style={{ backgroundColor: 'rgba(251,191,36,0.08)', border: '0.5px solid rgba(251,191,36,0.3)' }}>
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-0.5" />
+                        <span className="text-[11px] text-amber-300">{ressalvas}</span>
+                      </div>
+                    )}
+                  </>
+                )}
+              </section>
+            </div>
+          </div>
+
+        </div>
+      </main>
     </div>
   );
 }
-
-// ---- subcomponentes + estilos inline (sem dependencia externa) ----
-function Campo({ label, children }) {
-  return (
-    <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13 }}>
-      <span style={{ color: '#9ca3af' }}>{label}</span>
-      {children}
-    </label>
-  );
-}
-function Stat({ label, valor, cor }) {
-  return (
-    <div style={{ background: '#111827', borderRadius: 8, padding: 12, textAlign: 'center' }}>
-      <div style={{ fontSize: 12, color: '#9ca3af' }}>{label}</div>
-      <div style={{ fontSize: 18, fontWeight: 600, color: cor || '#e5e7eb' }}>{valor}</div>
-    </div>
-  );
-}
-const card = { background: '#1f2937', border: '1px solid #374151', borderRadius: 10, padding: 16, marginBottom: 16 };
-const h3 = { fontSize: 16, marginBottom: 12, marginTop: 0 };
-const h4 = { fontSize: 14, margin: '16px 0 8px', color: '#d1d5db' };
-const grid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 12 };
-const inp = { background: '#111827', border: '1px solid #374151', borderRadius: 6, padding: '8px 10px', color: '#e5e7eb', fontSize: 14, width: '100%', boxSizing: 'border-box' };
-const btn = (disabled, primary) => ({
-  background: disabled ? '#374151' : (primary ? '#0891b2' : '#4b5563'),
-  color: '#fff', border: 'none', borderRadius: 6, padding: '10px 18px',
-  fontSize: 14, cursor: disabled ? 'not-allowed' : 'pointer', fontWeight: 500,
-});
-
-/* ============================================================
-   ADICIONAR NA api.js, dentro de ApiBacktest:
-
-     createAvulso: (body) => api.post('/backtest/jobs-avulso', body),
-
-   ADICIONAR NO MENU/ROTAS (onde ficam as outras telas), ex:
-     import BacktestAvulso from './screens/BacktestAvulso';
-     // rota: <Route path="/backtest-avulso" element={<BacktestAvulso />} />
-     // menu: { path: '/backtest-avulso', label: 'Backtest avulso' }
-   ============================================================ */
