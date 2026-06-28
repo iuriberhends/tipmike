@@ -208,6 +208,37 @@ const JANELAS_PARTIDAS = [
   { value: 'same_day',             label: 'Mesmo dia' },
 ];
 
+// Janelas pros filtros COMPLEMENTARES (media, gap_media).
+// Os VALORES aqui sao o que o backend entende direto, sem prefixo 'last_':
+//   quantidade -> numero (10) | tempo -> token ('8h', '7d').
+// (filtros comp nao passam pela normalizacao 'last_' do backend, vao direto)
+// Nao inclui current_championship/same_day (nao suportados pelo H2H).
+const JANELAS_COMP = [
+  { value: 0,     label: 'Todas' },
+  { value: 5,     label: 'Últ. 5' },
+  { value: 10,    label: 'Últ. 10' },
+  { value: 15,    label: 'Últ. 15' },
+  { value: 20,    label: 'Últ. 20' },
+  { value: 30,    label: 'Últ. 30' },
+  { value: 50,    label: 'Últ. 50' },
+  { value: 100,   label: 'Últ. 100' },
+  { value: '1h',  label: 'Últ. 1 hora' },
+  { value: '8h',  label: 'Últ. 8 horas' },
+  { value: '24h', label: 'Últ. 24h' },
+  { value: '7d',  label: 'Últ. 7 dias' },
+  { value: '30d', label: 'Últ. 30 dias' },
+  { value: '60d', label: 'Últ. 60 dias' },
+  { value: '90d', label: 'Últ. 90 dias' },
+];
+
+// Rotulo amigavel da janela comp (pra exibicao no tooltip).
+// numero -> "últ. N jogos" | tempo -> "últ. 7d"
+function _labelJanelaComp(j) {
+  if (j === 0 || j === '0') return 'todas';
+  if (typeof j === 'string' && /^\d+[hd]$/i.test(j.trim())) return `últ. ${j}`;
+  return `últ. ${j} jogos`;
+}
+
 const TIPOS_HISTORICO = [
   { value: 'all', label: 'Todas' },
   { value: 'specific_teams', label: 'Times Específicos' },
@@ -2565,9 +2596,9 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
                 ],
               },
               ...(compTipo !== 'gap_linha' && compTipo !== 'tendencia' ? [{
-                tipo: 'slider', label: 'Janela (jogos)',
+                tipo: 'select', label: 'Janela',
                 value: compJanela, onChange: setCompJanela,
-                min: 3, max: 100, sufixoMax: '100',
+                options: JANELAS_COMP,
               }] : []),
               {
                 tipo: 'toggle_input', label: 'Mín',
@@ -2600,7 +2631,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
             detalhesParaTooltip={(f) => {
               const tipoLabel = { media: 'Média H2H', gap_media: 'Gap de Médias', gap_linha: 'Gap de Linhas', tendencia: 'Tendência' }[f.tipo] || f.tipo;
               const d = [{ label: 'Tipo', valor: tipoLabel }];
-              if (f.tipo !== 'gap_linha' && f.tipo !== 'tendencia') d.push({ label: 'Janela', valor: `últ. ${f.janela} jogos` });
+              if (f.tipo !== 'gap_linha' && f.tipo !== 'tendencia') d.push({ label: 'Janela', valor: _labelJanelaComp(f.janela) });
               d.push({ label: 'Mín', valor: f.minAtivo ? f.min : f.tipo === 'gap_media' ? 'auto (gap > 0)' : f.tipo === 'media' ? 'auto (linha ≤ média)' : '—' });
               if (f.tipo !== 'tendencia') d.push({ label: 'Máx', valor: f.maxAtivo ? f.max : '—' });
               return d;
