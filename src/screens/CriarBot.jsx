@@ -2582,7 +2582,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
         </SecaoForm>
 
         {/* FILTROS COMPLEMENTARES */}
-        <SecaoForm titulo="Filtros complementares" descricao="Adicione filtros de Média H2H, Gap de Médias, Gap de Linhas e Tendência. Cada filtro adicionado vira um chip removível.">
+        <SecaoForm titulo="Filtros complementares" descricao="Adicione filtros de Média H2H, Gap de Médias, Z-Score, Gap de Linhas e Tendência. O Z-Score mede a quantos desvios-padrão a média está do lado favorável da linha (over: (média−linha)/desvio; under inverte) — quanto maior, mais consistente/seguro o par. Cada filtro adicionado vira um chip removível.">
           <BlocoFiltrosHistorico
             campos={[
               {
@@ -2591,6 +2591,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
                 options: [
                   { value: 'media',     label: 'Média H2H' },
                   { value: 'gap_media', label: 'Gap de Médias' },
+                  { value: 'zscore',    label: 'Z-Score' },
                   { value: 'gap_linha', label: 'Gap de Linhas' },
                   { value: 'tendencia', label: 'Tendência' },
                 ],
@@ -2604,13 +2605,13 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
                 tipo: 'toggle_input', label: 'Mín',
                 ativo: compMinAtivo, onToggle: setCompMinAtivo,
                 value: compMin, onChange: setCompMin,
-                placeholder: compTipo === 'gap_linha' ? 'Ex: 2' : compTipo === 'gap_media' ? 'Ex: 7' : compTipo === 'tendencia' ? 'Ex: 0' : 'Ex: 55',
+                placeholder: compTipo === 'gap_linha' ? 'Ex: 2' : compTipo === 'gap_media' ? 'Ex: 7' : compTipo === 'tendencia' ? 'Ex: 0' : compTipo === 'zscore' ? 'Ex: 0.8' : 'Ex: 55',
               },
               ...(compTipo !== 'tendencia' ? [{
                 tipo: 'toggle_input', label: 'Máx',
                 ativo: compMaxAtivo, onToggle: setCompMaxAtivo,
                 value: compMax, onChange: setCompMax,
-                placeholder: compTipo === 'gap_linha' ? 'Ex: 8' : compTipo === 'gap_media' ? 'Ex: 14' : 'Ex: 70',
+                placeholder: compTipo === 'gap_linha' ? 'Ex: 8' : compTipo === 'gap_media' ? 'Ex: 14' : compTipo === 'zscore' ? 'Ex: 3' : 'Ex: 70',
               }] : []),
             ]}
             filtrosAdicionados={filtrosCompAdicionados}
@@ -2629,7 +2630,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
             hover={filtroCompHover}
             onHoverChange={setFiltroCompHover}
             detalhesParaTooltip={(f) => {
-              const tipoLabel = { media: 'Média H2H', gap_media: 'Gap de Médias', gap_linha: 'Gap de Linhas', tendencia: 'Tendência' }[f.tipo] || f.tipo;
+              const tipoLabel = { media: 'Média H2H', gap_media: 'Gap de Médias', zscore: 'Z-Score', gap_linha: 'Gap de Linhas', tendencia: 'Tendência' }[f.tipo] || f.tipo;
               const d = [{ label: 'Tipo', valor: tipoLabel }];
               if (f.tipo !== 'gap_linha' && f.tipo !== 'tendencia') d.push({ label: 'Janela', valor: _labelJanelaComp(f.janela) });
               d.push({ label: 'Mín', valor: f.minAtivo ? f.min : f.tipo === 'gap_media' ? 'auto (gap > 0)' : f.tipo === 'media' ? 'auto (linha ≤ média)' : '—' });
