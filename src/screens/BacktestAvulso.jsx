@@ -78,8 +78,23 @@ const JANELAS_COMP = [
   { value: '24h', label: 'Últ. 24h' },
   { value: '7d',  label: 'Últ. 7 dias' },
 ];
-// WR do H2H so aceita janela por QUANTIDADE (backend: "all"/"last_N"), sem tempo.
-const JANELAS_WR = JANELAS_COMP.filter(j => typeof j.value === 'number');
+// WR do H2H: janela no formato do bot ao vivo ("all"/"last_N"/"last_Nh"/"last_Nd").
+// O backend do filtro hist ACEITA tempo (last_1h/last_1d/last_7d), igual a média/gap.
+const JANELAS_WR = [
+  { value: 'all',      label: 'Todas' },
+  { value: 'last_5',   label: 'Últ. 5' },
+  { value: 'last_10',  label: 'Últ. 10' },
+  { value: 'last_15',  label: 'Últ. 15' },
+  { value: 'last_20',  label: 'Últ. 20' },
+  { value: 'last_30',  label: 'Últ. 30' },
+  { value: 'last_50',  label: 'Últ. 50' },
+  { value: 'last_100', label: 'Últ. 100' },
+  { value: 'last_1h',  label: 'Últ. 1 hora' },
+  { value: 'last_8h',  label: 'Últ. 8 horas' },
+  { value: 'last_1d',  label: 'Últ. 24h' },
+  { value: 'last_7d',  label: 'Últ. 7 dias' },
+  { value: 'last_30d', label: 'Últ. 30 dias' },
+];
 const TIPO_COMP_LABEL = {
   media: 'Média', gap_media: 'Gap Méd', zscore: 'Z', gap_linha: 'Gap Linha', tendencia: 'Tend',
 };
@@ -206,6 +221,43 @@ function StatCard({ icon: Icon, label, valor, cor = '#eaeef7' }) {
   );
 }
 
+// Grupo visual de filtros: caixa recuada, barra colorida, titulo + descricao.
+// Serve pra dar hierarquia real (cada grupo = uma categoria de filtro).
+function Grupo({ icon: Icon, cor, titulo, desc, children }) {
+  return (
+    <div className="rounded-lg p-3.5" style={{
+      backgroundColor: 'rgba(13,17,27,0.5)',
+      border: '0.5px solid rgba(60,85,130,0.28)',
+    }}>
+      <div className="flex items-start gap-2.5 mb-3">
+        <div className="w-[3px] self-stretch rounded-full flex-shrink-0" style={{ backgroundColor: cor }} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            {Icon && <Icon className="w-3.5 h-3.5 flex-shrink-0" style={{ color: cor }} />}
+            <h3 className="text-[13px] font-bold text-[--mike-fg]">{titulo}</h3>
+          </div>
+          {desc && <p className="text-[10px] text-[--mike-fg-muted] mt-1 leading-snug">{desc}</p>}
+        </div>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// Sub-rotulo leve dentro de um Grupo (separa sub-blocos sem repetir o header).
+function SubLabel({ children }) {
+  return (
+    <div className="text-[10px] uppercase tracking-wide text-[--mike-fg-soft] font-semibold mb-1.5">
+      {children}
+    </div>
+  );
+}
+
+// Divisoria fina entre sub-blocos dentro de um Grupo.
+function DivFina() {
+  return <div className="h-px my-3.5" style={{ backgroundColor: 'rgba(60,85,130,0.18)' }} />;
+}
+
 // ============================================================
 // TELA
 // ============================================================
@@ -223,7 +275,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
   const [mercado, setMercado] = useState('over_under_ft');
   const [lado, setLado] = useState('ambos');
   const [wrMin, setWrMin] = useState('');
-  const [wrJanela, setWrJanela] = useState('0');
+  const [wrJanela, setWrJanela] = useState('all');
   const [wrMinPartidas, setWrMinPartidas] = useState('10');
   const [cenario, setCenario] = useState('');
   const [difPlacar, setDifPlacar] = useState('');
@@ -344,7 +396,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
       upload_id: uploadId,
       mercado, lado, casa, esporte,
       wr_min: numOuNull(wrMin),
-      wr_janela: Math.max(0, Math.trunc(numOuNull(wrJanela) ?? 0)),
+      wr_janela: wrJanela || 'all',
       wr_min_partidas: Math.max(0, Math.trunc(numOuNull(wrMinPartidas) ?? 10)),
       cenario: cenario || null,
       diferenca_placar: numOuNull(difPlacar),
@@ -498,129 +550,122 @@ export default function BacktestAvulso({ onNavegar } = {}) {
             <section className="rounded-lg p-4" style={cardStyle}>
               <SecaoTitulo icon={Filter}>2. Filtros</SecaoTitulo>
 
-              {/* mercado/lado */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-                <Campo label="Casa"><Select value={casa} onChange={setCasa} options={CASAS} /></Campo>
-                <Campo label="Esporte"><Select value={esporte} onChange={setEsporte} options={ESPORTES} /></Campo>
-                <Campo label="Mercado"><Select value={mercado} onChange={setMercado} options={MERCADOS} /></Campo>
-                <Campo label="Lado"><Select value={lado} onChange={setLado} options={LADOS} /></Campo>
-              </div>
+              <p className="text-[11px] text-[--mike-fg-muted] mb-3 -mt-1">Combine os grupos abaixo — deixe vazio o que não quiser usar.</p>
 
-              {/* WR H2H */}
-              <div className="flex items-center gap-1.5 mb-2 mt-4">
-                <Percent className="w-3 h-3 text-amber-400" />
-                <span className="text-[11px] uppercase tracking-wider text-[--mike-fg-muted] font-bold">Porcentagem (WR do H2H)</span>
-              </div>
-              <div className="grid grid-cols-3 gap-3 mb-4">
-                <Campo label="WR mínimo (%)"><Input type="number" min="0" value={wrMin} onChange={setWrMin} placeholder="ex: 30" /></Campo>
-                <Campo label="Janela do WR"><Select value={wrJanela} onChange={setWrJanela} options={JANELAS_WR} /></Campo>
-                <Campo label="Mín. confrontos"><Input type="number" min="0" value={wrMinPartidas} onChange={setWrMinPartidas} /></Campo>
-              </div>
+              <div className="space-y-3">
 
-              {/* filtros complementares (H2H): mesmo dropdown de janelas do bot ao vivo + gap/z-score/média/tendência */}
-              <div className="flex items-center gap-1.5 mb-2 mt-4">
-                <Filter className="w-3 h-3 text-emerald-400" />
-                <span className="text-[11px] uppercase tracking-wider text-[--mike-fg-muted] font-bold">Filtros complementares (H2H)</span>
-              </div>
-              <div className="grid grid-cols-2 gap-3 mb-2">
-                <Campo label="Tipo"><Select value={compTipo} onChange={setCompTipo} options={TIPOS_COMP} /></Campo>
-                {compTipo !== 'gap_linha' && compTipo !== 'tendencia'
-                  ? <Campo label="Janela"><Select value={compJanela} onChange={setCompJanela} options={JANELAS_COMP} /></Campo>
-                  : <div />}
-              </div>
-              <div className="grid grid-cols-2 gap-3 mb-2">
-                <Campo label="Mín">
-                  <div className="flex items-center gap-2">
-                    <input type="checkbox" checked={compMinAtivo} onChange={(e) => setCompMinAtivo(e.target.checked)} className="accent-emerald-500 cursor-pointer" />
-                    <Input type="number" value={compMin} onChange={setCompMin} placeholder={_phMinComp(compTipo)} />
+                {/* GRUPO 1: Aposta */}
+                <Grupo icon={Trophy} cor="#22d3ee" titulo="Aposta" desc="Onde, o quê e qual lado — e a faixa de linha.">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <Campo label="Casa"><Select value={casa} onChange={setCasa} options={CASAS} /></Campo>
+                    <Campo label="Esporte"><Select value={esporte} onChange={setEsporte} options={ESPORTES} /></Campo>
+                    <Campo label="Mercado"><Select value={mercado} onChange={setMercado} options={MERCADOS} /></Campo>
+                    <Campo label="Lado"><Select value={lado} onChange={setLado} options={LADOS} /></Campo>
                   </div>
-                </Campo>
-                {compTipo !== 'tendencia'
-                  ? (
-                    <Campo label="Máx">
+                  <DivFina />
+                  <SubLabel>Faixa de linha (opcional)</SubLabel>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Campo label="Linha mín."><Input type="number" value={linhaMin} onChange={setLinhaMin} placeholder="ex: 0.5" /></Campo>
+                    <Campo label="Linha máx."><Input type="number" value={linhaMax} onChange={setLinhaMax} placeholder="ex: 8.5" /></Campo>
+                  </div>
+                </Grupo>
+
+                {/* GRUPO 2: Confronto direto (H2H) */}
+                <Grupo icon={Percent} cor="#fbbf24" titulo="Confronto direto (H2H)" desc="Filtra pelo histórico entre os dois jogadores do par.">
+                  <SubLabel>Win rate</SubLabel>
+                  <div className="grid grid-cols-3 gap-3">
+                    <Campo label="WR mínimo (%)"><Input type="number" min="0" value={wrMin} onChange={setWrMin} placeholder="ex: 30" /></Campo>
+                    <Campo label="Janela do WR"><Select value={wrJanela} onChange={setWrJanela} options={JANELAS_WR} /></Campo>
+                    <Campo label="Mín. confrontos"><Input type="number" min="0" value={wrMinPartidas} onChange={setWrMinPartidas} /></Campo>
+                  </div>
+                  <DivFina />
+                  <SubLabel>Média · Gap · Z-Score · Tendência</SubLabel>
+                  <div className="grid grid-cols-2 gap-3 mb-2">
+                    <Campo label="Tipo"><Select value={compTipo} onChange={setCompTipo} options={TIPOS_COMP} /></Campo>
+                    {compTipo !== 'gap_linha' && compTipo !== 'tendencia'
+                      ? <Campo label="Janela"><Select value={compJanela} onChange={setCompJanela} options={JANELAS_COMP} /></Campo>
+                      : <div />}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 mb-2">
+                    <Campo label="Mín">
                       <div className="flex items-center gap-2">
-                        <input type="checkbox" checked={compMaxAtivo} onChange={(e) => setCompMaxAtivo(e.target.checked)} className="accent-emerald-500 cursor-pointer" />
-                        <Input type="number" value={compMax} onChange={setCompMax} placeholder={_phMaxComp(compTipo)} />
+                        <input type="checkbox" checked={compMinAtivo} onChange={(e) => setCompMinAtivo(e.target.checked)} className="accent-emerald-500 cursor-pointer" />
+                        <Input type="number" value={compMin} onChange={setCompMin} placeholder={_phMinComp(compTipo)} />
                       </div>
                     </Campo>
-                  ) : <div />}
-              </div>
-              <button
-                onClick={adicionarComp}
-                className="px-3 py-1.5 rounded-md text-[11px] font-bold mike-border-thin text-[--mike-accent] hover:bg-[--mike-accent]/10 transition mb-2"
-              >
-                + Adicionar filtro
-              </button>
-              {filtrosComp.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {filtrosComp.map((f, i) => (
-                    <div key={i} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-mono bg-[--mike-accent]/10 text-[--mike-accent] mike-border-thin">
-                      <span>{_labelChipComp(f)}</span>
-                      <button onClick={() => removerComp(i)} className="hover:text-red-400 font-bold leading-none">×</button>
+                    {compTipo !== 'tendencia'
+                      ? (
+                        <Campo label="Máx">
+                          <div className="flex items-center gap-2">
+                            <input type="checkbox" checked={compMaxAtivo} onChange={(e) => setCompMaxAtivo(e.target.checked)} className="accent-emerald-500 cursor-pointer" />
+                            <Input type="number" value={compMax} onChange={setCompMax} placeholder={_phMaxComp(compTipo)} />
+                          </div>
+                        </Campo>
+                      ) : <div />}
+                  </div>
+                  <button
+                    onClick={adicionarComp}
+                    className="px-3 py-1.5 rounded-md text-[11px] font-bold mike-border-thin text-[--mike-accent] hover:bg-[--mike-accent]/10 transition"
+                  >
+                    + Adicionar filtro
+                  </button>
+                  {filtrosComp.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2.5">
+                      {filtrosComp.map((f, i) => (
+                        <div key={i} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-mono bg-[--mike-accent]/10 text-[--mike-accent] mike-border-thin">
+                          <span>{_labelChipComp(f)}</span>
+                          <button onClick={() => removerComp(i)} className="hover:text-red-400 font-bold leading-none">×</button>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              )}
+                  )}
+                </Grupo>
 
-              {/* placar */}
-              <div className="flex items-center gap-1.5 mb-2 mt-4">
-                <Target className="w-3 h-3 text-cyan-400" />
-                <span className="text-[11px] uppercase tracking-wider text-[--mike-fg-muted] font-bold">Placar</span>
-              </div>
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <Campo label="Cenário"><Select value={cenario} onChange={setCenario} options={CENARIOS} /></Campo>
-                <Campo label="Diferença de placar (mín.)"><Input type="number" min="0" value={difPlacar} onChange={setDifPlacar} placeholder="ex: 2" /></Campo>
-              </div>
-
-              {/* quartos (so basket) */}
-              {ehBasket && (
-                <>
-                  <div className="flex items-center gap-1.5 mb-2 mt-4">
-                    <Layers className="w-3 h-3 text-purple-400" />
-                    <span className="text-[11px] uppercase tracking-wider text-[--mike-fg-muted] font-bold">Tempo (quartos)</span>
+                {/* GRUPO 3: Situação da partida */}
+                <Grupo icon={Target} cor="#a78bfa" titulo="Situação da partida" desc="Condições no momento da entrada da aposta.">
+                  <SubLabel>Placar</SubLabel>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Campo label="Cenário"><Select value={cenario} onChange={setCenario} options={CENARIOS} /></Campo>
+                    <Campo label="Diferença de placar (mín.)"><Input type="number" min="0" value={difPlacar} onChange={setDifPlacar} placeholder="ex: 2" /></Campo>
                   </div>
-                  <div className="flex items-center gap-2 mb-4">
-                    {['q1', 'q2', 'q3', 'q4'].map(q => {
-                      const ativo = !!quartos[q];
-                      return (
-                        <button
-                          key={q}
-                          onClick={() => setQuartos({ ...quartos, [q]: !ativo })}
-                          className={`px-3 py-1.5 rounded-md text-[11px] font-bold font-mono transition ${ativo ? 'bg-[--mike-accent]/15 text-[--mike-accent]' : 'mike-border-thin text-[--mike-fg-muted] hover:text-[--mike-fg]'}`}
-                        >
-                          {q.toUpperCase()}
-                        </button>
-                      );
-                    })}
+                  {ehBasket && (
+                    <>
+                      <DivFina />
+                      <SubLabel>Quartos (basquete)</SubLabel>
+                      <div className="flex items-center gap-2">
+                        {['q1', 'q2', 'q3', 'q4'].map(q => {
+                          const ativo = !!quartos[q];
+                          return (
+                            <button
+                              key={q}
+                              onClick={() => setQuartos({ ...quartos, [q]: !ativo })}
+                              className={`px-3 py-1.5 rounded-md text-[11px] font-bold font-mono transition ${ativo ? 'bg-[--mike-accent]/15 text-[--mike-accent]' : 'mike-border-thin text-[--mike-fg-muted] hover:text-[--mike-fg]'}`}
+                            >
+                              {q.toUpperCase()}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </Grupo>
+
+                {/* GRUPO 4: Listas de nicks */}
+                <Grupo icon={Ban} cor="#fb7185" titulo="Listas de nicks" desc="Bloqueia ou permite jogadores específicos (vírgula ou linha).">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Campo label="Blacklist (bloqueia em qualquer posição)">
+                      <textarea value={blacklist} onChange={(e) => setBlacklist(e.target.value)} rows={3} placeholder="Roma, Leyla, Ellen"
+                        className="mike-border-thin bg-transparent text-xs text-[--mike-fg] px-3 py-2 rounded-md outline-none w-full resize-y placeholder:text-[--mike-fg-muted]" />
+                    </Campo>
+                    <Campo label="Whitelist (só estes; vazio = todos)">
+                      <textarea value={whitelist} onChange={(e) => setWhitelist(e.target.value)} rows={3} placeholder="(vazio = todos)"
+                        className="mike-border-thin bg-transparent text-xs text-[--mike-fg] px-3 py-2 rounded-md outline-none w-full resize-y placeholder:text-[--mike-fg-muted]" />
+                    </Campo>
                   </div>
-                </>
-              )}
+                </Grupo>
 
-              {/* linha */}
-              <div className="flex items-center gap-1.5 mb-2 mt-4">
-                <Hash className="w-3 h-3 text-[--mike-fg-muted]" />
-                <span className="text-[11px] uppercase tracking-wider text-[--mike-fg-muted] font-bold">Linha (faixa)</span>
-              </div>
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <Campo label="Linha mín."><Input type="number" value={linhaMin} onChange={setLinhaMin} /></Campo>
-                <Campo label="Linha máx."><Input type="number" value={linhaMax} onChange={setLinhaMax} /></Campo>
               </div>
 
-              {/* listas */}
-              <div className="flex items-center gap-1.5 mb-2 mt-4">
-                <Ban className="w-3 h-3 text-rose-400" />
-                <span className="text-[11px] uppercase tracking-wider text-[--mike-fg-muted] font-bold">Listas de nicks (vírgula ou linha)</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Campo label="Blacklist (bloqueia nick em qualquer posição)">
-                  <textarea value={blacklist} onChange={(e) => setBlacklist(e.target.value)} rows={3} placeholder="Roma, Leyla, Ellen"
-                    className="mike-border-thin bg-transparent text-xs text-[--mike-fg] px-3 py-2 rounded-md outline-none w-full resize-y placeholder:text-[--mike-fg-muted]" />
-                </Campo>
-                <Campo label="Whitelist (só estes nicks; vazio = todos)">
-                  <textarea value={whitelist} onChange={(e) => setWhitelist(e.target.value)} rows={3} placeholder="(vazio = todos)"
-                    className="mike-border-thin bg-transparent text-xs text-[--mike-fg] px-3 py-2 rounded-md outline-none w-full resize-y placeholder:text-[--mike-fg-muted]" />
-                </Campo>
-              </div>
             </section>
 
             {/* STAKE + RODAR */}
