@@ -55,8 +55,62 @@ const CENARIOS = [
   { value: 'empate', label: 'Empate' },
 ];
 
+// Filtros complementares (H2H) - mesmo formato do CriarBot / bot ao vivo.
+const TIPOS_COMP = [
+  { value: 'media',     label: 'Média H2H' },
+  { value: 'gap_media', label: 'Gap de Médias' },
+  { value: 'zscore',    label: 'Z-Score' },
+  { value: 'gap_linha', label: 'Gap de Linhas' },
+  { value: 'tendencia', label: 'Tendência' },
+];
+// Janela: mesmo dropdown do bot ao vivo (quantidade ou tempo).
+const JANELAS_COMP = [
+  { value: 0,     label: 'Todas' },
+  { value: 5,     label: 'Últ. 5' },
+  { value: 10,    label: 'Últ. 10' },
+  { value: 15,    label: 'Últ. 15' },
+  { value: 20,    label: 'Últ. 20' },
+  { value: 30,    label: 'Últ. 30' },
+  { value: 50,    label: 'Últ. 50' },
+  { value: 100,   label: 'Últ. 100' },
+  { value: '1h',  label: 'Últ. 1 hora' },
+  { value: '8h',  label: 'Últ. 8 horas' },
+  { value: '24h', label: 'Últ. 24h' },
+  { value: '7d',  label: 'Últ. 7 dias' },
+];
+const TIPO_COMP_LABEL = {
+  media: 'Média', gap_media: 'Gap Méd', zscore: 'Z', gap_linha: 'Gap Linha', tendencia: 'Tend',
+};
+// placeholder do Mín por tipo (mesmos exemplos do CriarBot)
+function _phMinComp(tipo) {
+  return tipo === 'gap_linha' ? 'Ex: 2'
+    : tipo === 'gap_media' ? 'Ex: 7'
+    : tipo === 'tendencia' ? 'Ex: 0'
+    : tipo === 'zscore' ? 'Ex: 0.8'
+    : 'Ex: 55';
+}
+function _phMaxComp(tipo) {
+  return tipo === 'gap_linha' ? 'Ex: 8'
+    : tipo === 'gap_media' ? 'Ex: 14'
+    : tipo === 'zscore' ? 'Ex: 3'
+    : 'Ex: 70';
+}
+// rótulo curto do chip
+function _labelChipComp(f) {
+  const t = TIPO_COMP_LABEL[f.tipo] || f.tipo;
+  const semJanela = (f.tipo === 'gap_linha' || f.tipo === 'tendencia');
+  const jl = JANELAS_COMP.find(j => String(j.value) === String(f.janela));
+  const jstr = semJanela ? '' : ` · ${jl ? jl.label : f.janela}`;
+  const parts = [];
+  if (f.minAtivo && f.min !== '' && f.min != null) parts.push(`≥${f.min}`);
+  if (f.maxAtivo && f.max !== '' && f.max != null) parts.push(`≤${f.max}`);
+  const lim = parts.length ? ` · ${parts.join(' ')}` : ' · (sem limite)';
+  return `${t}${jstr}${lim}`;
+}
+
 const POLL_MS = 2000;
 const POLL_TIMEOUT_MS = 10 * 60 * 1000;
+
 
 const themeVars = {
   '--mike-bg': '#0b0f1a',
@@ -179,6 +233,43 @@ export default function BacktestAvulso({ onNavegar } = {}) {
   const [stakeValor, setStakeValor] = useState('10');
   const [bancaInicial, setBancaInicial] = useState('1000');
 
+  // filtros complementares (H2H): lista de chips + campos do editor atual
+  const [filtrosComp, setFiltrosComp] = useState([]);
+  const [compTipo, setCompTipo] = useState('gap_media');
+  const [compJanela, setCompJanela] = useState('20');
+  const [compMinAtivo, setCompMinAtivo] = useState(true);
+  const [compMin, setCompMin] = useState('');
+  const [compMaxAtivo, setCompMaxAtivo] = useState(false);
+  const [compMax, setCompMax] = useState('');
+
+  const adicionarComp = useCallback(() => {
+    // exige um limite ativo (senao o filtro nao faz nada)
+    if (!compMinAtivo && !compMaxAtivo) {
+      setErro('Ative Mín ou Máx no filtro complementar (senão ele não filtra nada).');
+      return;
+    }
+    if (compMinAtivo && (compMin === '' || isNaN(Number(compMin)))) {
+      setErro('Mín do filtro complementar precisa de um número.');
+      return;
+    }
+    if (compMaxAtivo && (compMax === '' || isNaN(Number(compMax)))) {
+      setErro('Máx do filtro complementar precisa de um número.');
+      return;
+    }
+    setErro(null);
+    setFiltrosComp(prev => [...prev, {
+      tipo: compTipo,
+      janela: compJanela,
+      minAtivo: compMinAtivo, min: compMinAtivo ? compMin : '',
+      maxAtivo: compMaxAtivo, max: compMaxAtivo ? compMax : '',
+    }]);
+    setCompMin(''); setCompMax(''); setCompMaxAtivo(false);
+  }, [compTipo, compJanela, compMinAtivo, compMin, compMaxAtivo, compMax]);
+
+  const removerComp = useCallback((idx) => {
+    setFiltrosComp(prev => prev.filter((_, i) => i !== idx));
+  }, []);
+
   // execucao
   const [rodando, setRodando] = useState(false);
   const [erro, setErro] = useState(null);
@@ -263,6 +354,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
       stake_modo: 'fixo',
       stake_valor: numOuNull(stakeValor) ?? 10,
       banca_inicial: numOuNull(bancaInicial) ?? 1000,
+      filtros_comp: filtrosComp,
     };
 
     try {
@@ -298,7 +390,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
     }
   }, [validarFiltros, uploadId, mercado, lado, casa, esporte, wrMin, wrJanela,
       wrMinPartidas, cenario, difPlacar, quartos, ehBasket, linhaMin, linhaMax,
-      blacklist, whitelist, stakeValor, bancaInicial]);
+      blacklist, whitelist, stakeValor, bancaInicial, filtrosComp]);
 
   // helpers de resultado (campos REAIS do job: roi/win_rate sao fracao 0-1)
   const num = (v) => (v == null || Number.isNaN(Number(v)) ? null : Number(v));
@@ -422,6 +514,51 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                 <Campo label="Janela (0 = todas)"><Input type="number" min="0" value={wrJanela} onChange={setWrJanela} placeholder="0, 5, 10..." /></Campo>
                 <Campo label="Mín. confrontos"><Input type="number" min="0" value={wrMinPartidas} onChange={setWrMinPartidas} /></Campo>
               </div>
+
+              {/* filtros complementares (H2H): mesmo dropdown de janelas do bot ao vivo + gap/z-score/média/tendência */}
+              <div className="flex items-center gap-1.5 mb-2 mt-4">
+                <Filter className="w-3 h-3 text-emerald-400" />
+                <span className="text-[11px] uppercase tracking-wider text-[--mike-fg-muted] font-bold">Filtros complementares (H2H)</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mb-2">
+                <Campo label="Tipo"><Select value={compTipo} onChange={setCompTipo} options={TIPOS_COMP} /></Campo>
+                {compTipo !== 'gap_linha' && compTipo !== 'tendencia'
+                  ? <Campo label="Janela"><Select value={compJanela} onChange={setCompJanela} options={JANELAS_COMP} /></Campo>
+                  : <div />}
+              </div>
+              <div className="grid grid-cols-2 gap-3 mb-2">
+                <Campo label="Mín">
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" checked={compMinAtivo} onChange={(e) => setCompMinAtivo(e.target.checked)} className="accent-emerald-500 cursor-pointer" />
+                    <Input type="number" value={compMin} onChange={setCompMin} placeholder={_phMinComp(compTipo)} />
+                  </div>
+                </Campo>
+                {compTipo !== 'tendencia'
+                  ? (
+                    <Campo label="Máx">
+                      <div className="flex items-center gap-2">
+                        <input type="checkbox" checked={compMaxAtivo} onChange={(e) => setCompMaxAtivo(e.target.checked)} className="accent-emerald-500 cursor-pointer" />
+                        <Input type="number" value={compMax} onChange={setCompMax} placeholder={_phMaxComp(compTipo)} />
+                      </div>
+                    </Campo>
+                  ) : <div />}
+              </div>
+              <button
+                onClick={adicionarComp}
+                className="px-3 py-1.5 rounded-md text-[11px] font-bold mike-border-thin text-[--mike-accent] hover:bg-[--mike-accent]/10 transition mb-2"
+              >
+                + Adicionar filtro
+              </button>
+              {filtrosComp.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {filtrosComp.map((f, i) => (
+                    <div key={i} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-mono bg-[--mike-accent]/10 text-[--mike-accent] mike-border-thin">
+                      <span>{_labelChipComp(f)}</span>
+                      <button onClick={() => removerComp(i)} className="hover:text-red-400 font-bold leading-none">×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* placar */}
               <div className="flex items-center gap-1.5 mb-2 mt-4">
