@@ -78,6 +78,8 @@ const JANELAS_COMP = [
   { value: '24h', label: 'Últ. 24h' },
   { value: '7d',  label: 'Últ. 7 dias' },
 ];
+// WR do H2H so aceita janela por QUANTIDADE (backend: "all"/"last_N"), sem tempo.
+const JANELAS_WR = JANELAS_COMP.filter(j => typeof j.value === 'number');
 const TIPO_COMP_LABEL = {
   media: 'Média', gap_media: 'Gap Méd', zscore: 'Z', gap_linha: 'Gap Linha', tendencia: 'Tend',
 };
@@ -511,7 +513,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
               </div>
               <div className="grid grid-cols-3 gap-3 mb-4">
                 <Campo label="WR mínimo (%)"><Input type="number" min="0" value={wrMin} onChange={setWrMin} placeholder="ex: 30" /></Campo>
-                <Campo label="Janela (0 = todas)"><Input type="number" min="0" value={wrJanela} onChange={setWrJanela} placeholder="0, 5, 10..." /></Campo>
+                <Campo label="Janela do WR"><Select value={wrJanela} onChange={setWrJanela} options={JANELAS_WR} /></Campo>
                 <Campo label="Mín. confrontos"><Input type="number" min="0" value={wrMinPartidas} onChange={setWrMinPartidas} /></Campo>
               </div>
 
