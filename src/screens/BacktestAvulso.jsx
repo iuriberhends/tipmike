@@ -394,7 +394,11 @@ export default function BacktestAvulso({ onNavegar } = {}) {
       if (!res?.upload_id) { setErro('Upload não retornou um id válido.'); return; }
       setUploadId(res.upload_id);
       setResumo(res);
-      if (res.casas?.length === 1) setCasa(res.casas[0]);
+      // auto-seleciona a casa do arquivo (normaliza case, so se for opcao valida)
+      if (res.casas?.length === 1) {
+        const c = String(res.casas[0]).toLowerCase().trim();
+        if (CASAS.some(o => o.value === c)) setCasa(c);
+      }
       if (res.linhas === 0) setErro('Aviso: o arquivo não tem ticks após leitura.');
     } catch (e) {
       if (montadoRef.current) setErro(e?.message || 'Falha no upload');
@@ -576,6 +580,21 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                   <span className="text-[--mike-fg-muted]">esportes: {resumo.esportes?.join(', ') || '-'}</span>
                 </div>
               )}
+              {/* aviso: casa selecionada nao bate com a casa do arquivo -> daria zero */}
+              {(() => {
+                const casaArq = resumo?.casas?.length === 1 ? String(resumo.casas[0]).toLowerCase().trim() : null;
+                if (!casaArq || casaArq === casa) return null;
+                const label = CASAS.find(o => o.value === casaArq)?.label || casaArq;
+                return (
+                  <div className="mt-2 rounded-md p-2.5 flex items-start gap-2 text-[11px]" style={{ backgroundColor: 'rgba(251,191,36,0.08)', border: '0.5px solid rgba(251,191,36,0.35)' }}>
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <span className="text-amber-300">O arquivo é de <b>{label}</b>, mas a Casa selecionada é outra. Nenhum tick vai casar — o backtest daria zero.</span>
+                      <button onClick={() => setCasa(casaArq)} className="ml-2 underline text-amber-200 hover:text-amber-100 font-semibold">Trocar para {label}</button>
+                    </div>
+                  </div>
+                );
+              })()}
             </section>
 
             {/* FILTROS */}
