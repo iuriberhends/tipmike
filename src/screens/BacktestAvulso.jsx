@@ -125,6 +125,15 @@ function _labelChipComp(f) {
   return `${t}${jstr}${lim}`;
 }
 
+// rótulo do chip de filtro de WR (histórico)
+function _labelChipHist(f) {
+  const jl = JANELAS_WR.find(j => String(j.value) === String(f.janela));
+  const jstr = jl ? jl.label : f.janela;
+  const wr = (f.prob[1] >= 100) ? `≥${f.prob[0]}%` : `${f.prob[0]}-${f.prob[1]}%`;
+  const mp = f.minPartidas ? ` · ${f.minPartidas}+ conf.` : '';
+  return `${jstr} · ${wr}${mp}`;
+}
+
 const POLL_MS = 2000;
 const POLL_TIMEOUT_MS = 10 * 60 * 1000;
 
@@ -274,9 +283,36 @@ export default function BacktestAvulso({ onNavegar } = {}) {
   const [esporte, setEsporte] = useState('fifa');
   const [mercado, setMercado] = useState('over_under_ft');
   const [lado, setLado] = useState('ambos');
-  const [wrMin, setWrMin] = useState('');
-  const [wrJanela, setWrJanela] = useState('all');
-  const [wrMinPartidas, setWrMinPartidas] = useState('10');
+  // filtros de historico (WR): lista de chips + campos do editor atual
+  const [filtrosHist, setFiltrosHist] = useState([]);
+  const [histJanela, setHistJanela] = useState('last_10');
+  const [histWrMin, setHistWrMin] = useState('');
+  const [histWrMax, setHistWrMax] = useState('');
+  const [histMinPartidas, setHistMinPartidas] = useState('10');
+
+  const adicionarHist = useCallback(() => {
+    if (histWrMin === '' || isNaN(Number(histWrMin))) {
+      setErro('Informe o WR mínimo (%) do filtro.');
+      return;
+    }
+    const mn = Number(histWrMin);
+    const mx = histWrMax === '' ? 100 : Number(histWrMax);
+    if (isNaN(mx) || mn < 0 || mx > 100 || mn > mx) {
+      setErro('WR inválido — use 0 a 100, com mín ≤ máx.');
+      return;
+    }
+    setErro(null);
+    setFiltrosHist(prev => [...prev, {
+      janela: histJanela,
+      prob: [mn, mx],
+      minPartidas: Math.max(0, Math.trunc(Number(histMinPartidas) || 0)),
+    }]);
+    setHistWrMin(''); setHistWrMax('');
+  }, [histJanela, histWrMin, histWrMax, histMinPartidas]);
+
+  const removerHist = useCallback((idx) => {
+    setFiltrosHist(prev => prev.filter((_, i) => i !== idx));
+  }, []);
   const [cenario, setCenario] = useState('');
   const [difPlacar, setDifPlacar] = useState('');
   const [quartos, setQuartos] = useState({ q1: true, q2: true, q3: true, q4: true });
@@ -370,8 +406,6 @@ export default function BacktestAvulso({ onNavegar } = {}) {
   const validarFiltros = useCallback(() => {
     if (!uploadId) return 'Suba um arquivo primeiro.';
     if (!mercado) return 'Escolha um mercado.';
-    const wr = numOuNull(wrMin);
-    if (wr != null && (wr < 0 || wr > 100)) return 'WR mínimo deve estar entre 0 e 100.';
     const lmin = numOuNull(linhaMin), lmax = numOuNull(linhaMax);
     if (lmin != null && lmax != null && lmin > lmax) return 'Linha mín não pode ser maior que a máx.';
     const stake = numOuNull(stakeValor);
@@ -380,7 +414,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
     if (banca == null || banca <= 0) return 'Banca inicial deve ser maior que zero.';
     if (ehBasket && !Object.values(quartos).some(Boolean)) return 'Selecione ao menos um quarto.';
     return null;
-  }, [uploadId, mercado, wrMin, linhaMin, linhaMax, stakeValor, bancaInicial, ehBasket, quartos]);
+  }, [uploadId, mercado, linhaMin, linhaMax, stakeValor, bancaInicial, ehBasket, quartos]);
 
   const handleRodar = useCallback(async () => {
     const msgErro = validarFiltros();
@@ -395,9 +429,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
     const body = {
       upload_id: uploadId,
       mercado, lado, casa, esporte,
-      wr_min: numOuNull(wrMin),
-      wr_janela: wrJanela || 'all',
-      wr_min_partidas: Math.max(0, Math.trunc(numOuNull(wrMinPartidas) ?? 10)),
+      filtros_hist: filtrosHist,
       cenario: cenario || null,
       diferenca_placar: numOuNull(difPlacar),
       quartos: quartosAtivos,
@@ -442,8 +474,8 @@ export default function BacktestAvulso({ onNavegar } = {}) {
     } catch (e) {
       if (montadoRef.current) { setRodando(false); setErro(e?.message || 'Falha ao criar job.'); }
     }
-  }, [validarFiltros, uploadId, mercado, lado, casa, esporte, wrMin, wrJanela,
-      wrMinPartidas, cenario, difPlacar, quartos, ehBasket, linhaMin, linhaMax,
+  }, [validarFiltros, uploadId, mercado, lado, casa, esporte, filtrosHist,
+      cenario, difPlacar, quartos, ehBasket, linhaMin, linhaMax,
       blacklist, whitelist, stakeValor, bancaInicial, filtrosComp]);
 
   // helpers de resultado (campos REAIS do job: roi/win_rate sao fracao 0-1)
@@ -572,12 +604,29 @@ export default function BacktestAvulso({ onNavegar } = {}) {
 
                 {/* GRUPO 2: Confronto direto (H2H) */}
                 <Grupo icon={Percent} cor="#fbbf24" titulo="Confronto direto (H2H)" desc="Filtra pelo histórico entre os dois jogadores do par.">
-                  <SubLabel>Win rate</SubLabel>
-                  <div className="grid grid-cols-3 gap-3">
-                    <Campo label="WR mínimo (%)"><Input type="number" min="0" value={wrMin} onChange={setWrMin} placeholder="ex: 30" /></Campo>
-                    <Campo label="Janela do WR"><Select value={wrJanela} onChange={setWrJanela} options={JANELAS_WR} /></Campo>
-                    <Campo label="Mín. confrontos"><Input type="number" min="0" value={wrMinPartidas} onChange={setWrMinPartidas} /></Campo>
+                  <SubLabel>Win rate — adicione vários (escadinha)</SubLabel>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-2">
+                    <Campo label="Janela"><Select value={histJanela} onChange={setHistJanela} options={JANELAS_WR} /></Campo>
+                    <Campo label="WR mín. (%)"><Input type="number" min="0" max="100" value={histWrMin} onChange={setHistWrMin} placeholder="ex: 80" /></Campo>
+                    <Campo label="WR máx. (%)"><Input type="number" min="0" max="100" value={histWrMax} onChange={setHistWrMax} placeholder="100" /></Campo>
+                    <Campo label="Mín. confrontos"><Input type="number" min="0" value={histMinPartidas} onChange={setHistMinPartidas} placeholder="ex: 10" /></Campo>
                   </div>
+                  <button
+                    onClick={adicionarHist}
+                    className="px-3 py-1.5 rounded-md text-[11px] font-bold mike-border-thin text-[--mike-accent] hover:bg-[--mike-accent]/10 transition"
+                  >
+                    + Adicionar filtro de WR
+                  </button>
+                  {filtrosHist.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2.5">
+                      {filtrosHist.map((f, i) => (
+                        <div key={i} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-mono bg-amber-400/10 text-amber-300 mike-border-thin">
+                          <span>{_labelChipHist(f)}</span>
+                          <button onClick={() => removerHist(i)} className="hover:text-red-400 font-bold leading-none">×</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <DivFina />
                   <SubLabel>Média · Gap · Z-Score · Tendência</SubLabel>
                   <div className="grid grid-cols-2 gap-3 mb-2">
