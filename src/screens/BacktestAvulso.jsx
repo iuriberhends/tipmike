@@ -15,7 +15,7 @@
 //   GET  /backtest/jobs/:id      -> status + resultado (polling)
 // ============================================================
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import {
   Home, ChevronRight, FlaskConical, Upload, Filter, Play, RefreshCw,
   AlertCircle, AlertTriangle, Target, Percent, DollarSign, Hash, Trophy,
@@ -42,6 +42,7 @@ const ESPORTES = [
 const MERCADOS = [
   { value: 'over_under_ft', label: 'Over/Under FT (jogo todo)' },
   { value: 'over_under_ht', label: 'Over/Under HT (1º tempo)' },
+  { value: 'ah_ft', label: 'HC Asiático FT (handicap)' },
 ];
 const LADOS = [
   { value: 'ambos', label: 'Ambos' },
@@ -62,6 +63,7 @@ const TIPOS_COMP = [
   { value: 'zscore',    label: 'Z-Score' },
   { value: 'gap_linha', label: 'Gap de Linhas' },
   { value: 'tendencia', label: 'Tendência' },
+  { value: 'hc_wr',     label: 'WR de Cobertura (HC)' },
 ];
 // Janela: mesmo dropdown do bot ao vivo (quantidade ou tempo).
 const JANELAS_COMP = [
@@ -96,7 +98,7 @@ const JANELAS_WR = [
   { value: 'last_30d', label: 'Últ. 30 dias' },
 ];
 const TIPO_COMP_LABEL = {
-  media: 'Média', gap_media: 'Gap Méd', zscore: 'Z', gap_linha: 'Gap Linha', tendencia: 'Tend',
+  media: 'Média', gap_media: 'Gap Méd', zscore: 'Z', gap_linha: 'Gap Linha', tendencia: 'Tend', hc_wr: 'Cob. HC',
 };
 // placeholder do Mín por tipo (mesmos exemplos do CriarBot)
 function _phMinComp(tipo) {
@@ -104,12 +106,14 @@ function _phMinComp(tipo) {
     : tipo === 'gap_media' ? 'Ex: 7'
     : tipo === 'tendencia' ? 'Ex: 0'
     : tipo === 'zscore' ? 'Ex: 0.8'
+    : tipo === 'hc_wr' ? 'Ex: 0.9'
     : 'Ex: 55';
 }
 function _phMaxComp(tipo) {
   return tipo === 'gap_linha' ? 'Ex: 8'
     : tipo === 'gap_media' ? 'Ex: 14'
     : tipo === 'zscore' ? 'Ex: 3'
+    : tipo === 'hc_wr' ? 'Ex: 1'
     : 'Ex: 70';
 }
 // rótulo curto do chip
@@ -227,6 +231,62 @@ function StatCard({ icon: Icon, label, valor, cor = '#eaeef7' }) {
       </div>
       <div className="text-lg font-black font-mono leading-tight truncate" style={{ color: cor }}>{valor}</div>
     </div>
+  );
+}
+
+// Barras por dia (estilo TM): green embaixo, red em cima, altura = apostas do dia.
+function BarrasPorDia({ dias }) {
+  if (!dias || dias.length === 0) return null;
+  const maxN = Math.max(...dias.map(d => d.g + d.r + d.v), 1);
+  return (
+    <div>
+      <div className="flex items-end gap-[3px] h-24">
+        {dias.map((d, i) => {
+          const tot = d.g + d.r + d.v;
+          const hTot = Math.max(4, (tot / maxN) * 96);
+          const hG = tot ? (d.g / tot) * hTot : 0;
+          const hR = tot ? (d.r / tot) * hTot : 0;
+          const hV = hTot - hG - hR;
+          return (
+            <div key={i} className="flex-1 flex flex-col justify-end min-w-0" title={`${d.data}: ${d.g}G ${d.r}R${d.v ? ` ${d.v}V` : ''} · PnL ${d.pnl >= 0 ? '+' : ''}${d.pnl.toFixed(1)}u`}>
+              {hV > 0 && <div style={{ height: hV, backgroundColor: 'rgba(107,118,145,0.5)' }} />}
+              <div style={{ height: hR, backgroundColor: '#f43f5e' }} />
+              <div style={{ height: hG, backgroundColor: '#10b981', borderRadius: '2px 2px 0 0' }} />
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex gap-[3px] mt-1">
+        {dias.map((d, i) => (
+          <div key={i} className="flex-1 text-center text-[7px] text-[--mike-fg-muted] font-mono overflow-hidden">
+            {d.data.slice(8, 10)}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Curva de equity (banca ao longo das apostas), SVG puro. Linha da banca
+// inicial tracejada; area verde acima / rosa abaixo da inicial.
+function CurvaEquity({ pontos, bancaInicial }) {
+  if (!pontos || pontos.length < 2) return null;
+  const W = 320, H = 72, PAD = 2;
+  const vals = pontos.map(p => Number(p.banca));
+  const vMin = Math.min(...vals, bancaInicial);
+  const vMax = Math.max(...vals, bancaInicial);
+  const range = (vMax - vMin) || 1;
+  const x = (i) => PAD + (i / (pontos.length - 1)) * (W - 2 * PAD);
+  const y = (v) => PAD + (1 - (v - vMin) / range) * (H - 2 * PAD);
+  const pts = vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const yBase = y(bancaInicial);
+  const fim = vals[vals.length - 1];
+  const cor = fim >= bancaInicial ? '#10b981' : '#f43f5e';
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: H }}>
+      <line x1={PAD} y1={yBase} x2={W - PAD} y2={yBase} stroke="rgba(107,118,145,0.5)" strokeWidth="1" strokeDasharray="4 3" />
+      <polyline points={pts} fill="none" stroke={cor} strokeWidth="1.5" strokeLinejoin="round" />
+    </svg>
   );
 }
 
@@ -507,6 +567,30 @@ export default function BacktestAvulso({ onNavegar } = {}) {
   const roiN = num(r.roi);
   const pnlN = num(r.pnl);
   const ddN = num(r.drawdown_max);
+
+  // dados derivados pro painel rico: por-dia (green/red/void + pnl) e odd media,
+  // computados do apostas_detalhe (ja vem no polling com incluir_detalhe=true).
+  const { porDia, oddMedia } = useMemo(() => {
+    const det = Array.isArray(r.apostas_detalhe) ? r.apostas_detalhe : [];
+    if (!det.length) return { porDia: [], oddMedia: null };
+    const dias = {};
+    let somaOdd = 0, nOdd = 0;
+    for (const a of det) {
+      const dia = String(a.ts || '').slice(0, 10);
+      if (!dias[dia]) dias[dia] = { data: dia, g: 0, r: 0, v: 0, pnl: 0 };
+      if (a.resultado === 'green') dias[dia].g += 1;
+      else if (a.resultado === 'red') dias[dia].r += 1;
+      else dias[dia].v += 1;
+      dias[dia].pnl += Number(a.pnl) || 0;
+      const o = Number(a.odd);
+      if (Number.isFinite(o) && o > 1) { somaOdd += o; nOdd += 1; }
+    }
+    return {
+      porDia: Object.values(dias).sort((a, b) => a.data.localeCompare(b.data)),
+      oddMedia: nOdd ? somaOdd / nOdd : null,
+    };
+  }, [r.apostas_detalhe]);
+
   const ressalvas = (() => {
     const msg = r.progresso_msg || '';
     const i = msg.indexOf('RESSALVAS:');
@@ -805,16 +889,56 @@ export default function BacktestAvulso({ onNavegar } = {}) {
 
                 {resultado && !semApostas && (
                   <>
+                    {/* HERO (estilo TM): Apostas · Odd média · Lucro · ROI */}
                     <div className="grid grid-cols-2 gap-2">
-                      <StatCard icon={Percent} label="ROI" valor={pct(r.roi)} cor={roiN == null ? '#eaeef7' : (roiN >= 0 ? '#10b981' : '#f43f5e')} />
-                      <StatCard icon={DollarSign} label="PnL (u)" valor={u(r.pnl)} cor={pnlN == null ? '#eaeef7' : (pnlN >= 0 ? '#10b981' : '#f43f5e')} />
-                      <StatCard icon={Target} label="WR" valor={pct(r.win_rate)} cor="#fbbf24" />
                       <StatCard icon={Hash} label="Apostas" valor={num(r.total_apostas) ?? '-'} cor="#0891b2" />
-                      <StatCard icon={TrendingDown} label="Drawdown" valor={u(r.drawdown_max)} cor={ddN ? '#f43f5e' : '#eaeef7'} />
-                      <StatCard icon={AlertTriangle} label="Streak red" valor={num(r.max_streak_red) ?? '-'} cor="#f43f5e" />
+                      <StatCard icon={Percent} label="Odd média" valor={oddMedia ? oddMedia.toFixed(2) : '-'} cor="#eaeef7" />
+                      <StatCard icon={DollarSign} label="Lucro (u)" valor={u(r.pnl)} cor={pnlN == null ? '#eaeef7' : (pnlN >= 0 ? '#10b981' : '#f43f5e')} />
+                      <StatCard icon={Target} label="ROI" valor={pct(r.roi)} cor={roiN == null ? '#eaeef7' : (roiN >= 0 ? '#10b981' : '#f43f5e')} />
                     </div>
 
-                    {/* green/red/void + dias */}
+                    {/* risco: WR · Drawdown · Streak (linha compacta) */}
+                    <div className="grid grid-cols-3 gap-2 mt-2">
+                      {[
+                        ['WR', pct(r.win_rate), '#fbbf24'],
+                        ['Drawdown', `${u(r.drawdown_max)}u`, ddN ? '#f43f5e' : '#eaeef7'],
+                        ['Streak red', num(r.max_streak_red) ?? '-', '#f43f5e'],
+                      ].map(([lbl, val, cor]) => (
+                        <div key={lbl} className="rounded-md p-2 text-center mike-border-thin">
+                          <div className="text-[8px] uppercase tracking-wider text-[--mike-fg-muted] font-bold">{lbl}</div>
+                          <div className="text-xs font-black font-mono" style={{ color: cor }}>{val}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* resultados por dia (barras estilo TM) */}
+                    {porDia.length > 1 && (
+                      <div className="mt-3 rounded-lg p-3" style={{ backgroundColor: 'rgba(13,17,27,0.5)', border: '0.5px solid rgba(60,85,130,0.28)' }}>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[10px] uppercase tracking-wider text-[--mike-fg-muted] font-bold">Resultados por dia</span>
+                          <span className="text-[9px] font-mono text-[--mike-fg-muted]">
+                            <span className="text-emerald-400">■</span> green · <span className="text-rose-400">■</span> red
+                          </span>
+                        </div>
+                        <BarrasPorDia dias={porDia} />
+                        <div className="text-[9px] text-[--mike-fg-muted] mt-1.5 text-center font-mono">
+                          Dias verdes: {num(r.dias_verdes) ?? '-'}/{num(r.dias_total) ?? '-'} · passe o mouse nas barras
+                        </div>
+                      </div>
+                    )}
+
+                    {/* evolução da banca (equity) */}
+                    {Array.isArray(r.equity_curve) && r.equity_curve.length > 1 && (
+                      <div className="mt-2 rounded-lg p-3" style={{ backgroundColor: 'rgba(13,17,27,0.5)', border: '0.5px solid rgba(60,85,130,0.28)' }}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[10px] uppercase tracking-wider text-[--mike-fg-muted] font-bold">Evolução da banca</span>
+                          <span className="text-[9px] font-mono text-[--mike-fg-muted]">banca final: {u(num(r.equity_curve[r.equity_curve.length - 1]?.banca))}</span>
+                        </div>
+                        <CurvaEquity pontos={r.equity_curve} bancaInicial={numOuNull(bancaInicial) ?? 1000} />
+                      </div>
+                    )}
+
+                    {/* green/red/void */}
                     <div className="grid grid-cols-3 gap-2 mt-2">
                       <div className="rounded-md p-2 text-center" style={{ backgroundColor: 'rgba(16,185,129,0.08)', border: '0.5px solid rgba(16,185,129,0.25)' }}>
                         <div className="text-[9px] uppercase tracking-wider text-emerald-400 font-bold">Green</div>
@@ -828,10 +952,6 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                         <div className="text-[9px] uppercase tracking-wider text-[--mike-fg-muted] font-bold">Void</div>
                         <div className="text-sm font-black font-mono text-[--mike-fg-soft]">{num(r.void_count) ?? '-'}</div>
                       </div>
-                    </div>
-
-                    <div className="text-[10px] text-[--mike-fg-muted] mt-3 text-center font-mono">
-                      Dias verdes: {num(r.dias_verdes) ?? '-'}/{num(r.dias_total) ?? '-'}
                     </div>
 
                     {/* baixar planilha das apostas (mesmo formato do bot ao vivo) */}
