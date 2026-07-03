@@ -191,4 +191,9 @@ export const ApiBacktest = {
   createFromUpload: (body) => api.post('/backtest/jobs-upload', body),
   // v4: backtest AVULSO (standalone, sem bot - filtros vem da aba BacktestAvulso.jsx)
   createAvulso: (body) => api.post('/backtest/jobs-avulso', body),
+  // v5: baixa a planilha .xlsx das apostas do backtest (formato "Tips Enviadas"
+  // do bot ao vivo), pra comparar backtest vs vivo lado a lado.
+  baixarPlanilha: (jobId) =>
+    _downloadBlob(`${BASE_URL}/backtest/jobs/${jobId}/planilha`,
+                  `backtest_job_${jobId}_apostas.xlsx`),
 };

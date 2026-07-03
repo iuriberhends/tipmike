@@ -19,7 +19,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   Home, ChevronRight, FlaskConical, Upload, Filter, Play, RefreshCw,
   AlertCircle, AlertTriangle, Target, Percent, DollarSign, Hash, Trophy,
-  TrendingDown, Layers, Ban, CheckCircle2, FileUp,
+  TrendingDown, Layers, Ban, CheckCircle2, FileUp, Download,
 } from 'lucide-react';
 import MikeHeader from '../shared/MikeHeader.jsx';
 import { ApiBacktest } from '../lib/api.js';
@@ -364,6 +364,8 @@ export default function BacktestAvulso({ onNavegar } = {}) {
   const [rodando, setRodando] = useState(false);
   const [erro, setErro] = useState(null);
   const [resultado, setResultado] = useState(null);
+  const [jobId, setJobId] = useState(null);
+  const [baixando, setBaixando] = useState(false);
   const pollRef = useRef(null);
   const pollInicioRef = useRef(null);
   const montadoRef = useRef(true);
@@ -423,7 +425,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
   const handleRodar = useCallback(async () => {
     const msgErro = validarFiltros();
     if (msgErro) { setErro(msgErro); return; }
-    setRodando(true); setErro(null); setResultado(null);
+    setRodando(true); setErro(null); setResultado(null); setJobId(null);
 
     const nicks = (txt) => txt.split(/[\n,;]+/).map(s => s.trim()).filter(Boolean);
     const quartosAtivos = ehBasket
@@ -452,6 +454,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
       if (!montadoRef.current) return;
       const jobId = res?.job_id;
       if (!jobId) { setRodando(false); setErro('Job não foi criado.'); return; }
+      setJobId(jobId);
 
       pollInicioRef.current = Date.now();
       pollRef.current = setInterval(async () => {
@@ -486,6 +489,19 @@ export default function BacktestAvulso({ onNavegar } = {}) {
   const num = (v) => (v == null || Number.isNaN(Number(v)) ? null : Number(v));
   const pct = (frac) => { const n = num(frac); return n == null ? '-' : `${(n * 100).toFixed(2)}%`; };
   const u = (v, d = 2) => { const n = num(v); return n == null ? '-' : n.toFixed(d); };
+
+  const baixarPlanilha = useCallback(async () => {
+    const id = jobId || (resultado && resultado.id);
+    if (!id) return;
+    setBaixando(true); setErro(null);
+    try {
+      await ApiBacktest.baixarPlanilha(id);
+    } catch (e) {
+      if (montadoRef.current) setErro(e?.message || 'Falha ao baixar a planilha.');
+    } finally {
+      if (montadoRef.current) setBaixando(false);
+    }
+  }, [jobId, resultado]);
 
   const r = resultado || {};
   const roiN = num(r.roi);
@@ -816,6 +832,19 @@ export default function BacktestAvulso({ onNavegar } = {}) {
 
                     <div className="text-[10px] text-[--mike-fg-muted] mt-3 text-center font-mono">
                       Dias verdes: {num(r.dias_verdes) ?? '-'}/{num(r.dias_total) ?? '-'}
+                    </div>
+
+                    {/* baixar planilha das apostas (mesmo formato do bot ao vivo) */}
+                    <button
+                      onClick={baixarPlanilha}
+                      disabled={baixando}
+                      className="w-full mt-3 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-[12px] font-bold mike-border-thin text-[--mike-accent] hover:bg-[--mike-accent]/10 transition disabled:opacity-50"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      {baixando ? 'Gerando planilha...' : 'Baixar planilha das apostas'}
+                    </button>
+                    <div className="text-[9px] text-[--mike-fg-muted] mt-1 text-center">
+                      Mesmo formato do export do bot — pra comparar backtest vs ao vivo.
                     </div>
 
                     {ressalvas && (
