@@ -1253,6 +1253,101 @@ function CaixaFiltrarPartidas({ cor, titulo, ativo, onToggle, jogadores, times, 
 // ============================================================
 
 // ============================================================
+// CaixaBlacklistJogador - lista simples de nicks (filtros 6 e 7 do HC)
+// Espelha o visual do CaixaFiltrarPartidas, mas so uma lista de jogadores.
+// estado = { adicionados: ['AMSTERDAM', ...] }
+// ============================================================
+function CaixaBlacklistJogador({ cor, titulo, descricao, ativo, onToggle, jogadores, carregando, estado, onChange }) {
+  const isVerde = cor === 'verde';
+  const corPrimaria = isVerde ? '#10b981' : '#f43f5e';
+  const corBg = ativo
+    ? (isVerde ? 'rgba(16, 185, 129, 0.08)' : 'rgba(244, 63, 94, 0.08)')
+    : 'transparent';
+  const corBorda = ativo
+    ? (isVerde ? 'rgba(16, 185, 129, 0.5)' : 'rgba(244, 63, 94, 0.5)')
+    : (isVerde ? 'rgba(16, 185, 129, 0.3)' : 'rgba(244, 63, 94, 0.3)');
+
+  const [sel, setSel] = useState('');
+  const adicionados = estado.adicionados || [];
+  const opcoesJogadores = jogadores
+    .filter(j => !adicionados.includes(j))
+    .map(j => ({ value: j, label: j }));
+
+  const adicionar = () => {
+    const v = (sel || '').trim();
+    if (!v) return;
+    if (adicionados.includes(v)) { setSel(''); return; }
+    onChange({ ...estado, adicionados: [...adicionados, v] });
+    setSel('');
+  };
+  const remover = (nick) => {
+    onChange({ ...estado, adicionados: adicionados.filter(n => n !== nick) });
+  };
+  const limparTodos = () => onChange({ ...estado, adicionados: [] });
+
+  return (
+    <div className="rounded-lg p-4 space-y-3" style={{ backgroundColor: corBg, border: `0.5px solid ${corBorda}` }}>
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-bold" style={{ color: corPrimaria }}>{titulo}</span>
+        <Switch ativo={ativo} onChange={onToggle} />
+      </div>
+      <Collapse aberto={ativo}>
+        <div className="pt-3 space-y-3">
+          {descricao && (
+            <p className="text-[10px] leading-relaxed" style={{ color: '#6b7691' }}>{descricao}</p>
+          )}
+
+          {carregando && (
+            <div className="flex items-center gap-2 text-[10px]" style={{ color: '#6b7691' }}>
+              <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.3"/>
+                <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
+              </svg>
+              Carregando participantes...
+            </div>
+          )}
+
+          <div className="flex items-center gap-2">
+            <div className="flex-1">
+              <MikeSelect value={sel} onChange={setSel} options={[{ value: '', label: 'Selecione um jogador...' }, ...opcoesJogadores]} />
+            </div>
+            <button
+              onClick={adicionar}
+              disabled={!sel}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold text-white transition hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
+              style={{ backgroundColor: corPrimaria, boxShadow: sel ? `0 4px 12px ${corPrimaria}40` : 'none' }}
+            >
+              <Plus className="w-3 h-3" strokeWidth={3} />
+              ADICIONAR
+            </button>
+          </div>
+
+          {adicionados.length > 0 && (
+            <div className="rounded-md p-3 mt-2" style={{ backgroundColor: 'rgba(255,255,255,0.04)', border: '0.5px solid rgba(255,255,255,0.08)' }}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-bold text-[--mike-fg]">Adicionados ({adicionados.length})</span>
+                <button onClick={limparTodos} className="text-[10px] font-bold transition hover:opacity-80" style={{ color: corPrimaria }}>LIMPAR</button>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {adicionados.map((nick) => (
+                  <span key={nick} className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold"
+                    style={{ backgroundColor: isVerde ? 'rgba(16,185,129,0.15)' : 'rgba(244,63,94,0.15)', color: corPrimaria, border: `0.5px solid ${corPrimaria}40` }}>
+                    {nick}
+                    <button onClick={() => remover(nick)} className="hover:opacity-70" title="Remover">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </Collapse>
+    </div>
+  );
+}
+
+// ============================================================
 // MAPEAMENTO formState ↔ payload do banco
 // ============================================================
 //
@@ -1329,6 +1424,17 @@ function formStateToPayload(s) {
     payload.blacklist_pares = adicionadasIgnorar;
   }
 
+  // Blacklist de jogador (filtros 6 e 7 do HC): listas de nicks no filtros JSONB.
+  // O bot_executor le filtros.blacklist_zebra / filtros.blacklist_favorito.
+  const blZebra = s.blacklistZebraEstado?.adicionados || [];
+  if (s.blacklistZebraAtivo && blZebra.length > 0) {
+    payload.filtros_blacklist_zebra = blZebra;
+  }
+  const blFav = s.blacklistFavoritoEstado?.adicionados || [];
+  if (s.blacklistFavoritoAtivo && blFav.length > 0) {
+    payload.filtros_blacklist_favorito = blFav;
+  }
+
   // Cenário da partida
   if (s.cenarioPartidaAtivo && s.cenarioPartida) {
     payload.whitelist_cenarios = [s.cenarioPartida];
@@ -1362,6 +1468,20 @@ function formStateToPayload(s) {
   // filtros JSONB: backup de TODO o formState pra reidratação fiel ao editar
   // (permite recuperar fixarJ1Casa, gradesModo, filtros hist, comp, live, etc)
   payload.filtros = { ...s, lados };  // adiciona 'lados' (canonico) no JSONB
+  // Filtros 6 e 7 do HC: grava as listas de nicks direto no JSONB que o
+  // bot_executor le (filtros.blacklist_zebra / filtros.blacklist_favorito).
+  if (payload.filtros_blacklist_zebra) {
+    payload.filtros.blacklist_zebra = payload.filtros_blacklist_zebra;
+    delete payload.filtros_blacklist_zebra;
+  } else {
+    delete payload.filtros.blacklist_zebra;
+  }
+  if (payload.filtros_blacklist_favorito) {
+    payload.filtros.blacklist_favorito = payload.filtros_blacklist_favorito;
+    delete payload.filtros_blacklist_favorito;
+  } else {
+    delete payload.filtros.blacklist_favorito;
+  }
 
   return payload;
 }
@@ -1625,6 +1745,12 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
   const [apenasEspecificasEstado, setApenasEspecificasEstado] = useState(ESTADO_FP_INICIAL);
   const [ignorarEspecificasAtivo, setIgnorarEspecificasAtivo] = useState(false);
   const [ignorarEspecificasEstado, setIgnorarEspecificasEstado] = useState(ESTADO_FP_INICIAL);
+  // BLACKLIST DE JOGADOR (filtros 6 e 7 do HC): listas simples de nicks
+  const ESTADO_BLJ_INICIAL = { adicionados: [] };
+  const [blacklistZebraAtivo, setBlacklistZebraAtivo] = useState(false);
+  const [blacklistZebraEstado, setBlacklistZebraEstado] = useState(ESTADO_BLJ_INICIAL);
+  const [blacklistFavoritoAtivo, setBlacklistFavoritoAtivo] = useState(false);
+  const [blacklistFavoritoEstado, setBlacklistFavoritoEstado] = useState(ESTADO_BLJ_INICIAL);
   // Participantes do torneio (jogadores e times) — vem da API
   const [participantes, setParticipantes] = useState({ jogadores: [], times: [], carregando: false });
 
@@ -1772,6 +1898,8 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     chutesGolAtivo, chutesGol, cartAmarelosAtivo, cartAmarelos,
     apenasEspecificasAtivo, apenasEspecificasEstado,
     ignorarEspecificasAtivo, ignorarEspecificasEstado,
+    blacklistZebraAtivo, blacklistZebraEstado,
+    blacklistFavoritoAtivo, blacklistFavoritoEstado,
     evitarLinhasSeq, maxTipsPorJogo,
   };
 
@@ -1860,6 +1988,10 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     if (s.apenasEspecificasEstado !== undefined) setApenasEspecificasEstado(s.apenasEspecificasEstado);
     if (s.ignorarEspecificasAtivo !== undefined) setIgnorarEspecificasAtivo(s.ignorarEspecificasAtivo);
     if (s.ignorarEspecificasEstado !== undefined) setIgnorarEspecificasEstado(s.ignorarEspecificasEstado);
+    if (s.blacklistZebraAtivo !== undefined) setBlacklistZebraAtivo(s.blacklistZebraAtivo);
+    if (s.blacklistZebraEstado !== undefined) setBlacklistZebraEstado(s.blacklistZebraEstado);
+    if (s.blacklistFavoritoAtivo !== undefined) setBlacklistFavoritoAtivo(s.blacklistFavoritoAtivo);
+    if (s.blacklistFavoritoEstado !== undefined) setBlacklistFavoritoEstado(s.blacklistFavoritoEstado);
     if (s.evitarLinhasSeq !== undefined) setEvitarLinhasSeq(s.evitarLinhasSeq);
     if (s.maxTipsPorJogo !== undefined) setMaxTipsPorJogo(s.maxTipsPorJogo);
   };
@@ -1910,6 +2042,8 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     setCartAmarelosAtivo(false); setCartAmarelos(0);
     setApenasEspecificasAtivo(false); setApenasEspecificasEstado(ESTADO_FP_INICIAL);
     setIgnorarEspecificasAtivo(false); setIgnorarEspecificasEstado(ESTADO_FP_INICIAL);
+    setBlacklistZebraAtivo(false); setBlacklistZebraEstado(ESTADO_BLJ_INICIAL);
+    setBlacklistFavoritoAtivo(false); setBlacklistFavoritoEstado(ESTADO_BLJ_INICIAL);
     setEvitarLinhasSeq(true);
     setMaxTipsPorJogo('ilimitado');
   };
@@ -2802,6 +2936,20 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
                 jogadores={participantes.jogadores} times={participantes.times} carregando={participantes.carregando}
                 estado={ignorarEspecificasEstado} onChange={setIgnorarEspecificasEstado}
                 torneioNome={torneios[0] || ''}
+              />
+              <CaixaBlacklistJogador
+                cor="rosa" titulo="Blacklist de zebra (nunca apostar nestes no +)"
+                descricao="No Handicap, o bot aposta na zebra (lado +). Estes jogadores nunca serão apostados como zebra, mesmo que passem no cover%."
+                ativo={blacklistZebraAtivo} onToggle={setBlacklistZebraAtivo}
+                jogadores={participantes.jogadores} carregando={participantes.carregando}
+                estado={blacklistZebraEstado} onChange={setBlacklistZebraEstado}
+              />
+              <CaixaBlacklistJogador
+                cor="rosa" titulo="Blacklist de favorito (pular quando o adversário for)"
+                descricao="Pula a aposta quando o FAVORITO (o adversário da zebra, lado −) for um destes jogadores."
+                ativo={blacklistFavoritoAtivo} onToggle={setBlacklistFavoritoAtivo}
+                jogadores={participantes.jogadores} carregando={participantes.carregando}
+                estado={blacklistFavoritoEstado} onChange={setBlacklistFavoritoEstado}
               />
             </div>
           )}
