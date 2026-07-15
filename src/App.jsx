@@ -20,7 +20,10 @@ import BacktestAvulso from './screens/BacktestAvulso.jsx';
 import { ModalHistorico } from './screens/Historico.jsx';
 
 import Login from './screens/Login.jsx';
+import Registro from './screens/Registro.jsx';
+import AdminUsuarios from './screens/AdminUsuarios.jsx';
 import RequireAuth from './shared/RequireAuth.jsx';
+import RequireAdmin from './shared/RequireAdmin.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 
 function TelaPlaceholder({ titulo, descricao }) {
@@ -97,6 +100,7 @@ function AppRoutes() {
       marketplace:'/marketplace',
       tables:     '/tables',
       extras:     '/extras',
+      usuarios:   '/admin/usuarios',
     };
     if (tela === 'partida') {
       navigate('/partida', { state: normalizarPartida(contexto) });
@@ -121,8 +125,9 @@ function AppRoutes() {
   return (
     <>
       <Routes>
-        {/* Pública */}
+        {/* Públicas */}
         <Route path="/login" element={<Login />} />
+        <Route path="/registro" element={<Registro />} />
 
         {/* Protegidas (Fase 2): tudo abaixo exige sessão válida */}
         <Route element={<RequireAuth />}>
@@ -136,6 +141,11 @@ function AppRoutes() {
           <Route path="/marketplace" element={<TelaPlaceholder titulo="Mercado de Bots" descricao="Loja para descobrir, comprar e vender estratégias de bots criadas pela comunidade." />} />
           <Route path="/tables" element={<TelaPlaceholder titulo="Tabelas" descricao="Tabelas detalhadas de classificação, ROI por liga, ranking de jogadores e estatísticas históricas." />} />
           <Route path="/extras" element={<TelaPlaceholder titulo="Extras" descricao="Configurações, integrações, calculadoras, calendário, perfil, suporte e ferramentas auxiliares." />} />
+
+          {/* Só admin (Fase 5) */}
+          <Route element={<RequireAdmin />}>
+            <Route path="/admin/usuarios" element={<AdminUsuarios onNavegar={navegar} />} />
+          </Route>
           <Route path="*" element={<Today onNavegar={navegar} onAbrirPartida={(p) => navegar('partida', p)} />} />
         </Route>
       </Routes>

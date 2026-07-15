@@ -16,7 +16,7 @@
 import { useState } from 'react';
 import {
   Bell, Settings, LogOut,
-  Home, Activity, Store, Bot, Table2, BarChart3, Plus, FlaskConical,
+  Home, Activity, Store, Bot, Table2, BarChart3, Plus, FlaskConical, Users,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 
@@ -29,6 +29,7 @@ export const NAV_ITEMS = [
   { id: 'stats',       label: 'Estatísticas',    icon: BarChart3, novo: true },
   { id: 'backtest',    label: 'Backtest',        icon: FlaskConical, novo: true },
   { id: 'extras',      label: 'Extras',          icon: Plus },
+  { id: 'usuarios',    label: 'Usuários',        icon: Users, admin: true },
 ];
 
 
@@ -39,6 +40,9 @@ export default function MikeHeader({ telaAtiva, onNavegar }) {
   const nome = usuario?.nome || 'Usuário';
   const inicial = nome.trim().charAt(0).toUpperCase() || 'U';
   const papel = usuario?.role === 'admin' ? 'Administrador' : 'Usuário';
+
+  // itens marcados como admin só aparecem pra admins
+  const itensNav = NAV_ITEMS.filter((n) => !n.admin || usuario?.role === 'admin');
 
   return (
     <header className="sticky top-0 z-30 backdrop-blur-md" style={{
@@ -71,7 +75,7 @@ export default function MikeHeader({ telaAtiva, onNavegar }) {
         </button>
 
         <div className="hidden md:flex items-center gap-1 ml-4">
-          {NAV_ITEMS.map((n) => {
+          {itensNav.map((n) => {
             const Icone = n.icon;
             const ativa = telaAtiva === n.id;
             return (
@@ -123,7 +127,7 @@ export default function MikeHeader({ telaAtiva, onNavegar }) {
       {menuMobileAberto && (
         <div className="md:hidden border-t" style={{ borderColor: 'rgba(60,85,130,0.4)' }}>
           <nav className="px-4 py-2 grid grid-cols-2 gap-1">
-            {NAV_ITEMS.map((n) => {
+            {itensNav.map((n) => {
               const Icone = n.icon;
               const ativa = telaAtiva === n.id;
               return (

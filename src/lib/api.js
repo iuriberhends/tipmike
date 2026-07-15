@@ -257,3 +257,15 @@ export const ApiBacktest = {
     _downloadBlob(`${BASE_URL}/backtest/jobs/${jobId}/planilha`,
                   `backtest_job_${jobId}_apostas.xlsx`),
 };
+
+// ─────────── Admin (Fase 5): gestão de usuários e convites ───────────
+// Todas exigem role admin no token — o backend devolve 403 pros demais.
+export const ApiAdmin = {
+  listarUsuarios:   (params)          => api.get('/admin/usuarios', params),
+  atualizarUsuario: (id, body)        => api.patch(`/admin/usuarios/${id}`, body),
+  resetarSenha:     (id, senha_nova)  => api.post(`/admin/usuarios/${id}/resetar-senha`, { senha_nova }),
+  deletarUsuario:   (id)              => api.delete(`/admin/usuarios/${id}`),
+  criarConvite:     (body)            => api.post('/admin/convites', body),
+  listarConvites:   (params)          => api.get('/admin/convites', params),
+  revogarConvite:   (id)              => api.delete(`/admin/convites/${id}`),
+};

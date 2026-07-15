@@ -83,6 +83,30 @@ export async function loginApi(email, senha) {
   return dados.usuario;
 }
 
+/**
+ * Registro público com código de convite (Fase 5).
+ * NÃO autentica nem persiste sessão — o chamador decide fazer login depois.
+ * Lança Error com a mensagem da API se falhar.
+ */
+export async function registroApi({ nome, email, senha, convite }) {
+  let resultado;
+  try {
+    resultado = await postJson('/auth/registro', { nome, email, senha, convite });
+  } catch {
+    throw new Error('Sem conexão com a API. Verifique sua rede.');
+  }
+  const { res, dados } = resultado;
+  if (!res.ok) {
+    let msg = (dados && dados.detail) ||
+      (res.status === 429 ? 'Muitas tentativas. Aguarde um pouco.' : 'Falha no cadastro.');
+    if (Array.isArray(msg)) {
+      msg = msg.map((e) => e && e.msg).filter(Boolean).join(' • ') || 'Dados inválidos.';
+    }
+    throw new Error(typeof msg === 'string' ? msg : 'Falha no cadastro.');
+  }
+  return dados; // { id, email, nome, role, ... }
+}
+
 let _refreshEmAndamento = null;
 
 /**

@@ -1,54 +1,69 @@
 // ============================================================
-// screens/Login.jsx — Tela de login do TipMike (Fase 2)
+// screens/Registro.jsx — Criar conta com código de convite (Fase 5)
 //
-// - Mensagens de erro vêm direto da API (genéricas por design:
-//   "E-mail ou senha inválidos." / rate limit 429)
-// - Enter envia; botão de mostrar/ocultar senha
-// - Já logado? Redireciona pra rota de origem (ou "/")
+// - Rota pública (/registro), mas o backend só aceita com um
+//   convite válido gerado pelo admin (uso único, com validade)
+// - Sucesso: faz login automático e entra no painel
+// - Mensagens de erro vêm da API (genéricas por design)
 // ============================================================
 
 import { useState } from 'react';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, LogIn } from 'lucide-react';
+import { Navigate, useNavigate } from 'react-router-dom';
+import { Eye, EyeOff, Ticket, UserPlus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
+import { registroApi } from '../lib/auth.js';
 
-export default function Login() {
+export default function Registro() {
   const { usuario, carregando, login } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
 
+  const [convite, setConvite] = useState('');
+  const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [confirma, setConfirma] = useState('');
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [erro, setErro] = useState('');
   const [enviando, setEnviando] = useState(false);
 
-  const destino = location.state?.de || '/';
-
   if (!carregando && usuario) {
-    return <Navigate to={destino} replace />;
+    return <Navigate to="/" replace />;
   }
 
-  const entrar = async () => {
+  const criar = async () => {
     if (enviando) return;
     setErro('');
-    if (!email.trim() || !senha) {
-      setErro('Preencha e-mail e senha.');
+    if (!convite.trim()) { setErro('Informe o código de convite.'); return; }
+    if (!nome.trim() || !email.trim() || !senha) {
+      setErro('Preencha todos os campos.');
       return;
     }
+    if (senha !== confirma) { setErro('As senhas não conferem.'); return; }
+
     setEnviando(true);
     try {
-      await login(email.trim(), senha);
-      navigate(destino, { replace: true });
+      await registroApi({
+        nome: nome.trim(),
+        email: email.trim(),
+        senha,
+        convite: convite.trim(),
+      });
+      // conta criada: entra direto (se o login falhar, cai no /login sem drama)
+      try {
+        await login(email.trim(), senha);
+        navigate('/', { replace: true });
+      } catch {
+        navigate('/login', { replace: true });
+      }
     } catch (e) {
-      setErro((e && e.message) || 'Falha no login.');
+      setErro((e && e.message) || 'Falha no cadastro.');
     } finally {
       setEnviando(false);
     }
   };
 
   const aoTeclar = (e) => {
-    if (e.key === 'Enter') entrar();
+    if (e.key === 'Enter') criar();
   };
 
   const estiloInput = {
@@ -90,17 +105,49 @@ export default function Login() {
           >
             TIPMIKE
           </h1>
-          <p className="text-xs text-slate-400 mt-1">Entre para acessar o painel</p>
+          <p className="text-xs text-slate-400 mt-1">Crie sua conta com um convite</p>
         </div>
 
-        {/* Campos */}
         <div className="flex flex-col gap-3">
+          {/* Convite */}
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-400 mb-1">Código de convite</label>
+            <div className="relative">
+              <Ticket className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+              <input
+                type="text"
+                autoFocus
+                value={convite}
+                onChange={(e) => setConvite(e.target.value)}
+                onKeyDown={aoTeclar}
+                placeholder="TM-..."
+                className="w-full pl-8 pr-3 py-2 rounded-md text-sm outline-none focus:ring-1 focus:ring-[--mike-accent]/60"
+                style={{ ...estiloInput, fontFamily: 'JetBrains Mono, monospace' }}
+                disabled={enviando}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-400 mb-1">Nome</label>
+            <input
+              type="text"
+              autoComplete="name"
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              onKeyDown={aoTeclar}
+              placeholder="Seu nome"
+              className="w-full px-3 py-2 rounded-md text-sm outline-none focus:ring-1 focus:ring-[--mike-accent]/60"
+              style={estiloInput}
+              disabled={enviando}
+            />
+          </div>
+
           <div>
             <label className="block text-[11px] font-semibold text-slate-400 mb-1">E-mail</label>
             <input
               type="email"
               autoComplete="username"
-              autoFocus
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               onKeyDown={aoTeclar}
@@ -116,11 +163,11 @@ export default function Login() {
             <div className="relative">
               <input
                 type={mostrarSenha ? 'text' : 'password'}
-                autoComplete="current-password"
+                autoComplete="new-password"
                 value={senha}
                 onChange={(e) => setSenha(e.target.value)}
                 onKeyDown={aoTeclar}
-                placeholder="••••••••"
+                placeholder="Mín. 10 caracteres, letras e números"
                 className="w-full px-3 py-2 pr-9 rounded-md text-sm outline-none focus:ring-1 focus:ring-[--mike-accent]/60"
                 style={estiloInput}
                 disabled={enviando}
@@ -137,7 +184,21 @@ export default function Login() {
             </div>
           </div>
 
-          {/* Erro */}
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-400 mb-1">Confirmar senha</label>
+            <input
+              type={mostrarSenha ? 'text' : 'password'}
+              autoComplete="new-password"
+              value={confirma}
+              onChange={(e) => setConfirma(e.target.value)}
+              onKeyDown={aoTeclar}
+              placeholder="••••••••"
+              className="w-full px-3 py-2 rounded-md text-sm outline-none focus:ring-1 focus:ring-[--mike-accent]/60"
+              style={estiloInput}
+              disabled={enviando}
+            />
+          </div>
+
           {erro && (
             <div
               className="px-3 py-2 rounded-md text-xs font-semibold"
@@ -151,9 +212,8 @@ export default function Login() {
             </div>
           )}
 
-          {/* Entrar */}
           <button
-            onClick={entrar}
+            onClick={criar}
             disabled={enviando}
             className="mt-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-sm font-bold transition disabled:opacity-60"
             style={{
@@ -162,22 +222,19 @@ export default function Login() {
               boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
             }}
           >
-            <LogIn className="w-4 h-4" />
-            {enviando ? 'Entrando...' : 'Entrar'}
+            <UserPlus className="w-4 h-4" />
+            {enviando ? 'Criando conta...' : 'Criar conta'}
           </button>
         </div>
 
-        <p className="text-[10px] text-slate-500 text-center mt-6">
-          Acesso restrito. Contas são criadas por convite do administrador.
-        </p>
         <button
           type="button"
-          onClick={() => navigate('/registro')}
-          className="w-full text-center text-xs font-semibold mt-2 transition"
+          onClick={() => navigate('/login')}
+          className="w-full text-center text-xs font-semibold mt-6 transition"
           style={{ color: 'var(--mike-accent, #22d3ee)' }}
           disabled={enviando}
         >
-          Tem um código de convite? Criar conta →
+          ← Já tem conta? Entrar
         </button>
       </div>
     </div>
