@@ -1,5 +1,8 @@
 // ============================================================
 // App.jsx - Orquestrador principal do TipMike
+//
+// Fase 2 (auth): AuthProvider envolve tudo; /login é pública e o
+// resto das telas fica atrás do <RequireAuth /> (layout route).
 // ============================================================
 
 import { useState, useEffect, useCallback } from 'react';
@@ -15,6 +18,10 @@ import CriarBot from './screens/CriarBot.jsx';
 import Stats from './screens/Stats.jsx';
 import BacktestAvulso from './screens/BacktestAvulso.jsx';
 import { ModalHistorico } from './screens/Historico.jsx';
+
+import Login from './screens/Login.jsx';
+import RequireAuth from './shared/RequireAuth.jsx';
+import { AuthProvider } from './context/AuthContext.jsx';
 
 function TelaPlaceholder({ titulo, descricao }) {
   const navigate = useNavigate();
@@ -114,17 +121,23 @@ function AppRoutes() {
   return (
     <>
       <Routes>
-        <Route path="/" element={<Today onNavegar={navegar} onAbrirPartida={(p) => navegar('partida', p)} />} />
-        <Route path="/live" element={<Live onNavegar={navegar} onAbrirPartida={(p) => navegar('partida', p)} />} />
-        <Route path="/bots" element={<Bots onNavegar={navegar} />} />
-        <Route path="/partida" element={<PartidaIndividual partida={location.state} onNavegar={navegar} />} />
-        <Route path="/criar-bot" element={<CriarBot botId={location.state?.botId || null} onSalvar={() => navigate('/bots')} onCancelar={() => navigate('/bots')} onNavegar={navegar} />} />
-        <Route path="/stats" element={<Stats onNavegar={navegar} />} />
-        <Route path="/backtest" element={<BacktestAvulso onNavegar={navegar} />} />
-        <Route path="/marketplace" element={<TelaPlaceholder titulo="Mercado de Bots" descricao="Loja para descobrir, comprar e vender estratégias de bots criadas pela comunidade." />} />
-        <Route path="/tables" element={<TelaPlaceholder titulo="Tabelas" descricao="Tabelas detalhadas de classificação, ROI por liga, ranking de jogadores e estatísticas históricas." />} />
-        <Route path="/extras" element={<TelaPlaceholder titulo="Extras" descricao="Configurações, integrações, calculadoras, calendário, perfil, suporte e ferramentas auxiliares." />} />
-        <Route path="*" element={<Today onNavegar={navegar} onAbrirPartida={(p) => navegar('partida', p)} />} />
+        {/* Pública */}
+        <Route path="/login" element={<Login />} />
+
+        {/* Protegidas (Fase 2): tudo abaixo exige sessão válida */}
+        <Route element={<RequireAuth />}>
+          <Route path="/" element={<Today onNavegar={navegar} onAbrirPartida={(p) => navegar('partida', p)} />} />
+          <Route path="/live" element={<Live onNavegar={navegar} onAbrirPartida={(p) => navegar('partida', p)} />} />
+          <Route path="/bots" element={<Bots onNavegar={navegar} />} />
+          <Route path="/partida" element={<PartidaIndividual partida={location.state} onNavegar={navegar} />} />
+          <Route path="/criar-bot" element={<CriarBot botId={location.state?.botId || null} onSalvar={() => navigate('/bots')} onCancelar={() => navigate('/bots')} onNavegar={navegar} />} />
+          <Route path="/stats" element={<Stats onNavegar={navegar} />} />
+          <Route path="/backtest" element={<BacktestAvulso onNavegar={navegar} />} />
+          <Route path="/marketplace" element={<TelaPlaceholder titulo="Mercado de Bots" descricao="Loja para descobrir, comprar e vender estratégias de bots criadas pela comunidade." />} />
+          <Route path="/tables" element={<TelaPlaceholder titulo="Tabelas" descricao="Tabelas detalhadas de classificação, ROI por liga, ranking de jogadores e estatísticas históricas." />} />
+          <Route path="/extras" element={<TelaPlaceholder titulo="Extras" descricao="Configurações, integrações, calculadoras, calendário, perfil, suporte e ferramentas auxiliares." />} />
+          <Route path="*" element={<Today onNavegar={navegar} onAbrirPartida={(p) => navegar('partida', p)} />} />
+        </Route>
       </Routes>
 
       {historicoBotId && (
@@ -137,7 +150,9 @@ function AppRoutes() {
 export default function App() {
   return (
     <HashRouter>
-      <AppRoutes />
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
     </HashRouter>
   );
 }

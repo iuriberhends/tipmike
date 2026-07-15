@@ -5,6 +5,9 @@
 // Antes estava duplicado em Live, Today, Bots, Stats,
 // CriarBot e PartidaIndividual.
 //
+// Fase 2 (auth): chip do usuário agora vem do AuthContext
+// (nome/role reais) + botão de sair.
+//
 // USO:
 //   import MikeHeader, { NAV_ITEMS } from '../shared/MikeHeader.jsx';
 //   <MikeHeader telaAtiva="live" onNavegar={navegar} />
@@ -12,9 +15,10 @@
 
 import { useState } from 'react';
 import {
-  Bell, Settings,
+  Bell, Settings, LogOut,
   Home, Activity, Store, Bot, Table2, BarChart3, Plus, FlaskConical,
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext.jsx';
 
 export const NAV_ITEMS = [
   { id: 'today',       label: 'Início',          icon: Home },
@@ -30,6 +34,11 @@ export const NAV_ITEMS = [
 
 export default function MikeHeader({ telaAtiva, onNavegar }) {
   const [menuMobileAberto, setMenuMobileAberto] = useState(false);
+  const { usuario, sair } = useAuth();
+
+  const nome = usuario?.nome || 'Usuário';
+  const inicial = nome.trim().charAt(0).toUpperCase() || 'U';
+  const papel = usuario?.role === 'admin' ? 'Administrador' : 'Usuário';
 
   return (
     <header className="sticky top-0 z-30 backdrop-blur-md" style={{
@@ -93,11 +102,20 @@ export default function MikeHeader({ telaAtiva, onNavegar }) {
           <Settings className="w-4 h-4" />
         </button>
         <div className="flex items-center gap-2 pl-3" style={{ borderLeft: '0.5px solid rgba(60, 85, 130, 0.4)' }}>
-          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[--mike-accent] to-[--mike-accent-2] flex items-center justify-center font-black text-[--mike-bg] text-xs">S</div>
-          <div className="hidden lg:flex flex-col leading-tight">
-            <span className="text-[11px] text-[--mike-fg] font-semibold">Santos</span>
-            <span className="text-[9px] text-[--mike-fg-muted]">BOT (eSports)</span>
+          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[--mike-accent] to-[--mike-accent-2] flex items-center justify-center font-black text-[--mike-bg] text-xs">
+            {inicial}
           </div>
+          <div className="hidden lg:flex flex-col leading-tight">
+            <span className="text-[11px] text-[--mike-fg] font-semibold">{nome}</span>
+            <span className="text-[9px] text-[--mike-fg-muted]">{papel}</span>
+          </div>
+          <button
+            onClick={() => sair()}
+            className="ml-1 text-[--mike-fg-muted] hover:text-red-400 transition"
+            title="Sair"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </div>
 

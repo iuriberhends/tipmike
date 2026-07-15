@@ -4,8 +4,66 @@
  * v2: ApiStats expandida com 8 endpoints novos pra tela Stats.jsx
  * v3: ApiBots ganha exportCsv (URL builder) + downloadCsv (fetch+blob+download)
  * v4: ApiBacktest ganha createAvulso (backtest standalone, sem bot)
+ * v6: AUTH (Fase 2) — todo fetch sai com Authorization: Bearer <access>.
+ *     Em 401, tenta UM refresh (single-flight em lib/auth.js) e repete a
+ *     chamada uma única vez. Refresh morto → logout global via evento.
+ *     Vale pros 3 caminhos: request() JSON, _downloadBlob e uploadTicks.
  */
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://138.255.160.158:8000';
+import { BASE_URL, getAccessToken, refreshSession, limparSessao, dispararLogout } from './auth.js';
+
+/**
+ * fetch com Authorization + retry único pós-refresh em 401.
+ * _podeRepetir evita loop: a repetição nunca repete de novo.
+ */
+async function fetchComAuth(url, options = {}, _podeRepetir = true) {
+  const headers = { ...(options.headers || {}) };
+  const token = getAccessToken();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  let res;
+  try {
+    res = await fetch(url, { ...options, headers });
+  } catch {
+    throw new Error('Sem conexão com a API. Verifique sua rede.');
+  }
+
+  if (res.status === 401 && _podeRepetir) {
+    const renovou = await refreshSession();
+    if (renovou) return fetchComAuth(url, options, false);
+  }
+
+  // Usuário desativado pelo admin no meio da sessão: derruba na hora
+  // em vez de deixar a UI inteira falhando silenciosamente.
+  if (res.status === 403) {
+    try {
+      const corpo = await res.clone().json();
+      if (corpo && corpo.detail === 'Usuário desativado.') {
+        limparSessao();
+        dispararLogout('desativado');
+      }
+    } catch { /* corpo não-JSON: segue o fluxo normal */ }
+  }
+
+  return res;
+}
+
+/**
+ * Extrai uma mensagem de erro legível de qualquer resposta da API.
+ * Cobre: detail string, detail em lista (422 de validação do FastAPI),
+ * corpo vazio/não-JSON.
+ */
+async function _erroDaResposta(res) {
+  const err = await res.json().catch(() => null);
+  const d = err && err.detail;
+  if (typeof d === 'string' && d) return d;
+  if (Array.isArray(d) && d.length) {
+    const primeiro = d[0];
+    if (primeiro && typeof primeiro.msg === 'string') return `Dados inválidos: ${primeiro.msg}`;
+    return 'Dados inválidos.';
+  }
+  return res.statusText || `HTTP ${res.status}`;
+}
+
 async function request(method, path, body, params) {
   let url = `${BASE_URL}${path}`;
   if (params) {
@@ -21,10 +79,9 @@ async function request(method, path, body, params) {
   if (body) {
     options.body = JSON.stringify(body);
   }
-  const res = await fetch(url, options);
+  const res = await fetchComAuth(url, options);
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || `HTTP ${res.status}`);
+    throw new Error(await _erroDaResposta(res));
   }
   return res.json();
 }
@@ -57,12 +114,13 @@ export const ApiH2H = {
 };
 // ============================================================
 // Helper: download arbitrario via fetch+blob
+// (v6: agora autenticado — CSV/planilha continuam funcionando
+//  com as rotas trancadas)
 // ============================================================
 async function _downloadBlob(url, filenameFallback) {
-  const res = await fetch(url);
+  const res = await fetchComAuth(url);
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || `HTTP ${res.status}`);
+    throw new Error(await _erroDaResposta(res));
   }
   // Tenta extrair filename do Content-Disposition
   let filename = filenameFallback;
@@ -100,7 +158,8 @@ export const ApiBots = {
   // ----------------------------------------------------------
   // Export CSV
   // ----------------------------------------------------------
-  // Monta a URL do CSV (uso opcional caso queira abrir em outra aba)
+  // Monta a URL do CSV. ATENÇÃO (v6): abrir essa URL direto em outra aba
+  // NÃO envia o Authorization e vai tomar 401 — use downloadCsv().
   exportCsvUrl: (id, params = {}) => {
     const qs = new URLSearchParams(
       Object.entries(params).filter(([, v]) => v !== null && v !== undefined && v !== '')
@@ -174,16 +233,17 @@ export const ApiBacktest = {
   delete: (jobId) => api.delete(`/backtest/jobs/${jobId}`),
   // v4: backtest por UPLOAD de arquivo parquet (ticks do HD).
   // uploadTicks usa FormData (multipart) - nao passa pelo request() JSON.
+  // v6: autenticado via fetchComAuth (sem Content-Type manual: o browser
+  //     define o boundary do multipart sozinho).
   uploadTicks: async (file) => {
     const fd = new FormData();
     fd.append('arquivo', file);
-    const res = await fetch(`${BASE_URL}/backtest/upload-ticks`, {
+    const res = await fetchComAuth(`${BASE_URL}/backtest/upload-ticks`, {
       method: 'POST',
       body: fd,
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: res.statusText }));
-      throw new Error(err.detail || `HTTP ${res.status}`);
+      throw new Error(await _erroDaResposta(res));
     }
     return res.json();
   },
