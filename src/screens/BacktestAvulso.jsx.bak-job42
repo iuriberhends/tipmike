@@ -248,7 +248,7 @@ function BarrasPorDia({ dias }) {
           const hR = tot ? (d.r / tot) * hTot : 0;
           const hV = hTot - hG - hR;
           return (
-            <div key={i} className="flex-1 flex flex-col justify-end min-w-0" title={`${d.data}: ${d.g}G ${d.r}R${d.v ? ` ${d.v}V` : ''} · PnL R$ ${d.pnl >= 0 ? '+' : ''}${d.pnl.toFixed(1)}`}>
+            <div key={i} className="flex-1 flex flex-col justify-end min-w-0" title={`${d.data}: ${d.g}G ${d.r}R${d.v ? ` ${d.v}V` : ''} · PnL ${d.pnl >= 0 ? '+' : ''}${d.pnl.toFixed(1)}u`}>
               {hV > 0 && <div style={{ height: hV, backgroundColor: 'rgba(107,118,145,0.5)' }} />}
               <div style={{ height: hR, backgroundColor: '#f43f5e' }} />
               <div style={{ height: hG, backgroundColor: '#10b981', borderRadius: '2px 2px 0 0' }} />
@@ -567,12 +567,6 @@ export default function BacktestAvulso({ onNavegar } = {}) {
   const roiN = num(r.roi);
   const pnlN = num(r.pnl);
   const ddN = num(r.drawdown_max);
-  // JOB42: unidades vem do backend (migration 016). Fallback pra jobs antigos
-  // deriva de pnl/stake - so corrige a ESCALA (o drawdown antigo em si vinha
-  // superestimado pelo calculo max-min; reroda o backtest pra ter o DD certo).
-  const stakeN = num(r.stake_valor);
-  const pnlU = num(r.pnl_unidades) ?? (pnlN != null && stakeN ? pnlN / stakeN : null);
-  const ddU = num(r.drawdown_unidades) ?? (ddN != null && stakeN ? ddN / stakeN : null);
 
   // dados derivados pro painel rico: por-dia (green/red/void + pnl) e odd media,
   // computados do apostas_detalhe (ja vem no polling com incluir_detalhe=true).
@@ -899,20 +893,15 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                     <div className="grid grid-cols-2 gap-2">
                       <StatCard icon={Hash} label="Apostas" valor={num(r.total_apostas) ?? '-'} cor="#0891b2" />
                       <StatCard icon={Percent} label="Odd média" valor={oddMedia ? oddMedia.toFixed(2) : '-'} cor="#eaeef7" />
-                      <StatCard icon={DollarSign} label="Lucro" valor={pnlU != null ? `${u(pnlU)}u` : u(r.pnl)} cor={pnlN == null ? '#eaeef7' : (pnlN >= 0 ? '#10b981' : '#f43f5e')} />
+                      <StatCard icon={DollarSign} label="Lucro (u)" valor={u(r.pnl)} cor={pnlN == null ? '#eaeef7' : (pnlN >= 0 ? '#10b981' : '#f43f5e')} />
                       <StatCard icon={Target} label="ROI" valor={pct(r.roi)} cor={roiN == null ? '#eaeef7' : (roiN >= 0 ? '#10b981' : '#f43f5e')} />
                     </div>
-                    {pnlU != null && (
-                      <div className="text-[9px] text-[--mike-fg-muted] mt-1.5 text-center font-mono">
-                        em R$: lucro {u(r.pnl)} · drawdown {u(r.drawdown_max)} · stake {u(r.stake_valor)}
-                      </div>
-                    )}
 
                     {/* risco: WR · Drawdown · Streak (linha compacta) */}
                     <div className="grid grid-cols-3 gap-2 mt-2">
                       {[
                         ['WR', pct(r.win_rate), '#fbbf24'],
-                        ['Drawdown', ddU != null ? `${u(ddU)}u` : u(r.drawdown_max), ddN ? '#f43f5e' : '#eaeef7'],
+                        ['Drawdown', `${u(r.drawdown_max)}u`, ddN ? '#f43f5e' : '#eaeef7'],
                         ['Streak red', num(r.max_streak_red) ?? '-', '#f43f5e'],
                       ].map(([lbl, val, cor]) => (
                         <div key={lbl} className="rounded-md p-2 text-center mike-border-thin">
