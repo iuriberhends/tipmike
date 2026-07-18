@@ -49,6 +49,16 @@ const LADOS = [
   { value: 'over', label: 'Over' },
   { value: 'under', label: 'Under' },
 ];
+// v11: base do filtro de histórico — confronto do par x individual de cada jogador
+const BASES_HIST = [
+  { value: 'match', label: 'Confronto (par)' },
+  { value: 'individual', label: 'Individual (cada jogador)' },
+];
+// v11: alvo do individual no HANDICAP — 'zebra' (default) ou zebra+favorito
+const INDIV_ALVOS = [
+  { value: 'zebra', label: 'Só a zebra' },
+  { value: 'ambos', label: 'Zebra + favorito' },
+];
 const CENARIOS = [
   { value: '', label: '(qualquer)' },
   { value: 'casa_vencendo', label: 'Casa vencendo' },
@@ -135,7 +145,10 @@ function _labelChipHist(f) {
   const jstr = jl ? jl.label : f.janela;
   const wr = (f.prob[1] >= 100) ? `≥${f.prob[0]}%` : `${f.prob[0]}-${f.prob[1]}%`;
   const mp = f.minPartidas ? ` · ${f.minPartidas}+ conf.` : '';
-  return `${jstr} · ${wr}${mp}`;
+  // v11: marca chips de base individual (e o alvo, se zebra+favorito)
+  const base = f.base === 'individual'
+    ? (f.indivAlvo === 'ambos' ? ' · IND z+fav' : ' · IND') : '';
+  return `${jstr} · ${wr}${mp}${base}`;
 }
 
 const POLL_MS = 2000;
@@ -349,6 +362,9 @@ export default function BacktestAvulso({ onNavegar } = {}) {
   const [histWrMin, setHistWrMin] = useState('');
   const [histWrMax, setHistWrMax] = useState('');
   const [histMinPartidas, setHistMinPartidas] = useState('10');
+  // v11: base do histórico (confronto x individual) + alvo do individual no HC
+  const [histBase, setHistBase] = useState('match');
+  const [histIndivAlvo, setHistIndivAlvo] = useState('zebra');
 
   const adicionarHist = useCallback(() => {
     if (histWrMin === '' || isNaN(Number(histWrMin))) {
@@ -366,9 +382,11 @@ export default function BacktestAvulso({ onNavegar } = {}) {
       janela: histJanela,
       prob: [mn, mx],
       minPartidas: Math.max(0, Math.trunc(Number(histMinPartidas) || 0)),
+      base: histBase,
+      ...(histBase === 'individual' ? { indivAlvo: histIndivAlvo } : {}),
     }]);
     setHistWrMin(''); setHistWrMax('');
-  }, [histJanela, histWrMin, histWrMax, histMinPartidas]);
+  }, [histJanela, histWrMin, histWrMax, histMinPartidas, histBase, histIndivAlvo]);
 
   const removerHist = useCallback((idx) => {
     setFiltrosHist(prev => prev.filter((_, i) => i !== idx));
@@ -728,13 +746,17 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                 </Grupo>
 
                 {/* GRUPO 2: Confronto direto (H2H) */}
-                <Grupo icon={Percent} cor="#fbbf24" titulo="Confronto direto (H2H)" desc="Filtra pelo histórico entre os dois jogadores do par.">
+                <Grupo icon={Percent} cor="#fbbf24" titulo="Confronto direto (H2H)" desc="Filtra pelo histórico do par (confronto) ou pelo individual de cada jogador.">
                   <SubLabel>Win rate — adicione vários (escadinha)</SubLabel>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-2">
                     <Campo label="Janela"><Select value={histJanela} onChange={setHistJanela} options={JANELAS_WR} /></Campo>
                     <Campo label="WR mín. (%)"><Input type="number" min="0" max="100" value={histWrMin} onChange={setHistWrMin} placeholder="ex: 80" /></Campo>
                     <Campo label="WR máx. (%)"><Input type="number" min="0" max="100" value={histWrMax} onChange={setHistWrMax} placeholder="100" /></Campo>
                     <Campo label="Mín. confrontos"><Input type="number" min="0" value={histMinPartidas} onChange={setHistMinPartidas} placeholder="ex: 10" /></Campo>
+                    <Campo label="Base"><Select value={histBase} onChange={setHistBase} options={BASES_HIST} /></Campo>
+                    {histBase === 'individual' && ['ah_ft', 'ah_ht', 'eh_ft'].includes(mercado) && (
+                      <Campo label="Alvo (HC)"><Select value={histIndivAlvo} onChange={setHistIndivAlvo} options={INDIV_ALVOS} /></Campo>
+                    )}
                   </div>
                   <button
                     onClick={adicionarHist}

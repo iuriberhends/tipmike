@@ -250,6 +250,14 @@ const BASES_DADOS = [
   { value: 'individual', label: 'Histórico individual' },
 ];
 
+// v11: alvo do filtro INDIVIDUAL no handicap — quem precisa passar no WR.
+// 'zebra' (default) = só o lado apostado; 'ambos' = zebra E favorito.
+// Ignorado no over/under (lá a regra AND dos dois jogadores é fixa).
+const INDIV_ALVOS = [
+  { value: 'zebra', label: 'Só a zebra' },
+  { value: 'ambos', label: 'Zebra + favorito' },
+];
+
 
 // ============================================================
 // COMPONENTES BASE
@@ -1681,6 +1689,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
   const [histJanela, setHistJanela] = useState('all');
   const [histTipo, setHistTipo] = useState('all');
   const [histBase, setHistBase] = useState('match');
+  const [histIndivAlvo, setHistIndivAlvo] = useState('zebra'); // v11: alvo do individual no HC
   const [histMinPartidas, setHistMinPartidas] = useState(1);
   const [histProb, setHistProb] = useState([0, 100]);
   const [filtrosHistAdicionados, setFiltrosHistAdicionados] = useState([]);
@@ -1885,7 +1894,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     filtroMediasContraAtivo, filtroMediasContra,
     alvoMesmaGradeAtivo, alvoMesmaGradeWR, alvoUlt8Ativo, alvoUlt8WR,
     oponMesmaGradeAtivo, oponMesmaGradeWR, oponUlt8Ativo, oponUlt8WR,
-    histVersao, histJanela, histTipo, histBase, histMinPartidas, histProb,
+    histVersao, histJanela, histTipo, histBase, histIndivAlvo, histMinPartidas, histProb,
     filtrosHistAdicionados,
     filtrosComplementaresAtivo, filtrosCompAdicionados,
     cenarioPartidaAtivo, cenarioPartida,
@@ -1947,6 +1956,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     if (s.histJanela !== undefined) setHistJanela(s.histJanela);
     if (s.histTipo !== undefined) setHistTipo(s.histTipo);
     if (s.histBase !== undefined) setHistBase(s.histBase);
+    if (s.histIndivAlvo !== undefined) setHistIndivAlvo(s.histIndivAlvo);
     if (s.histMinPartidas !== undefined) setHistMinPartidas(s.histMinPartidas);
     if (s.histProb !== undefined) setHistProb(s.histProb);
     if (s.filtrosHistAdicionados !== undefined) setFiltrosHistAdicionados(s.filtrosHistAdicionados);
@@ -2018,7 +2028,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     setOponMesmaGradeAtivo(false); setOponMesmaGradeWR('all');
     setOponUlt8Ativo(false); setOponUlt8WR('all');
     setHistVersao('all'); setHistJanela('all'); setHistTipo('all');
-    setHistBase('match'); setHistMinPartidas(1); setHistProb([0, 100]);
+    setHistBase('match'); setHistIndivAlvo('zebra'); setHistMinPartidas(1); setHistProb([0, 100]);
     setFiltrosHistAdicionados([]);
     setFiltrosComplementaresAtivo(false);
     setCompTipo('media'); setCompJanela(10);
@@ -2687,6 +2697,10 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
               { tipo: 'select', label: 'Janela de partidas', value: histJanela, onChange: setHistJanela, options: JANELAS_PARTIDAS },
               { tipo: 'select', label: 'Tipo de histórico', value: histTipo, onChange: setHistTipo, options: TIPOS_HISTORICO },
               { tipo: 'select', label: 'Base de dados', value: histBase, onChange: setHistBase, options: BASES_DADOS },
+              // v11: alvo do individual — só faz sentido em handicap e com base individual
+              ...(histBase === 'individual' && ['ah_ft', 'ah_ht', 'eh_ft'].includes(mercado)
+                ? [{ tipo: 'select', label: 'Alvo (handicap)', value: histIndivAlvo, onChange: setHistIndivAlvo, options: INDIV_ALVOS }]
+                : []),
               { tipo: 'slider', label: 'Mínimo de partidas', value: histMinPartidas, onChange: setHistMinPartidas, min: 1, max: 50, sufixoMax: '50+' },
               { tipo: 'range', label: 'Probabilidade', value: histProb, onChange: setHistProb, min: 0, max: 100 },
             ]}
@@ -2695,6 +2709,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
               setFiltrosHistAdicionados([...filtrosHistAdicionados, {
                 versao: histVersao, janela: histJanela, tipo: histTipo,
                 base: histBase, minPartidas: histMinPartidas, prob: [...histProb],
+                ...(histBase === 'individual' ? { indivAlvo: histIndivAlvo } : {}),
               }]);
               adicionarToast(`Filter ${filtrosHistAdicionados.length + 1} adicionado`, 'success');
             }}
@@ -2709,6 +2724,9 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
               { label: 'Janela de partidas', valor: JANELAS_PARTIDAS.find((v) => v.value === f.janela)?.label },
               { label: 'Tipo de histórico', valor: TIPOS_HISTORICO.find((v) => v.value === f.tipo)?.label },
               { label: 'Base de dados', valor: BASES_DADOS.find((v) => v.value === f.base)?.label },
+              ...(f.base === 'individual'
+                ? [{ label: 'Alvo (HC)', valor: INDIV_ALVOS.find((v) => v.value === (f.indivAlvo || 'zebra'))?.label }]
+                : []),
               { label: 'Mín. partidas', valor: f.minPartidas },
               { label: 'Probabilidade', valor: `${f.prob[0]}% - ${f.prob[1]}%` },
             ]}
