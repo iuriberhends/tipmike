@@ -397,6 +397,9 @@ export default function BacktestAvulso({ onNavegar } = {}) {
   const [quartos, setQuartos] = useState({ q1: true, q2: true, q3: true, q4: true });
   const [linhaMin, setLinhaMin] = useState('');
   const [linhaMax, setLinhaMax] = useState('');
+  // v11.2: faixa de odd (antes o avulso nao tinha filtro de odd)
+  const [oddMin, setOddMin] = useState('');
+  const [oddMax, setOddMax] = useState('');
   const [blacklist, setBlacklist] = useState('');
   const [whitelist, setWhitelist] = useState('');
   const [stakeValor, setStakeValor] = useState('10');
@@ -493,13 +496,16 @@ export default function BacktestAvulso({ onNavegar } = {}) {
     if (!mercado) return 'Escolha um mercado.';
     const lmin = numOuNull(linhaMin), lmax = numOuNull(linhaMax);
     if (lmin != null && lmax != null && lmin > lmax) return 'Linha mín não pode ser maior que a máx.';
+    const omin = numOuNull(oddMin), omax = numOuNull(oddMax);
+    if (omin != null && omax != null && omin > omax) return 'Odd mín não pode ser maior que a máx.';
+    if ((omin != null && omin <= 1) || (omax != null && omax <= 1)) return 'Odd deve ser maior que 1.';
     const stake = numOuNull(stakeValor);
     if (stake == null || stake <= 0) return 'Stake deve ser maior que zero.';
     const banca = numOuNull(bancaInicial);
     if (banca == null || banca <= 0) return 'Banca inicial deve ser maior que zero.';
     if (ehBasket && !Object.values(quartos).some(Boolean)) return 'Selecione ao menos um quarto.';
     return null;
-  }, [uploadId, mercado, linhaMin, linhaMax, stakeValor, bancaInicial, ehBasket, quartos]);
+  }, [uploadId, mercado, linhaMin, linhaMax, oddMin, oddMax, stakeValor, bancaInicial, ehBasket, quartos]);
 
   const handleRodar = useCallback(async () => {
     const msgErro = validarFiltros();
@@ -520,6 +526,8 @@ export default function BacktestAvulso({ onNavegar } = {}) {
       quartos: quartosAtivos,
       linha_min: numOuNull(linhaMin),
       linha_max: numOuNull(linhaMax),
+      odd_min: numOuNull(oddMin),
+      odd_max: numOuNull(oddMax),
       blacklist: nicks(blacklist),
       whitelist: nicks(whitelist),
       stake_modo: 'fixo',
@@ -561,7 +569,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
       if (montadoRef.current) { setRodando(false); setErro(e?.message || 'Falha ao criar job.'); }
     }
   }, [validarFiltros, uploadId, mercado, lado, casa, esporte, filtrosHist,
-      cenario, difPlacar, quartos, ehBasket, linhaMin, linhaMax,
+      cenario, difPlacar, quartos, ehBasket, linhaMin, linhaMax, oddMin, oddMax,
       blacklist, whitelist, stakeValor, bancaInicial, filtrosComp]);
 
   // helpers de resultado (campos REAIS do job: roi/win_rate sao fracao 0-1)
@@ -743,6 +751,12 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                   <div className="grid grid-cols-2 gap-3">
                     <Campo label="Linha mín."><Input type="number" value={linhaMin} onChange={setLinhaMin} placeholder="ex: 0.5" /></Campo>
                     <Campo label="Linha máx."><Input type="number" value={linhaMax} onChange={setLinhaMax} placeholder="ex: 8.5" /></Campo>
+                  </div>
+                  <DivFina />
+                  <SubLabel>Faixa de odd (opcional)</SubLabel>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Campo label="Odd mín."><Input type="number" value={oddMin} onChange={setOddMin} placeholder="ex: 1.6" /></Campo>
+                    <Campo label="Odd máx."><Input type="number" value={oddMax} onChange={setOddMax} placeholder="ex: 2.2" /></Campo>
                   </div>
                 </Grupo>
 
