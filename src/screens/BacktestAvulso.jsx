@@ -94,6 +94,7 @@ const JANELAS_COMP = [
 // O backend do filtro hist ACEITA tempo (last_1h/last_1d/last_7d), igual a média/gap.
 const JANELAS_WR = [
   { value: 'all',      label: 'Todas' },
+  { value: 'last_1',   label: 'Últ. 1' },
   { value: 'last_5',   label: 'Últ. 5' },
   { value: 'last_10',  label: 'Últ. 10' },
   { value: 'last_15',  label: 'Últ. 15' },
