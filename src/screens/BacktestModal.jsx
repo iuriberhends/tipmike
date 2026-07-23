@@ -13,7 +13,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   X, Play, BarChart3, TrendingUp, TrendingDown, Activity,
   CheckCircle2, AlertCircle, RefreshCw, Calendar, DollarSign,
-  ChevronDown, ChevronRight, Info,
+  ChevronDown, ChevronRight, Info, Download,
 } from 'lucide-react';
 import { ApiBacktest } from '../lib/api';
 
@@ -25,6 +25,14 @@ function formatarBRL(v) {
   if (v === null || v === undefined) return '—';
   const n = Number(v);
   return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function formatarU(v) {
+  // v5: unidades — e a metrica que serve pra COMPARAR estrategias, porque nao
+  // depende do stake. BRL muda se o stake mudar; unidade nao.
+  if (v === null || v === undefined || Number.isNaN(Number(v))) return '—';
+  const n = Number(v);
+  return `${n >= 0 ? '+' : ''}${n.toFixed(2)}u`;
 }
 
 function formatarPct(v) {
@@ -351,6 +359,7 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
   const [resumoUpload, setResumoUpload] = useState(null);
   const [validacao, setValidacao] = useState(null);
   const [subindo, setSubindo] = useState(false);
+  const [baixando, setBaixando] = useState(false);   // v5: download da planilha
 
   const pollRef = useRef(null);
 
@@ -403,8 +412,22 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
       }
     };
 
+    // v5: guarda de tempo — sem isso o modal ficava girando pra sempre se o job
+    // morresse no worker sem gravar status 'erro'.
+    const inicio = Date.now();
+    const TIMEOUT_MS = 45 * 60 * 1000;
+    const tickComGuarda = async () => {
+      if (Date.now() - inicio > TIMEOUT_MS) {
+        setErroMsg('Tempo limite: o job passou de 45 minutos. Confira o status na lista de jobs.');
+        setEstado('erro');
+        if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+        return;
+      }
+      await tick();
+    };
+
     tick();
-    pollRef.current = setInterval(tick, 1000);
+    pollRef.current = setInterval(tickComGuarda, 1000);
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
@@ -422,19 +445,17 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
       const res = await ApiBacktest.uploadTicks(file);
       setUploadId(res.upload_id);
       setResumoUpload(res);
-      // validacao cruzada (nao bloqueia - so informa)
+      setSubindo(false);          // v5: libera o botao AQUI. O upload acabou.
+
+      // v5: a validacao cruzada reprocessa o parquet inteiro e demorava MAIS que
+      // o proprio upload — e o await dela segurava o botao "Executar". Ela nunca
+      // foi obrigatoria (so informa), entao agora roda solta, em segundo plano.
       if (bot?.id) {
-        try {
-          const val = await ApiBacktest.validarCruzado({
-            bot_id: bot.id,
-            upload_id: res.upload_id,
-          });
-          setValidacao(val);
-        } catch (e) {
-          // validacao falhar nao impede rodar - so nao mostra o aviso
-          console.warn('validacao cruzada falhou:', e.message);
-        }
+        ApiBacktest.validarCruzado({ bot_id: bot.id, upload_id: res.upload_id })
+          .then((val) => setValidacao(val))
+          .catch((e) => console.warn('validacao cruzada falhou:', e.message));
       }
+      return;
     } catch (e) {
       setErroMsg(e.message);
     } finally {
@@ -484,6 +505,22 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
       setEstado('erro');
     }
   }, [bot?.id, podeExecutar, fonte, uploadId, dataInicio, dataFim, stakeModo, stakeValor, bancaInicial]);
+
+  // v5: baixa a planilha .xlsx com uma linha por aposta. A rota ja existia
+  // (/backtest/jobs/{id}/planilha) e o avulso ja usava; o modal do bot nao tinha
+  // o botao, entao nao dava pra analisar as apostas de um backtest de bot.
+  const baixarPlanilha = useCallback(async () => {
+    const id = jobId || job?.id;
+    if (!id || baixando) return;
+    setBaixando(true);
+    try {
+      await ApiBacktest.baixarPlanilha(id);
+    } catch (e) {
+      setErroMsg(`Nao consegui gerar a planilha: ${e.message}`);
+    } finally {
+      setBaixando(false);
+    }
+  }, [jobId, job?.id, baixando]);
 
   const verJobAnterior = useCallback(async (id) => {
     setJobId(id);
@@ -834,9 +871,51 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
                   cor="slate" Icon={BarChart3}
                 />
                 <CardMetrica
-                  titulo="Drawdown" valor={formatarBRL(job.drawdown_max)}
-                  sub={`Streak red: ${job.max_streak_red || 0}`}
+                  titulo="Drawdown" valor={formatarU(job.drawdown_unidades ?? job.drawdown_max)}
+                  sub={`${formatarBRL(job.drawdown_max)} · streak red ${job.max_streak_red || 0}`}
                   cor="amber" Icon={TrendingDown}
+                />
+              </div>
+
+              {/* v5: segunda faixa — as metricas que servem pra COMPARAR estrategias.
+                  Unidade nao depende do stake, entao e ela que permite por dois
+                  backtests lado a lado. Antes o modal so mostrava BRL. */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <CardMetrica
+                  titulo="Lucro (unidades)" valor={formatarU(job.pnl_unidades)}
+                  sub="nao depende do stake"
+                  cor={(job.pnl_unidades || 0) >= 0 ? 'emerald' : 'rose'}
+                  Icon={(job.pnl_unidades || 0) >= 0 ? TrendingUp : TrendingDown}
+                />
+                <CardMetrica
+                  titulo="Lucro / Drawdown"
+                  valor={(() => {
+                    const l = Number(job.pnl_unidades || 0);
+                    const d = Number(job.drawdown_unidades || 0);
+                    return d > 0 ? `${(l / d).toFixed(1)}x` : '—';
+                  })()}
+                  sub="quanto rende por risco"
+                  cor="cyan" Icon={Activity}
+                />
+                <CardMetrica
+                  titulo="Unid. por dia"
+                  valor={(() => {
+                    const l = Number(job.pnl_unidades || 0);
+                    const d = Number(job.dias_total || 0);
+                    return d > 0 ? formatarU(l / d) : '—';
+                  })()}
+                  sub={`${job.dias_total || 0} dias`}
+                  cor="slate" Icon={Calendar}
+                />
+                <CardMetrica
+                  titulo="Apostas por jogo"
+                  valor={(() => {
+                    const ap = Number(job.total_apostas || 0);
+                    const jg = Number(job.jogos_distintos || 0);
+                    return jg > 0 ? (ap / jg).toFixed(2) : '—';
+                  })()}
+                  sub={job.jogos_distintos ? `${job.jogos_distintos} jogos` : 'escada de linhas'}
+                  cor="slate" Icon={BarChart3}
                 />
               </div>
 
@@ -933,6 +1012,19 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                   Novo backtest
+                </button>
+              )}
+              {/* v5: mesma planilha do avulso — uma linha por aposta, com as
+                  colunas de cobertura/qtd/linha/placar. E o insumo do garimpo. */}
+              {estado === 'resultado' && (job?.total_apostas || 0) > 0 && (
+                <button
+                  onClick={baixarPlanilha}
+                  disabled={baixando}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-semibold text-emerald-300 hover:bg-emerald-500/10 transition disabled:opacity-40"
+                  style={{ border: '0.5px solid rgba(16,185,129,0.4)' }}
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  {baixando ? 'Gerando planilha...' : 'Baixar planilha das apostas'}
                 </button>
               )}
               <div className="flex-1" />
