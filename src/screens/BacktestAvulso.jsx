@@ -447,6 +447,10 @@ export default function BacktestAvulso({ onNavegar } = {}) {
 
   // execucao
   const [rodando, setRodando] = useState(false);
+  // v14: progresso do job — o motor ja grava progresso (0-100) e progresso_msg
+  // no banco a cada lote; a tela so nao lia. Nada muda no backend.
+  const [progresso, setProgresso] = useState(0);
+  const [progressoMsg, setProgressoMsg] = useState('');
   const [erro, setErro] = useState(null);
   const [resultado, setResultado] = useState(null);
   const [jobId, setJobId] = useState(null);
@@ -551,6 +555,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
       setJobId(jobId);
 
       pollInicioRef.current = Date.now();
+      setProgresso(0); setProgressoMsg('na fila...');
       pollRef.current = setInterval(async () => {
         if (Date.now() - pollInicioRef.current > POLL_TIMEOUT_MS) {
           limparPoll();
@@ -560,6 +565,10 @@ export default function BacktestAvulso({ onNavegar } = {}) {
         try {
           const job = await ApiBacktest.get(jobId, true);
           if (!montadoRef.current) { limparPoll(); return; }
+          // v14: espelha o andamento que o worker grava no banco
+          const _p = Number(job?.progresso);
+          if (Number.isFinite(_p)) setProgresso(Math.max(0, Math.min(100, Math.round(_p))));
+          if (job?.progresso_msg) setProgressoMsg(String(job.progresso_msg));
           const st = (job?.status || '').toLowerCase();
           if (st === 'concluido' || st === 'concluído') {
             limparPoll(); setRodando(false); setResultado(job || {});
@@ -928,6 +937,27 @@ export default function BacktestAvulso({ onNavegar } = {}) {
               >
                 {rodando ? <><RefreshCw className="w-4 h-4 mike-spin" /> Rodando backtest...</> : <><Play className="w-4 h-4" /> Rodar backtest</>}
               </button>
+
+              {/* v14: barra de progresso do job */}
+              {rodando && (
+                <div className="mt-2.5">
+                  <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(60,85,130,0.25)' }}>
+                    <div className="h-full transition-all duration-500"
+                         style={{ width: `${Math.max(2, progresso)}%`, backgroundColor: '#10b981' }} />
+                  </div>
+                  <div className="flex items-center justify-between gap-2 mt-1">
+                    <span className="text-[10px] text-[--mike-fg-muted] font-mono truncate">
+                      {progressoMsg || 'iniciando...'}
+                    </span>
+                    <span className="text-[10px] font-mono text-emerald-400 flex-shrink-0">{progresso}%</span>
+                  </div>
+                  {jobId && (
+                    <div className="text-[9px] text-[--mike-fg-muted] mt-0.5 font-mono">
+                      job #{jobId} · pode fechar a página — o resultado fica salvo no banco
+                    </div>
+                  )}
+                </div>
+              )}
             </section>
           </div>
 
