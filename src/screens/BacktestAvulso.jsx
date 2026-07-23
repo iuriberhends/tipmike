@@ -153,7 +153,7 @@ function _labelChipHist(f) {
 }
 
 const POLL_MS = 2000;
-const POLL_TIMEOUT_MS = 45 * 60 * 1000;
+const POLL_TIMEOUT_MS = 45 * 60 * 1000;   // v13: job com escada de linhas demora mais
 
 
 const themeVars = {
@@ -346,6 +346,9 @@ function DivFina() {
 // ============================================================
 
 export default function BacktestAvulso({ onNavegar } = {}) {
+  // v13: quantas linhas por jogo (o bot ao vivo usa 7 na Adriatic)
+  const [maxPorJogo, setMaxPorJogo] = useState('');
+  const [escadaLinhas, setEscadaLinhas] = useState(false);
   // upload
   const [arquivo, setArquivo] = useState(null);
   const [subindo, setSubindo] = useState(false);
@@ -492,6 +495,8 @@ export default function BacktestAvulso({ onNavegar } = {}) {
   }, [arquivo]);
 
   const validarFiltros = useCallback(() => {
+    if (escadaLinhas && !maxPorJogo) return 'Com a escada de linhas ligada, informe o máx. de apostas por jogo.';
+    if (maxPorJogo && (Number(maxPorJogo) < 1 || Number(maxPorJogo) > 50)) return 'Máx. apostas por jogo: entre 1 e 50.';
     if (!uploadId) return 'Suba um arquivo primeiro.';
     if (!mercado) return 'Escolha um mercado.';
     const lmin = numOuNull(linhaMin), lmax = numOuNull(linhaMax);
@@ -518,6 +523,8 @@ export default function BacktestAvulso({ onNavegar } = {}) {
       : null;
 
     const body = {
+      max_apostas_partida: maxPorJogo ? Number(maxPorJogo) : null,
+      evitar_linhas_seq: !escadaLinhas,
       upload_id: uploadId,
       mercado, lado, casa, esporte,
       filtros_hist: filtrosHist,
@@ -758,6 +765,33 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                     <Campo label="Odd mín."><Input type="number" value={oddMin} onChange={setOddMin} placeholder="ex: 1.6" /></Campo>
                     <Campo label="Odd máx."><Input type="number" value={oddMax} onChange={setOddMax} placeholder="ex: 2.2" /></Campo>
                   </div>
+                {/* v13: linhas por jogo */}
+                <div className="mt-3">
+                  <div className="text-[10px] uppercase tracking-wider text-[--mike-fg-muted] font-bold mb-1.5">
+                    Linhas por jogo
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={escadaLinhas}
+                             onChange={(e) => setEscadaLinhas(e.target.checked)}
+                             className="accent-cyan-500" />
+                      <span className="text-[11px] text-[--mike-fg-soft]">
+                        Pegar a escada de linhas do mesmo jogo
+                      </span>
+                    </label>
+                    <div className="w-40">
+                      <Campo label="Máx. apostas por jogo">
+                        <Input type="number" value={maxPorJogo} onChange={setMaxPorJogo}
+                               placeholder={escadaLinhas ? 'ex: 7' : '1 (trava ligada)'} />
+                      </Campo>
+                    </div>
+                  </div>
+                  <div className="text-[10px] text-[--mike-fg-muted] mt-1.5">
+                    Desligado, o motor aposta <b>uma vez por jogo</b> — quase sempre a primeira
+                    linha ofertada (rasa, pré-jogo). Ligado, ele acompanha a escada e alcança as
+                    linhas fundas, igual ao bot ao vivo.
+                  </div>
+                </div>
                 </Grupo>
 
                 {/* GRUPO 2: Confronto direto (H2H) */}
