@@ -153,7 +153,7 @@ function _labelChipHist(f) {
 }
 
 const POLL_MS = 2000;
-const POLL_TIMEOUT_MS = 10 * 60 * 1000;
+const POLL_TIMEOUT_MS = 45 * 60 * 1000;
 
 
 const themeVars = {
