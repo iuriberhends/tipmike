@@ -499,7 +499,6 @@ export default function BacktestAvulso({ onNavegar } = {}) {
   }, [arquivo]);
 
   const validarFiltros = useCallback(() => {
-    if (escadaLinhas && !maxPorJogo) return 'Com a escada de linhas ligada, informe o máx. de apostas por jogo.';
     if (maxPorJogo && (Number(maxPorJogo) < 1 || Number(maxPorJogo) > 50)) return 'Máx. apostas por jogo: entre 1 e 50.';
     if (!uploadId) return 'Suba um arquivo primeiro.';
     if (!mercado) return 'Escolha um mercado.';
@@ -791,7 +790,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                     <div className="w-40">
                       <Campo label="Máx. apostas por jogo">
                         <Input type="number" value={maxPorJogo} onChange={setMaxPorJogo}
-                               placeholder={escadaLinhas ? 'ex: 7' : '1 (trava ligada)'} />
+                               placeholder={escadaLinhas ? 'vazio = escada toda' : '1 (trava ligada)'} />
                       </Campo>
                     </div>
                   </div>
