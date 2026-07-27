@@ -514,7 +514,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
     if (banca == null || banca <= 0) return 'Banca inicial deve ser maior que zero.';
     if (ehBasket && !Object.values(quartos).some(Boolean)) return 'Selecione ao menos um quarto.';
     return null;
-  }, [uploadId, mercado, linhaMin, linhaMax, oddMin, oddMax, stakeValor, bancaInicial, ehBasket, quartos]);
+  }, [escadaLinhas, maxPorJogo, uploadId, mercado, linhaMin, linhaMax, oddMin, oddMax, stakeValor, bancaInicial, ehBasket, quartos]);
 
   const handleRodar = useCallback(async () => {
     const msgErro = validarFiltros();
@@ -584,7 +584,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
     } catch (e) {
       if (montadoRef.current) { setRodando(false); setErro(e?.message || 'Falha ao criar job.'); }
     }
-  }, [validarFiltros, uploadId, mercado, lado, casa, esporte, filtrosHist,
+  }, [validarFiltros, escadaLinhas, maxPorJogo, uploadId, mercado, lado, casa, esporte, filtrosHist,
       cenario, difPlacar, quartos, ehBasket, linhaMin, linhaMax, oddMin, oddMax,
       blacklist, whitelist, stakeValor, bancaInicial, filtrosComp]);
 
