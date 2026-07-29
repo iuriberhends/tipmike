@@ -352,6 +352,8 @@ export default function BacktestAvulso({ onNavegar } = {}) {
   const [folgaAtiva, setFolgaAtiva] = useState(false);
   const [folgaMin, setFolgaMin] = useState('');
   const [folgaMax, setFolgaMax] = useState('');
+  const [momentoAtivo, setMomentoAtivo] = useState(false);
+  const [momentoMax, setMomentoMax] = useState('2');
   // upload
   const [arquivo, setArquivo] = useState(null);
   const [subindo, setSubindo] = useState(false);
@@ -521,7 +523,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
       if (fmin != null && fmax != null && fmin > fmax) return 'Folga mín não pode ser maior que a máx.';
     }
     return null;
-  }, [escadaLinhas, folgaAtiva, folgaMin, folgaMax, maxPorJogo, uploadId, mercado, linhaMin, linhaMax, oddMin, oddMax, stakeValor, bancaInicial, ehBasket, quartos]);
+  }, [escadaLinhas, folgaAtiva, folgaMin, folgaMax, momentoAtivo, momentoMax, maxPorJogo, uploadId, mercado, linhaMin, linhaMax, oddMin, oddMax, stakeValor, bancaInicial, ehBasket, quartos]);
 
   const handleRodar = useCallback(async () => {
     const msgErro = validarFiltros();
@@ -539,6 +541,8 @@ export default function BacktestAvulso({ onNavegar } = {}) {
       folga_ativo: folgaAtiva,
       folga_min: folgaAtiva ? numOuNull(folgaMin) : null,
       folga_max: folgaAtiva ? numOuNull(folgaMax) : null,
+      momento_ativo: momentoAtivo,
+      momento_max: momentoAtivo ? numOuNull(momentoMax) : null,
       upload_id: uploadId,
       mercado, lado, casa, esporte,
       filtros_hist: filtrosHist,
@@ -594,7 +598,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
     } catch (e) {
       if (montadoRef.current) { setRodando(false); setErro(e?.message || 'Falha ao criar job.'); }
     }
-  }, [validarFiltros, escadaLinhas, folgaAtiva, folgaMin, folgaMax, maxPorJogo, uploadId, mercado, lado, casa, esporte, filtrosHist,
+  }, [validarFiltros, escadaLinhas, folgaAtiva, folgaMin, folgaMax, momentoAtivo, momentoMax, maxPorJogo, uploadId, mercado, lado, casa, esporte, filtrosHist,
       cenario, difPlacar, quartos, ehBasket, linhaMin, linhaMax, oddMin, oddMax,
       blacklist, whitelist, stakeValor, bancaInicial, filtrosComp]);
 
@@ -827,6 +831,26 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                   <div className="text-[10px] text-[--mike-fg-muted] mt-1.5">Folga = linha − déficit do placar no lado apostado. Ex.: folga mín <b>1.5</b> só entra se a zebra já estiver cobrindo a linha com 1,5 de sobra.</div>
                 </div>
                 )}
+                {/* MOMENTO (v13): estagio do jogo — vale pra qualquer mercado */}
+                <div className="mt-3">
+                  <div className="text-[10px] uppercase tracking-wider text-[--mike-fg-muted] font-bold mb-1.5">Momento (estágio do jogo)</div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={momentoAtivo} onChange={(e) => setMomentoAtivo(e.target.checked)} className="accent-cyan-500" />
+                    <span className="text-[11px] text-[--mike-fg-soft]">Só apostar até certo ponto do jogo (linha da casa ainda defasada)</span>
+                  </label>
+                  {momentoAtivo && (
+                    <div className="mt-2">
+                      <Campo label="Até o fim do…">
+                        <select value={momentoMax} onChange={(e) => setMomentoMax(e.target.value)} className="mike-input w-full text-xs px-2 py-1.5 rounded-md">
+                          <option value="1">1º quarto (só o começo)</option>
+                          <option value="2">1º tempo (1Q + 2Q) — recomendado</option>
+                          <option value="3">3º quarto</option>
+                        </select>
+                      </Campo>
+                    </div>
+                  )}
+                  <div className="text-[10px] text-[--mike-fg-muted] mt-1.5">Lido do estágio do jogo no tick (1Q/2Q/3Q/4Q). Comprovado no vivo: apostas do 1º tempo renderam <b>+18,7%</b> vs <b>−7,6%</b> no 2º. Só funciona onde o coletor marca o período (hoje: Superbet).</div>
+                </div>
                 </Grupo>
 
                 {/* GRUPO 2: Confronto direto (H2H) */}

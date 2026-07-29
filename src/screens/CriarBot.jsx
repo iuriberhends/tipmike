@@ -1768,6 +1768,8 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
   const [folgaAtivo, setFolgaAtivo] = useState(false);
   const [folgaMin, setFolgaMin] = useState('');
   const [folgaMax, setFolgaMax] = useState('');
+  const [momentoAtivo, setMomentoAtivo] = useState(false);
+  const [momentoMax, setMomentoMax] = useState('2');
   // MAX TIPS POR JOGO
   const [maxTipsPorJogo, setMaxTipsPorJogo] = useState('ilimitado');
 
@@ -1916,6 +1918,8 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     folgaAtivo,
     folgaMin: folgaMin === '' ? null : Number(folgaMin),
     folgaMax: folgaMax === '' ? null : Number(folgaMax),
+    momentoAtivo,
+    momentoMax: momentoMax === '' ? null : Number(momentoMax),
   };
 
   // Aplica state salvo: chama todos os setters
@@ -2012,6 +2016,8 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     if (s.folgaAtivo !== undefined) setFolgaAtivo(!!s.folgaAtivo);
     if (s.folgaMin !== undefined && s.folgaMin !== null) setFolgaMin(String(s.folgaMin)); else setFolgaMin('');
     if (s.folgaMax !== undefined && s.folgaMax !== null) setFolgaMax(String(s.folgaMax)); else setFolgaMax('');
+    if (s.momentoAtivo !== undefined) setMomentoAtivo(!!s.momentoAtivo);
+    if (s.momentoMax !== undefined && s.momentoMax !== null) setMomentoMax(String(s.momentoMax));
     if (s.maxTipsPorJogo !== undefined) setMaxTipsPorJogo(s.maxTipsPorJogo);
   };
 
@@ -3033,6 +3039,27 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
               <p className="text-[10px] text-[--mike-fg-muted] mt-1.5">Folga = linha menos deficit do placar no lado apostado. Ex.: 1.5 so entra se a zebra ja cobre a linha com 1,5 de sobra. Grava em filtros.folgaMin/folgaMax.</p>
             </div>
           )}
+
+          {/* MOMENTO (v13) — estagio do jogo; vale pra qualquer mercado */}
+          <div className="pt-3 mt-1" style={{ borderTop: '0.5px solid rgba(60,85,130,0.25)' }}>
+            <label className="inline-flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" className="mike-checkbox" checked={momentoAtivo} onChange={(e) => setMomentoAtivo(e.target.checked)} />
+              <span className="text-xs text-[--mike-fg-soft]">Momento: so apostar ate certo ponto do jogo (linha da casa ainda defasada no comeco).</span>
+            </label>
+            {momentoAtivo && (
+              <div className="flex items-center gap-3 flex-wrap mt-2">
+                <span className="text-xs text-[--mike-fg-soft]">Ate o fim do</span>
+                <div className="w-56">
+                  <MikeSelect value={momentoMax} onChange={setMomentoMax} options={[
+                    { value: '1', label: '1o quarto (so o comeco)' },
+                    { value: '2', label: '1o tempo (1Q+2Q) - recomendado' },
+                    { value: '3', label: '3o quarto' },
+                  ]} />
+                </div>
+              </div>
+            )}
+            <p className="text-[10px] text-[--mike-fg-muted] mt-1.5">Lido do estagio do jogo no tick (1Q/2Q/3Q/4Q). Comprovado no vivo: apostas do 1o tempo renderam <b>+18,7%</b> vs <b>-7,6%</b> no 2o. So funciona onde o coletor marca o periodo (hoje: Superbet). Grava em filtros.momentoMax.</p>
+          </div>
         </div>
 
         {/* AÇÕES */}
