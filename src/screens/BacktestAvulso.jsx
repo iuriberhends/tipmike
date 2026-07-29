@@ -349,6 +349,9 @@ export default function BacktestAvulso({ onNavegar } = {}) {
   // v13: quantas linhas por jogo (o bot ao vivo usa 7 na Adriatic)
   const [maxPorJogo, setMaxPorJogo] = useState('');
   const [escadaLinhas, setEscadaLinhas] = useState(false);
+  const [folgaAtiva, setFolgaAtiva] = useState(false);
+  const [folgaMin, setFolgaMin] = useState('');
+  const [folgaMax, setFolgaMax] = useState('');
   // upload
   const [arquivo, setArquivo] = useState(null);
   const [subindo, setSubindo] = useState(false);
@@ -512,8 +515,13 @@ export default function BacktestAvulso({ onNavegar } = {}) {
     const banca = numOuNull(bancaInicial);
     if (banca == null || banca <= 0) return 'Banca inicial deve ser maior que zero.';
     if (ehBasket && !Object.values(quartos).some(Boolean)) return 'Selecione ao menos um quarto.';
+    if (folgaAtiva) {
+      const fmin = numOuNull(folgaMin), fmax = numOuNull(folgaMax);
+      if (fmin == null && fmax == null) return 'Folga ligada: informe a folga mínima e/ou máxima.';
+      if (fmin != null && fmax != null && fmin > fmax) return 'Folga mín não pode ser maior que a máx.';
+    }
     return null;
-  }, [escadaLinhas, maxPorJogo, uploadId, mercado, linhaMin, linhaMax, oddMin, oddMax, stakeValor, bancaInicial, ehBasket, quartos]);
+  }, [escadaLinhas, folgaAtiva, folgaMin, folgaMax, maxPorJogo, uploadId, mercado, linhaMin, linhaMax, oddMin, oddMax, stakeValor, bancaInicial, ehBasket, quartos]);
 
   const handleRodar = useCallback(async () => {
     const msgErro = validarFiltros();
@@ -528,6 +536,9 @@ export default function BacktestAvulso({ onNavegar } = {}) {
     const body = {
       max_apostas_partida: maxPorJogo ? Number(maxPorJogo) : null,
       evitar_linhas_seq: !escadaLinhas,
+      folga_ativo: folgaAtiva,
+      folga_min: folgaAtiva ? numOuNull(folgaMin) : null,
+      folga_max: folgaAtiva ? numOuNull(folgaMax) : null,
       upload_id: uploadId,
       mercado, lado, casa, esporte,
       filtros_hist: filtrosHist,
@@ -583,7 +594,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
     } catch (e) {
       if (montadoRef.current) { setRodando(false); setErro(e?.message || 'Falha ao criar job.'); }
     }
-  }, [validarFiltros, escadaLinhas, maxPorJogo, uploadId, mercado, lado, casa, esporte, filtrosHist,
+  }, [validarFiltros, escadaLinhas, folgaAtiva, folgaMin, folgaMax, maxPorJogo, uploadId, mercado, lado, casa, esporte, filtrosHist,
       cenario, difPlacar, quartos, ehBasket, linhaMin, linhaMax, oddMin, oddMax,
       blacklist, whitelist, stakeValor, bancaInicial, filtrosComp]);
 
@@ -800,6 +811,22 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                     linhas fundas, igual ao bot ao vivo.
                   </div>
                 </div>
+                {String(mercado).startsWith('ah_') && (
+                <div className="mt-3">
+                  <div className="text-[10px] uppercase tracking-wider text-[--mike-fg-muted] font-bold mb-1.5">Folga (handicap)</div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={folgaAtiva} onChange={(e) => setFolgaAtiva(e.target.checked)} className="accent-cyan-500" />
+                    <span className="text-[11px] text-[--mike-fg-soft]">Só apostar quando a zebra já cobre a linha por uma folga</span>
+                  </label>
+                  {folgaAtiva && (
+                    <div className="grid grid-cols-2 gap-3 mt-2">
+                      <Campo label="Folga mín."><Input type="number" value={folgaMin} onChange={setFolgaMin} placeholder="ex: 1.5" /></Campo>
+                      <Campo label="Folga máx. (opcional)"><Input type="number" value={folgaMax} onChange={setFolgaMax} placeholder="sem limite" /></Campo>
+                    </div>
+                  )}
+                  <div className="text-[10px] text-[--mike-fg-muted] mt-1.5">Folga = linha − déficit do placar no lado apostado. Ex.: folga mín <b>1.5</b> só entra se a zebra já estiver cobrindo a linha com 1,5 de sobra.</div>
+                </div>
+                )}
                 </Grupo>
 
                 {/* GRUPO 2: Confronto direto (H2H) */}

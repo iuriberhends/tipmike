@@ -1765,6 +1765,9 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
 
   // EVITAR LINHAS SEQ
   const [evitarLinhasSeq, setEvitarLinhasSeq] = useState(true);
+  const [folgaAtivo, setFolgaAtivo] = useState(false);
+  const [folgaMin, setFolgaMin] = useState('');
+  const [folgaMax, setFolgaMax] = useState('');
   // MAX TIPS POR JOGO
   const [maxTipsPorJogo, setMaxTipsPorJogo] = useState('ilimitado');
 
@@ -1910,6 +1913,9 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     blacklistZebraAtivo, blacklistZebraEstado,
     blacklistFavoritoAtivo, blacklistFavoritoEstado,
     evitarLinhasSeq, maxTipsPorJogo,
+    folgaAtivo,
+    folgaMin: folgaMin === '' ? null : Number(folgaMin),
+    folgaMax: folgaMax === '' ? null : Number(folgaMax),
   };
 
   // Aplica state salvo: chama todos os setters
@@ -2003,6 +2009,9 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     if (s.blacklistFavoritoAtivo !== undefined) setBlacklistFavoritoAtivo(s.blacklistFavoritoAtivo);
     if (s.blacklistFavoritoEstado !== undefined) setBlacklistFavoritoEstado(s.blacklistFavoritoEstado);
     if (s.evitarLinhasSeq !== undefined) setEvitarLinhasSeq(s.evitarLinhasSeq);
+    if (s.folgaAtivo !== undefined) setFolgaAtivo(!!s.folgaAtivo);
+    if (s.folgaMin !== undefined && s.folgaMin !== null) setFolgaMin(String(s.folgaMin)); else setFolgaMin('');
+    if (s.folgaMax !== undefined && s.folgaMax !== null) setFolgaMax(String(s.folgaMax)); else setFolgaMax('');
     if (s.maxTipsPorJogo !== undefined) setMaxTipsPorJogo(s.maxTipsPorJogo);
   };
 
@@ -3004,6 +3013,24 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
                 />
               </div>
               <span className="text-xs text-[--mike-fg-soft]">tips para o mesmo jogo</span>
+            </div>
+          )}
+
+          {String(mercado).startsWith('ah_') && (
+            <div className="pt-3 mt-1" style={{ borderTop: '0.5px solid rgba(60,85,130,0.25)' }}>
+              <label className="inline-flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" className="mike-checkbox" checked={folgaAtivo} onChange={(e) => setFolgaAtivo(e.target.checked)} />
+                <span className="text-xs text-[--mike-fg-soft]">Folga: so apostar quando a zebra ja cobre a linha com sobra (handicap).</span>
+              </label>
+              {folgaAtivo && (
+                <div className="flex items-center gap-3 flex-wrap mt-2">
+                  <span className="text-xs text-[--mike-fg-soft]">Folga min.</span>
+                  <div className="w-24"><input type="number" step="0.5" value={folgaMin} onChange={(e) => setFolgaMin(e.target.value)} placeholder="1.5" className="mike-input w-full text-xs px-2 py-1.5 rounded-md" /></div>
+                  <span className="text-xs text-[--mike-fg-soft]">max. (opcional)</span>
+                  <div className="w-24"><input type="number" step="0.5" value={folgaMax} onChange={(e) => setFolgaMax(e.target.value)} placeholder="sem limite" className="mike-input w-full text-xs px-2 py-1.5 rounded-md" /></div>
+                </div>
+              )}
+              <p className="text-[10px] text-[--mike-fg-muted] mt-1.5">Folga = linha menos deficit do placar no lado apostado. Ex.: 1.5 so entra se a zebra ja cobre a linha com 1,5 de sobra. Grava em filtros.folgaMin/folgaMax.</p>
             </div>
           )}
         </div>
