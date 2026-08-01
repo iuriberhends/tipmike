@@ -766,8 +766,9 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                 infiel. Herda casa/esporte e o periodo do parquet subido). */}
             {uploadId && (
               <H2hSyncPanel
-                casa={casa}
-                esporte={esporte}
+                uploadId={uploadId}
+                casa={resumo?.casas?.length === 1 ? String(resumo.casas[0]).toLowerCase().trim() : casa}
+                esporte={resumo?.esportes?.length === 1 ? resumo.esportes[0] : esporte}
                 dataInicio={resumo?.ts_min?.slice(0, 10)}
                 dataFim={resumo?.ts_max?.slice(0, 10)}
                 periodoLabel={resumo ? `${resumo.ts_min?.slice(0, 10)} a ${resumo.ts_max?.slice(0, 10)}` : null}

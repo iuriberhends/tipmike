@@ -46,6 +46,7 @@ function Barra({ pct, msg }) {
 export default function H2hSyncPanel({
   casa, esporte, liga = null, dias = 3,
   dataInicio = null, dataFim = null, periodoLabel = null,
+  uploadId = null,
 }) {
   const [aberto, setAberto] = useState(false);
   const [fase, setFase] = useState('idle');      // idle|analisando|analisado|preenchendo|feito
@@ -112,6 +113,9 @@ export default function H2hSyncPanel({
   }, []);
 
   const corpoBase = () => ({
+    // com uploadId, a analise le os pares DO ARQUIVO (ticks de fonte
+    // externa nunca passaram pela tabela do banco)
+    upload_id: uploadId || undefined,
     casa, esporte, liga,
     dias: Number(dias) || 3,
     data_inicio: dataInicio || undefined,
@@ -130,7 +134,7 @@ export default function H2hSyncPanel({
         (j) => { setPct(j.progresso); setMsg(j.etapa); },
         (j) => { setRelatorio(j.relatorio); setFase('analisado'); limparJobAtivo(); });
     } catch (e) { setErro(String(e.message || e)); setFase('idle'); limparJobAtivo(); }
-  }, [casa, esporte, liga, dias, dataInicio, dataFim, seguirJob]);
+  }, [casa, esporte, liga, dias, dataInicio, dataFim, uploadId, seguirJob]);
 
   const rodarPreenchimento = useCallback((dryRun) => {
     if (!analiseJobId) return;
