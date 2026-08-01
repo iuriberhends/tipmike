@@ -112,6 +112,13 @@ export const ApiH2H = {
   jogos: (ja, jb, params) => api.get(`/h2h/${ja}/${jb}/jogos`, params),
   busca: (params)         => api.get('/h2h', params),
 };
+export const ApiH2hSync = {
+  // botao "Analisar H2H" do backtest — analisa ticks x h2h_historico,
+  // acompanha o job e preenche pela TipManager o que falta (com dry_run).
+  analisar:  (body)          => api.post('/h2h-sync/analisar', body),
+  get:       (jobId)         => api.get(`/h2h-sync/${jobId}`),
+  preencher: (jobId, body)   => api.post(`/h2h-sync/${jobId}/preencher`, body),
+};
 // ============================================================
 // Helper: download arbitrario via fetch+blob
 // (v6: agora autenticado — CSV/planilha continuam funcionando

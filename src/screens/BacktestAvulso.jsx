@@ -22,6 +22,7 @@ import {
   TrendingDown, Layers, Ban, CheckCircle2, FileUp, Download,
 } from 'lucide-react';
 import MikeHeader from '../shared/MikeHeader.jsx';
+import H2hSyncPanel from '../shared/H2hSyncPanel.jsx';
 import { ApiBacktest } from '../lib/api.js';
 
 // ============================================================
@@ -759,6 +760,19 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                 );
               })()}
             </section>
+
+            {/* ANALISAR H2H — completa o h2h_historico do periodo ANTES de rodar
+                (a logica: backtest le o H2H do banco; banco furado = teste
+                infiel. Herda casa/esporte e o periodo do parquet subido). */}
+            {uploadId && (
+              <H2hSyncPanel
+                casa={casa}
+                esporte={esporte}
+                dataInicio={resumo?.ts_min?.slice(0, 10)}
+                dataFim={resumo?.ts_max?.slice(0, 10)}
+                periodoLabel={resumo ? `${resumo.ts_min?.slice(0, 10)} a ${resumo.ts_max?.slice(0, 10)}` : null}
+              />
+            )}
 
             {/* FILTROS */}
             <section className="rounded-lg p-4" style={cardStyle}>
