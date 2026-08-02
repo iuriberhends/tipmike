@@ -154,7 +154,12 @@ function _labelChipHist(f) {
 }
 
 const POLL_MS = 2000;
-const POLL_TIMEOUT_MS = 45 * 60 * 1000;   // v13: job com escada de linhas demora mais
+// v15: o teto cego de 45min marcava como "timeout" jobs SAUDAVEIS que so
+// ficaram mais pesados (hist H2H completo = chip mais caro por tick). O
+// certo: desistir apenas de job PARADO (sem avanco de progresso por 10min
+// = worker morto sem gravar erro) + teto absoluto de seguranca de 4h.
+const POLL_STALL_MS = 10 * 60 * 1000;
+const POLL_TIMEOUT_MS = 4 * 60 * 60 * 1000;
 
 
 const themeVars = {
@@ -570,11 +575,19 @@ export default function BacktestAvulso({ onNavegar } = {}) {
       setJobId(jobId);
 
       pollInicioRef.current = Date.now();
+      let ultimoAvanco = Date.now();
+      let ultimoProgresso = -1;
       setProgresso(0); setProgressoMsg('na fila...');
       pollRef.current = setInterval(async () => {
-        if (Date.now() - pollInicioRef.current > POLL_TIMEOUT_MS) {
+        const parado = Date.now() - ultimoAvanco > POLL_STALL_MS;
+        if (parado || Date.now() - pollInicioRef.current > POLL_TIMEOUT_MS) {
           limparPoll();
-          if (montadoRef.current) { setRodando(false); setErro('Backtest demorou demais (timeout).'); }
+          if (montadoRef.current) {
+            setRodando(false);
+            setErro(parado
+              ? 'O job ficou 10min sem avancar — provavelmente morreu no servidor. Confira em Jobs.'
+              : `Acompanhamento encerrado apos 4h — o job #${jobId} pode seguir no servidor; confira em Jobs.`);
+          }
           return;
         }
         try {
@@ -582,7 +595,10 @@ export default function BacktestAvulso({ onNavegar } = {}) {
           if (!montadoRef.current) { limparPoll(); return; }
           // v14: espelha o andamento que o worker grava no banco
           const _p = Number(job?.progresso);
-          if (Number.isFinite(_p)) setProgresso(Math.max(0, Math.min(100, Math.round(_p))));
+          if (Number.isFinite(_p)) {
+            if (_p !== ultimoProgresso) { ultimoProgresso = _p; ultimoAvanco = Date.now(); }
+            setProgresso(Math.max(0, Math.min(100, Math.round(_p))));
+          }
           if (job?.progresso_msg) setProgressoMsg(String(job.progresso_msg));
           const st = (job?.status || '').toLowerCase();
           if (st === 'concluido' || st === 'concluído') {

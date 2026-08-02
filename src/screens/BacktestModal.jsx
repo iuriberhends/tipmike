@@ -391,6 +391,10 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
       try {
         const data = await ApiBacktest.get(jobId, false);
         setJob(data);
+        const _p = Number(data?.progresso);
+        if (Number.isFinite(_p) && _p !== ultimoProgresso) {
+          ultimoProgresso = _p; ultimoAvanco = Date.now();
+        }
         if (data.status === 'concluido') {
           const completo = await ApiBacktest.get(jobId, true);
           setJob(completo);
@@ -412,13 +416,21 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
       }
     };
 
-    // v5: guarda de tempo — sem isso o modal ficava girando pra sempre se o job
-    // morresse no worker sem gravar status 'erro'.
+    // v6: guarda por ESTAGNACAO, nao por relogio — o teto cego de 45min
+    // condenava jobs saudaveis que so ficaram mais pesados (hist H2H
+    // completo). Desiste apenas se o progresso parar 10min (worker morto
+    // sem gravar 'erro'); teto absoluto de 4h por seguranca.
     const inicio = Date.now();
-    const TIMEOUT_MS = 45 * 60 * 1000;
+    const STALL_MS = 10 * 60 * 1000;
+    const TIMEOUT_MS = 4 * 60 * 60 * 1000;
+    let ultimoAvanco = Date.now();
+    let ultimoProgresso = -1;
     const tickComGuarda = async () => {
-      if (Date.now() - inicio > TIMEOUT_MS) {
-        setErroMsg('Tempo limite: o job passou de 45 minutos. Confira o status na lista de jobs.');
+      const parado = Date.now() - ultimoAvanco > STALL_MS;
+      if (parado || Date.now() - inicio > TIMEOUT_MS) {
+        setErroMsg(parado
+          ? 'O job ficou 10min sem avancar — provavelmente morreu no worker. Confira na lista de jobs.'
+          : 'Acompanhamento encerrado apos 4h — o job pode seguir no servidor; confira na lista de jobs.');
         setEstado('erro');
         if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
         return;
