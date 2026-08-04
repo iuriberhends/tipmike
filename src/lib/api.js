@@ -117,6 +117,7 @@ export const ApiMikeDb = {
   // coletores ou BetsAPI) e devolve o MESMO upload_id do upload manual.
   status:   ()            => api.get('/mikedb/status'),
   catalogo: (casa)        => api.get('/mikedb/catalogo', casa ? { casa } : undefined),
+  mercados: (casa, sport) => api.get('/mikedb/mercados', { casa, sport }),
   gerar:    (body)        => api.post('/mikedb/gerar', body),
   job:      (jobId)       => api.get(`/mikedb/gerar/${jobId}`),
   // download com Authorization (link direto tomaria 401) — mesmo padrão do CSV
