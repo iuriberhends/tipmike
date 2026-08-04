@@ -41,6 +41,14 @@ const ESPORTES = [
   { value: 'fifa', label: 'E-Football (FIFA)', icon: '⚽' },
   { value: 'nba2k', label: 'E-Basketball (NBA2K)', icon: '🏀' },
 ];
+// o parquet grava o esporte no dialeto do BANCO ('E-Basketball'); os filtros
+// falam o dialeto da UI ('nba2k'). Sem esta ponte, o arquivo vinha de basquete
+// e o filtro continuava em FIFA — nenhum tick casava e o backtest dava zero.
+const ESPORTE_BANCO_PARA_UI = {
+  'e-basketball': 'nba2k',
+  'e-football': 'fifa',
+};
+
 const MERCADOS = [
   { value: 'over_under_ft', label: 'Over/Under FT (jogo todo)' },
   { value: 'over_under_ht', label: 'Over/Under HT (1º tempo)' },
@@ -499,18 +507,29 @@ export default function BacktestAvulso({ onNavegar } = {}) {
       if (!res?.upload_id) { setErro('Upload não retornou um id válido.'); return; }
       setUploadId(res.upload_id);
       setResumo(res);
-      // auto-seleciona a casa do arquivo (normaliza case, so se for opcao valida)
-      if (res.casas?.length === 1) {
-        const c = String(res.casas[0]).toLowerCase().trim();
-        if (CASAS.some(o => o.value === c)) setCasa(c);
-      }
+      alinharFiltrosComArquivo(res);   // casa + esporte de uma vez
       if (res.linhas === 0) setErro('Aviso: o arquivo não tem ticks após leitura.');
     } catch (e) {
       if (montadoRef.current) setErro(e?.message || 'Falha no upload');
     } finally {
       if (montadoRef.current) setSubindo(false);
     }
-  }, [arquivo]);
+  }, [arquivo, alinharFiltrosComArquivo]);
+
+  // Um arquivo (subido OU gerado no MikeDB) já sabe de que casa e esporte ele
+  // é: os filtros passam a nascer alinhados com ele, em vez de o usuário
+  // descobrir pelo aviso amarelo depois de configurar tudo.
+  const alinharFiltrosComArquivo = useCallback((res) => {
+    if (!res) return;
+    if (res.casas?.length === 1) {
+      const c = String(res.casas[0]).toLowerCase().trim();
+      if (CASAS.some((o) => o.value === c)) setCasa(c);
+    }
+    if (res.esportes?.length === 1) {
+      const ui = ESPORTE_BANCO_PARA_UI[String(res.esportes[0]).toLowerCase().trim()];
+      if (ui && ESPORTES.some((o) => o.value === ui)) setEsporte(ui);
+    }
+  }, []);
 
   const validarFiltros = useCallback(() => {
     if (maxPorJogo && (Number(maxPorJogo) < 1 || Number(maxPorJogo) > 50)) return 'Máx. apostas por jogo: entre 1 e 50.';
@@ -762,6 +781,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                     setResultado(null);
                     setErro(null);
                     setArquivo(null);
+                    alinharFiltrosComArquivo(res);   // casa + esporte do gerado
                   }}
                 />
               )}
