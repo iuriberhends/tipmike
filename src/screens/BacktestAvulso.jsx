@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import MikeHeader from '../shared/MikeHeader.jsx';
 import H2hSyncPanel from '../shared/H2hSyncPanel.jsx';
+import MikeDbPanel from '../shared/MikeDbPanel.jsx';
 import { ApiBacktest } from '../lib/api.js';
 
 // ============================================================
@@ -365,6 +366,8 @@ export default function BacktestAvulso({ onNavegar } = {}) {
   const [subindo, setSubindo] = useState(false);
   const [resumo, setResumo] = useState(null);
   const [uploadId, setUploadId] = useState(null);
+  // aba da seção 1: 'arquivo' (upload manual) | 'mikedb' (gera no servidor)
+  const [abaTicks, setAbaTicks] = useState('arquivo');
 
   // filtros
   const [casa, setCasa] = useState('betano');
@@ -732,8 +735,38 @@ export default function BacktestAvulso({ onNavegar } = {}) {
 
             {/* UPLOAD */}
             <section className="rounded-lg p-4" style={cardStyle}>
-              <SecaoTitulo icon={Upload}>1. Arquivo de ticks (.parquet)</SecaoTitulo>
-              <div className="flex flex-wrap items-center gap-2">
+              <SecaoTitulo icon={Upload}>1. Ticks (.parquet)</SecaoTitulo>
+
+              {/* ABAS: subir um arquivo OU mandar o servidor gerar (MikeDB).
+                  As duas desembocam no mesmo uploadId/resumo — daqui pra
+                  baixo a tela não sabe (nem precisa saber) de onde veio. */}
+              <div className="flex items-center gap-1 mb-3">
+                {[['arquivo', 'Escolher arquivo'], ['mikedb', 'MikeDB']].map(([id, rotulo]) => (
+                  <button key={id} onClick={() => setAbaTicks(id)}
+                    className="px-3 py-1.5 rounded-md text-[11px] font-bold transition"
+                    style={abaTicks === id
+                      ? { backgroundColor: 'rgba(6,182,212,0.15)', color: '#22d3ee', border: '0.5px solid rgba(6,182,212,0.4)' }
+                      : { color: 'var(--mike-fg-muted)', border: '0.5px solid rgba(255,255,255,0.07)' }}>
+                    {rotulo}
+                  </button>
+                ))}
+              </div>
+
+              {abaTicks === 'mikedb' && (
+                <MikeDbPanel
+                  onGerado={(res) => {
+                    // mesmo trilho do upload manual: seta id + resumo e limpa
+                    // resultado velho pra não misturar rodadas.
+                    setUploadId(res?.upload_id || null);
+                    setResumo(res || null);
+                    setResultado(null);
+                    setErro(null);
+                    setArquivo(null);
+                  }}
+                />
+              )}
+
+              <div className={`flex flex-wrap items-center gap-2 ${abaTicks === 'mikedb' ? 'hidden' : ''}`}>
                 <label className="flex items-center gap-2 px-3 py-2 rounded-md text-xs font-semibold cursor-pointer mike-border-thin text-[--mike-fg-soft] hover:text-[--mike-fg] transition">
                   <FileUp className="w-3.5 h-3.5" />
                   {arquivo ? arquivo.name : 'Escolher arquivo'}
@@ -750,7 +783,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                   {subindo ? <><RefreshCw className="w-3.5 h-3.5 mike-spin" /> Subindo...</> : <><Upload className="w-3.5 h-3.5" /> Subir</>}
                 </button>
               </div>
-              {resumo && (
+              {resumo && abaTicks !== 'mikedb' && (
                 <div className="mt-3 rounded-md p-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px]" style={{ backgroundColor: 'rgba(16,185,129,0.06)', border: '0.5px solid rgba(16,185,129,0.25)' }}>
                   <span className="flex items-center gap-1 text-emerald-400 font-bold">
                     <CheckCircle2 className="w-3 h-3" /> {(resumo.linhas ?? 0).toLocaleString()} ticks

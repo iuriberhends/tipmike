@@ -112,6 +112,19 @@ export const ApiH2H = {
   jogos: (ja, jb, params) => api.get(`/h2h/${ja}/${jb}/jogos`, params),
   busca: (params)         => api.get('/h2h', params),
 };
+export const ApiMikeDb = {
+  // aba "MikeDB" do backtest: o servidor gera o parquet (histórico dos
+  // coletores ou BetsAPI) e devolve o MESMO upload_id do upload manual.
+  status:   ()            => api.get('/mikedb/status'),
+  catalogo: (casa)        => api.get('/mikedb/catalogo', casa ? { casa } : undefined),
+  gerar:    (body)        => api.post('/mikedb/gerar', body),
+  job:      (jobId)       => api.get(`/mikedb/gerar/${jobId}`),
+  // download com Authorization (link direto tomaria 401) — mesmo padrão do CSV
+  download: (uploadId, nomeArquivo) =>
+    _downloadBlob(`${BASE_URL}/mikedb/download/${encodeURIComponent(uploadId)}`,
+                  nomeArquivo || 'mikedb_ticks.parquet'),
+};
+
 export const ApiH2hSync = {
   // botao "Analisar H2H" do backtest — analisa ticks x h2h_historico,
   // acompanha o job e preenche pela TipManager o que falta (com dry_run).
