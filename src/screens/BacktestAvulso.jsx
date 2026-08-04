@@ -53,6 +53,12 @@ const MERCADOS = [
   { value: 'over_under_ft', label: 'Over/Under FT (jogo todo)' },
   { value: 'over_under_ht', label: 'Over/Under HT (1º tempo)' },
   { value: 'ah_ft', label: 'HC Asiático FT (handicap)' },
+  // 03/ago: o MOTOR ja suportava ah_ht (mapa por casa: estrelabet '66',
+  // bet365 '180061'; keywords; e a liquidacao com o placar do INTERVALO em
+  // _periodo_do_bot=='ht'). So a lista do front nao oferecia — bastava isto.
+  { value: 'ah_ht', label: 'HC Asiático HT (1º tempo)' },
+  { value: 'ml_ft', label: 'Money Line FT (vencedor)' },
+  { value: 'ml_ht', label: 'Money Line HT (1º tempo)' },
 ];
 const LADOS = [
   { value: 'ambos', label: 'Ambos' },
