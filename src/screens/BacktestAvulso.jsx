@@ -495,6 +495,21 @@ export default function BacktestAvulso({ onNavegar } = {}) {
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
   };
 
+  // Um arquivo (subido OU gerado no MikeDB) já sabe de que casa e esporte ele
+  // é: os filtros passam a nascer alinhados com ele, em vez de o usuário
+  // descobrir pelo aviso amarelo depois de configurar tudo.
+  const alinharFiltrosComArquivo = useCallback((res) => {
+    if (!res) return;
+    if (res.casas?.length === 1) {
+      const c = String(res.casas[0]).toLowerCase().trim();
+      if (CASAS.some((o) => o.value === c)) setCasa(c);
+    }
+    if (res.esportes?.length === 1) {
+      const ui = ESPORTE_BANCO_PARA_UI[String(res.esportes[0]).toLowerCase().trim()];
+      if (ui && ESPORTES.some((o) => o.value === ui)) setEsporte(ui);
+    }
+  }, []);
+
   const handleUpload = useCallback(async () => {
     if (!arquivo) return;
     if (!arquivo.name?.toLowerCase().endsWith('.parquet')) {
@@ -515,21 +530,6 @@ export default function BacktestAvulso({ onNavegar } = {}) {
       if (montadoRef.current) setSubindo(false);
     }
   }, [arquivo, alinharFiltrosComArquivo]);
-
-  // Um arquivo (subido OU gerado no MikeDB) já sabe de que casa e esporte ele
-  // é: os filtros passam a nascer alinhados com ele, em vez de o usuário
-  // descobrir pelo aviso amarelo depois de configurar tudo.
-  const alinharFiltrosComArquivo = useCallback((res) => {
-    if (!res) return;
-    if (res.casas?.length === 1) {
-      const c = String(res.casas[0]).toLowerCase().trim();
-      if (CASAS.some((o) => o.value === c)) setCasa(c);
-    }
-    if (res.esportes?.length === 1) {
-      const ui = ESPORTE_BANCO_PARA_UI[String(res.esportes[0]).toLowerCase().trim()];
-      if (ui && ESPORTES.some((o) => o.value === ui)) setEsporte(ui);
-    }
-  }, []);
 
   const validarFiltros = useCallback(() => {
     if (maxPorJogo && (Number(maxPorJogo) < 1 || Number(maxPorJogo) > 50)) return 'Máx. apostas por jogo: entre 1 e 50.';
