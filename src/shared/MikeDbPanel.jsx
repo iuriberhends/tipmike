@@ -17,7 +17,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Play, Download, RefreshCw, CheckCircle2, AlertTriangle, Terminal,
-  Search, ChevronDown, X, Calendar,
+  Search, X, Calendar,
 } from 'lucide-react';
 import { ApiMikeDb } from '../lib/api.js';
 
@@ -37,12 +37,9 @@ function bonito(v) {
   return s.replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-const MERCADOS = [
-  { valor: '', rotulo: 'Todos' },
-  { valor: 'HANDICAP', rotulo: 'Handicap' },
-  { valor: 'OVER_UNDER', rotulo: 'Over/Under' },
-  { valor: 'MATCH_RESULT', rotulo: 'Money Line' },
-];
+// mercados e esportes vêm do servidor (que lê os mapas do MOTOR): cada casa
+// fala um dialeto — superbet 'OVER_UNDER', betano '13'/'157', bet365 '1450' —
+// então o painel manda a chave lógica e quem traduz é o backend.
 
 const iso = (d) => d.toISOString().slice(0, 10);
 function diasEntre(a, b) {
@@ -72,89 +69,69 @@ function Segmentado({ valor, onChange, opcoes, disabled }) {
   );
 }
 
-/* ------------------------------------------------------------ combobox --- */
-function ComboLiga({ ligas, valor, onChange, disabled }) {
-  const [aberto, setAberto] = useState(false);
-  const [busca, setBusca] = useState('');
-  const caixaRef = useRef(null);
-  const inputRef = useRef(null);
+/* ------------------------------------------------------- liga: digitar --- */
+// Nada de janela: o filtro do backtest_csv casa por TRECHO do nome da pasta,
+// entao digitar "h2h" ja pega todas as H2H de uma vez — mais rapido e mais
+// poderoso que caçar uma liga exata numa lista de 224.
+function CampoLiga({ ligas, valor, onChange, disabled }) {
+  const casam = useMemo(() => {
+    const q = (valor || '').trim().toLowerCase().replace(/\s+/g, '_');
+    if (!q) return null;
+    return ligas.filter((l) => l.liga.toLowerCase().includes(q));
+  }, [ligas, valor]);
 
-  useEffect(() => {
-    if (!aberto) return undefined;
-    const fora = (e) => { if (caixaRef.current && !caixaRef.current.contains(e.target)) setAberto(false); };
-    const esc = (e) => { if (e.key === 'Escape') setAberto(false); };
-    document.addEventListener('mousedown', fora);
-    document.addEventListener('keydown', esc);
-    const t = setTimeout(() => inputRef.current?.focus(), 10);
-    return () => {
-      clearTimeout(t);
-      document.removeEventListener('mousedown', fora);
-      document.removeEventListener('keydown', esc);
-    };
-  }, [aberto]);
-
-  const filtradas = useMemo(() => {
-    const q = busca.trim().toLowerCase();
-    if (!q) return ligas;
-    return ligas.filter((l) => bonito(l.liga).toLowerCase().includes(q));
-  }, [ligas, busca]);
-
-  const selecionada = ligas.find((l) => l.liga === valor);
+  // sugestoes: as 6 familias mais gordas, so pra ele saber o que existe
+  const familias = useMemo(() => {
+    const conta = {};
+    ligas.forEach((l) => {
+      const fam = bonito(l.liga).split(/[-–·]/)[0].trim().split(' ').slice(0, 2).join(' ');
+      if (!fam) return;
+      conta[fam] = (conta[fam] || 0) + (l.dias || 1);
+    });
+    return Object.entries(conta).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([f]) => f);
+  }, [ligas]);
 
   return (
-    <div className="relative" ref={caixaRef}>
-      <button type="button" disabled={disabled} onClick={() => setAberto((v) => !v)}
-        className="w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-md text-[11px] transition disabled:opacity-40 mike-border-thin hover:border-cyan-500/40"
-        style={{ color: selecionada ? 'var(--mike-fg)' : 'var(--mike-fg-muted)' }}>
-        <span className="truncate text-left">
-          {selecionada ? bonito(selecionada.liga) : 'Todas as ligas'}
-        </span>
-        <span className="flex items-center gap-1 shrink-0">
-          {selecionada && (
-            <X className="w-3 h-3 opacity-60 hover:opacity-100"
-               onClick={(e) => { e.stopPropagation(); onChange(''); }} />
-          )}
-          <ChevronDown className="w-3.5 h-3.5 opacity-60" />
-        </span>
-      </button>
+    <div className="space-y-1.5">
+      <div className="relative">
+        <Search className="w-3 h-3 absolute left-2.5 top-1/2 -translate-y-1/2 text-[--mike-fg-muted]" />
+        <input
+          value={valor} disabled={disabled}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="digite um trecho do nome (ex: h2h, battle, 4x5) — vazio = todas"
+          className="w-full pl-7 pr-7 py-2 rounded-md text-[11px] bg-transparent mike-border-thin text-[--mike-fg] outline-none focus:border-cyan-500/60 transition placeholder:text-[--mike-fg-muted]"
+        />
+        {valor && (
+          <button type="button" onClick={() => onChange('')}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-[--mike-fg-muted] hover:text-[--mike-fg]">
+            <X className="w-3 h-3" />
+          </button>
+        )}
+      </div>
 
-      {aberto && (
-        <div className="absolute z-30 mt-1 w-full rounded-md overflow-hidden shadow-2xl"
-             style={{ backgroundColor: '#0d1424', border: '0.5px solid rgba(255,255,255,0.12)' }}>
-          <div className="flex items-center gap-1.5 px-2 py-1.5"
-               style={{ borderBottom: '0.5px solid rgba(255,255,255,0.07)' }}>
-            <Search className="w-3 h-3 text-[--mike-fg-muted] shrink-0" />
-            <input ref={inputRef} value={busca} onChange={(e) => setBusca(e.target.value)}
-                   placeholder="buscar liga..."
-                   className="w-full bg-transparent outline-none text-[11px] text-[--mike-fg] placeholder:text-[--mike-fg-muted]" />
-            <span className="text-[9px] text-[--mike-fg-muted] shrink-0">{filtradas.length}</span>
-          </div>
-          <div className="max-h-56 overflow-auto">
-            <button type="button" onClick={() => { onChange(''); setAberto(false); }}
-              className="w-full text-left px-2.5 py-1.5 text-[11px] hover:bg-cyan-500/10 transition"
-              style={{ color: !valor ? '#22d3ee' : 'var(--mike-fg-soft)' }}>
-              Todas as ligas
+      {casam !== null ? (
+        <div className="text-[10px] flex flex-wrap items-center gap-x-2"
+             style={{ color: casam.length ? '#34d399' : '#fbbf24' }}>
+          {casam.length
+            ? <>{casam.length} liga{casam.length > 1 ? 's' : ''} batem — ex: {casam.slice(0, 3).map((l) => bonito(l.liga)).join(' · ')}{casam.length > 3 ? ' ...' : ''}</>
+            : <>nenhuma liga do histórico contém isso — o recorte sairia vazio</>}
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center gap-1 text-[10px] text-[--mike-fg-muted]">
+          <span className="opacity-70">atalhos:</span>
+          {familias.map((f) => (
+            <button key={f} type="button" disabled={disabled} onClick={() => onChange(f)}
+              className="px-1.5 py-0.5 rounded text-[10px] hover:text-cyan-300 transition"
+              style={{ border: '0.5px solid rgba(255,255,255,0.08)' }}>
+              {f}
             </button>
-            {filtradas.map((l) => (
-              <button key={l.liga} type="button"
-                onClick={() => { onChange(l.liga); setAberto(false); setBusca(''); }}
-                className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 text-[11px] hover:bg-cyan-500/10 transition"
-                style={{ color: valor === l.liga ? '#22d3ee' : 'var(--mike-fg-soft)' }}>
-                <span className="truncate text-left">{bonito(l.liga)}</span>
-                <span className="text-[9px] text-[--mike-fg-muted] shrink-0">{l.dias}d</span>
-              </button>
-            ))}
-            {filtradas.length === 0 && (
-              <div className="px-2.5 py-3 text-[10px] text-[--mike-fg-muted] text-center">
-                nenhuma liga encontrada
-              </div>
-            )}
-          </div>
+          ))}
         </div>
       )}
     </div>
   );
 }
+
 
 /* ============================================================== painel === */
 export default function MikeDbPanel({ onGerado }) {
@@ -165,10 +142,10 @@ export default function MikeDbPanel({ onGerado }) {
   const [casa, setCasa] = useState('');
   const [liga, setLiga] = useState('');
   const [mercado, setMercado] = useState('');
+  const [esporte, setEsporte] = useState('');
   const [jogador, setJogador] = useState('');
   const [de, setDe] = useState('');
   const [ate, setAte] = useState('');
-  const [via, setVia] = useState('auto');
 
   const [fase, setFase] = useState('idle');
   const [pct, setPct] = useState(0);
@@ -203,7 +180,7 @@ export default function MikeDbPanel({ onGerado }) {
   useEffect(() => { carregar('', false); /* eslint-disable-next-line */ }, []);
 
   const trocarCasa = async (nova) => {
-    setCasa(nova); setLiga(''); setVia('auto');
+    setCasa(nova); setLiga(''); setMercado('');
     await carregar(nova, true);
   };
 
@@ -216,8 +193,31 @@ export default function MikeDbPanel({ onGerado }) {
   };
 
   const casaEhBet365 = (casa || '').toLowerCase() === 'bet365';
-  const usandoBetsapi = via === 'betsapi' || (via === 'auto' && casaEhBet365);
+  const usandoBetsapi = casaEhBet365;   // bet365 = BetsAPI, sempre
   const ligasDisp = catalogo?.ligas || [];
+  // MERCADOS REAIS: o servidor amostra o histórico e devolve os mercado_tipo
+  // que existem nessa casa/esporte (os códigos mudam por esporte dentro da
+  // mesma casa — betano '13' no futebol vs '1902' no basquete). Nada de lista
+  // fixa: o painel só oferece o que o recorte pode entregar.
+  const [mercadosDisp, setMercadosDisp] = useState([]);
+  const [carregandoMerc, setCarregandoMerc] = useState(false);
+  useEffect(() => {
+    let cancelado = false;
+    setCarregandoMerc(true);
+    ApiMikeDb.mercados(casa || undefined, esporte || undefined)
+      .then((r) => { if (!cancelado) setMercadosDisp(r?.mercados || []); })
+      .catch(() => { if (!cancelado) setMercadosDisp([]); })
+      .finally(() => { if (!cancelado) setCarregandoMerc(false); });
+    return () => { cancelado = true; };
+  }, [casa, esporte]);
+
+  // trocou casa/esporte e o mercado marcado sumiu da lista: volta pra "Todos"
+  useEffect(() => {
+    if (mercado && mercadosDisp.length && !mercadosDisp.some((m) => m.valor === mercado)) {
+      setMercado('');
+    }
+  }, [mercadosDisp, mercado]);
+
   const nDias = diasEntre(de, ate);
   const recorteGrande = !liga && !casa && (nDias || 0) > 30;
 
@@ -263,8 +263,9 @@ export default function MikeDbPanel({ onGerado }) {
     try {
       const { job_id } = await ApiMikeDb.gerar({
         casa: casa || undefined, liga: liga || undefined,
+        sport: esporte || undefined,
         mercado: mercado || undefined, jogador: jogador || undefined,
-        de: de || undefined, ate: ate || undefined, via,
+        de: de || undefined, ate: ate || undefined,
       });
       seguir(job_id);
     } catch (e) { setErro(String(e.message || e)); setFase('idle'); }
@@ -309,22 +310,17 @@ export default function MikeDbPanel({ onGerado }) {
                    ...(catalogo?.casas || []).map((c) => ({ valor: c, rotulo: c }))]} />
       </div>
 
-      {/* bet365: duas origens possíveis */}
+      {/* bet365 não tem coletor próprio: SEMPRE via BetsAPI (raspa + converte
+          pro dialeto que o motor entende). O histórico local dela existe mas
+          está em outro dialeto de mercado — não serve pro backtest. */}
       {casaEhBet365 && (
-        <div>
-          <label className={labelCls}>Origem dos ticks</label>
-          <Segmentado disabled={gerando} valor={usandoBetsapi ? 'betsapi' : 'historico'}
-            onChange={setVia}
-            opcoes={[{ valor: 'historico', rotulo: `Histórico local${ligasDisp.length ? '' : ' (vazio)'}` },
-                     { valor: 'betsapi', rotulo: 'Raspar BetsAPI' }]} />
-          {usandoBetsapi && (
-            <div className="mt-1.5 text-[10px] flex items-start gap-1.5"
-                 style={{ color: status?.chrome_cdp_aberto ? '#34d399' : '#fbbf24' }}>
-              {status?.chrome_cdp_aberto
-                ? <><CheckCircle2 className="w-3 h-3 mt-0.5 shrink-0" /> Chrome do CDP aberto — pode raspar (períodos longos levam horas).</>
-                : <><AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" /> Chrome do CDP fechado — abra na VPS com --remote-debugging-port=9222 logado na BetsAPI.</>}
-            </div>
-          )}
+        <div className="rounded-md p-2 text-[10px] flex items-start gap-1.5"
+             style={{ backgroundColor: 'rgba(6,182,212,0.06)', border: '0.5px solid rgba(6,182,212,0.25)' }}>
+          {status?.chrome_cdp_aberto
+            ? <><CheckCircle2 className="w-3 h-3 mt-0.5 shrink-0 text-emerald-400" />
+                <span className="text-[--mike-fg-soft]">bet365 vem da <b>BetsAPI</b> (raspa e converte). Chrome do CDP aberto — pode gerar; períodos longos levam horas.</span></>
+            : <><AlertTriangle className="w-3 h-3 mt-0.5 shrink-0 text-amber-400" />
+                <span className="text-amber-300">bet365 vem da <b>BetsAPI</b>, e o Chrome do CDP está fechado. Abra na VPS com --remote-debugging-port=9222 logado na BetsAPI, senão o job falha na largada.</span></>}
         </div>
       )}
 
@@ -337,7 +333,7 @@ export default function MikeDbPanel({ onGerado }) {
           <Segmentado disabled={gerando} valor={liga} onChange={setLiga}
             opcoes={(status?.ligas_betsapi || []).map((l) => ({ valor: l.valor, rotulo: l.rotulo }))} />
         ) : (
-          <ComboLiga ligas={ligasDisp} valor={liga} onChange={setLiga} disabled={gerando} />
+          <CampoLiga ligas={ligasDisp} valor={liga} onChange={setLiga} disabled={gerando} />
         )}
       </div>
 
@@ -372,11 +368,28 @@ export default function MikeDbPanel({ onGerado }) {
         )}
       </div>
 
-      {/* MERCADO + JOGADOR */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {/* ESPORTE (não se aplica à BetsAPI: a liga escolhida já define o esporte) */}
+      <div className={usandoBetsapi ? 'hidden' : ''}>
+        <label className={labelCls}>Esporte</label>
+        <Segmentado disabled={gerando} valor={esporte} onChange={setEsporte}
+          opcoes={[{ valor: '', rotulo: 'Todos' },
+                   ...(status?.esportes || []).map((e) => ({ valor: e.valor, rotulo: e.rotulo }))]} />
+      </div>
+
+      {/* MERCADO + JOGADOR (só na via histórico — o coletor da BetsAPI puxa
+          a liga inteira e o converter grava os 3 mercados que o motor casa) */}
+      <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${usandoBetsapi ? 'hidden' : ''}`}>
         <div>
           <label className={labelCls}>Mercado</label>
-          <Segmentado disabled={gerando} valor={mercado} onChange={setMercado} opcoes={MERCADOS} />
+          <Segmentado disabled={gerando || carregandoMerc} valor={mercado} onChange={setMercado}
+            opcoes={[{ valor: '', rotulo: 'Todos' },
+                     ...mercadosDisp.map((m) => ({ valor: m.valor, rotulo: m.rotulo }))]} />
+          <div className="mt-1 text-[9px] text-[--mike-fg-muted]">
+            {carregandoMerc ? 'lendo os mercados do histórico...'
+              : mercadosDisp.length
+                ? `${mercadosDisp.length} mercados existem ${casa ? `na ${casa}` : 'no histórico'}${esporte ? ' nesse esporte' : ''}`
+                : 'nenhum mercado encontrado nessa combinação'}
+          </div>
         </div>
         <div>
           <label className={labelCls}>Jogador <span className="opacity-60">· opcional</span></label>
@@ -392,10 +405,11 @@ export default function MikeDbPanel({ onGerado }) {
         <div className="text-[10px] text-[--mike-fg-soft] flex flex-wrap items-center gap-x-2 gap-y-0.5">
           <span className="font-semibold text-[--mike-fg]">{casa || 'todas as casas'}</span>
           <span className="opacity-40">·</span>
-          <span>{liga ? bonito(liga) : 'todas as ligas'}</span>
+          <span>{liga ? `ligas com "${liga}"` : 'todas as ligas'}</span>
           <span className="opacity-40">·</span>
           <span>{nDias ? `${nDias} dia${nDias > 1 ? 's' : ''}` : 'período aberto'}</span>
-          {mercado && (<><span className="opacity-40">·</span><span>{MERCADOS.find((m) => m.valor === mercado)?.rotulo}</span></>)}
+          {esporte && (<><span className="opacity-40">·</span><span>{(status?.esportes || []).find((e) => e.valor === esporte)?.rotulo || esporte}</span></>)}
+          {mercado && (<><span className="opacity-40">·</span><span>{mercadosDisp.find((m) => m.valor === mercado)?.rotulo || mercado}</span></>)}
           {jogador && (<><span className="opacity-40">·</span><span>{jogador}</span></>)}
         </div>
         <div className="flex items-center gap-2">
@@ -420,6 +434,13 @@ export default function MikeDbPanel({ onGerado }) {
           </button>
         </div>
       </div>
+
+      {usandoBetsapi && (!de || !ate) && !gerando && (
+        <div className="text-[10px] flex items-start gap-1.5" style={{ color: '#fbbf24' }}>
+          <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" />
+          a coleta na BetsAPI precisa do período (de/até) preenchido.
+        </div>
+      )}
 
       {recorteGrande && !gerando && (
         <div className="text-[10px] flex items-start gap-1.5" style={{ color: '#fbbf24' }}>
