@@ -375,13 +375,6 @@ export default function BacktestAvulso({ onNavegar } = {}) {
   const [folgaMax, setFolgaMax] = useState('');
   const [momentoAtivo, setMomentoAtivo] = useState(false);
   const [momentoMax, setMomentoMax] = useState('2');
-  // v16 — ATROPELO: % dos jogos ANTERIORES de cada jogador que terminaram com
-  // 15+ de diferenca. Vale o PIOR dos dois. Jogo que desanda mata aposta de
-  // almofada, e o efeito bate nos DOIS lados — e' propriedade do JOGO.
-  const [atropeloAtivo, setAtropeloAtivo] = useState(false);
-  const [atropeloMax, setAtropeloMax] = useState('22');
-  const [atropeloMargem, setAtropeloMargem] = useState('15');
-  const [atropeloMinJogos, setAtropeloMinJogos] = useState('6');
   // upload
   const [arquivo, setArquivo] = useState(null);
   const [subindo, setSubindo] = useState(false);
@@ -563,17 +556,8 @@ export default function BacktestAvulso({ onNavegar } = {}) {
       if (fmin == null && fmax == null) return 'Folga ligada: informe a folga mínima e/ou máxima.';
       if (fmin != null && fmax != null && fmin > fmax) return 'Folga mín não pode ser maior que a máx.';
     }
-    if (atropeloAtivo) {
-      const a = numOuNull(atropeloMax);
-      if (a == null) return 'Atropelo ligado: informe o atropelo máximo (%).';
-      if (a <= 0 || a > 100) return 'Atropelo máximo: use um valor entre 1 e 100.';
-      const mg = numOuNull(atropeloMargem);
-      if (mg != null && mg <= 0) return 'Margem do atropelo deve ser maior que zero.';
-      const mj = numOuNull(atropeloMinJogos);
-      if (mj != null && mj < 1) return 'Mín. de jogos do atropelo deve ser pelo menos 1.';
-    }
     return null;
-  }, [escadaLinhas, folgaAtiva, folgaMin, folgaMax, momentoAtivo, momentoMax, atropeloAtivo, atropeloMax, atropeloMargem, atropeloMinJogos, maxPorJogo, uploadId, mercado, linhaMin, linhaMax, oddMin, oddMax, stakeValor, bancaInicial, ehBasket, quartos]);
+  }, [escadaLinhas, folgaAtiva, folgaMin, folgaMax, momentoAtivo, momentoMax, maxPorJogo, uploadId, mercado, linhaMin, linhaMax, oddMin, oddMax, stakeValor, bancaInicial, ehBasket, quartos]);
 
   const handleRodar = useCallback(async () => {
     const msgErro = validarFiltros();
@@ -593,10 +577,6 @@ export default function BacktestAvulso({ onNavegar } = {}) {
       folga_max: folgaAtiva ? numOuNull(folgaMax) : null,
       momento_ativo: momentoAtivo,
       momento_max: momentoAtivo ? numOuNull(momentoMax) : null,
-      atropelo_ativo: atropeloAtivo,
-      atropelo_max: atropeloAtivo ? numOuNull(atropeloMax) : null,
-      atropelo_margem: atropeloAtivo ? numOuNull(atropeloMargem) : null,
-      atropelo_min_jogos: atropeloAtivo ? numOuNull(atropeloMinJogos) : null,
       upload_id: uploadId,
       mercado, lado, casa, esporte,
       filtros_hist: filtrosHist,
@@ -663,7 +643,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
     } catch (e) {
       if (montadoRef.current) { setRodando(false); setErro(e?.message || 'Falha ao criar job.'); }
     }
-  }, [validarFiltros, escadaLinhas, folgaAtiva, folgaMin, folgaMax, momentoAtivo, momentoMax, atropeloAtivo, atropeloMax, atropeloMargem, atropeloMinJogos, maxPorJogo, uploadId, mercado, lado, casa, esporte, filtrosHist,
+  }, [validarFiltros, escadaLinhas, folgaAtiva, folgaMin, folgaMax, momentoAtivo, momentoMax, maxPorJogo, uploadId, mercado, lado, casa, esporte, filtrosHist,
       cenario, difPlacar, quartos, ehBasket, linhaMin, linhaMax, oddMin, oddMax,
       blacklist, whitelist, stakeValor, bancaInicial, filtrosComp]);
 
@@ -960,35 +940,6 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                     </div>
                   )}
                   <div className="text-[10px] text-[--mike-fg-muted] mt-1.5">Lido do estágio do jogo no tick (1Q/2Q/3Q/4Q). Comprovado no vivo: apostas do 1º tempo renderam <b>+18,7%</b> vs <b>−7,6%</b> no 2º. Só funciona onde o coletor marca o período (hoje: Superbet).</div>
-                </div>
-                {/* ATROPELO (v16): propriedade do JOGADOR, calculada dos jogos
-                    anteriores dele. Medido no handicap; no Over PIORA (jogo
-                    desandado ainda estoura a linha). */}
-                <div className="mt-3">
-                  <div className="text-[10px] uppercase tracking-wider text-[--mike-fg-muted] font-bold mb-1.5">Atropelo (jogo que desanda)</div>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={atropeloAtivo} onChange={(e) => setAtropeloAtivo(e.target.checked)} className="accent-cyan-500" />
-                    <span className="text-[11px] text-[--mike-fg-soft]">Evitar jogadores cujos jogos viram massacre</span>
-                  </label>
-                  {atropeloAtivo && (
-                    <div className="grid grid-cols-3 gap-3 mt-2">
-                      <Campo label="Atropelo máx. (%)" hint="corta se o PIOR dos dois passar disso">
-                        <Input type="number" min="0" value={atropeloMax} onChange={setAtropeloMax} placeholder="ex: 22" />
-                      </Campo>
-                      <Campo label="Margem (pontos)" hint="diferença que conta como atropelo">
-                        <Input type="number" min="1" value={atropeloMargem} onChange={setAtropeloMargem} placeholder="15" />
-                      </Campo>
-                      <Campo label="Mín. jogos" hint="abaixo disso reprova (fail closed)">
-                        <Input type="number" min="1" value={atropeloMinJogos} onChange={setAtropeloMinJogos} placeholder="6" />
-                      </Campo>
-                    </div>
-                  )}
-                  <div className="text-[10px] text-[--mike-fg-muted] mt-1.5">
-                    Taxa = % dos jogos ANTERIORES do jogador que terminaram com <b>{atropeloMargem || 15}+</b> de
-                    diferença; vale o pior dos dois. Mediana da Blitz ≈ <b>11%</b>. Medido fora da amostra no HC:
-                    cortar acima de <b>22%</b> melhorou o ROI nas 14 configs testadas (+4 a +12 pontos) e as
-                    unidades subiram em 13 delas. <b>No Over piora.</b>
-                  </div>
                 </div>
                 </Grupo>
 
