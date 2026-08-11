@@ -404,6 +404,11 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
   const [filtroCasa, setFiltroCasa] = useState('todas');
   const [filtroEsporte, setFiltroEsporte] = useState('todas');
   const [filtroStatus, setFiltroStatus] = useState('todos');
+  // v2 (11/ago): admin escolhe entre TODOS os bots e SÓ OS DELE. Pro usuário
+  // comum o seletor nem aparece — o backend já devolve só os dele, e a
+  // permissão continua vindo de lá (o parâmetro não dá acesso a nada).
+  const [escopo, setEscopo] = useState('todos');
+  const [ehAdmin, setEhAdmin] = useState(false);
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
 
   const [page, setPage] = useState(0);
@@ -438,10 +443,12 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
       if (filtroCasa !== 'todas') params.casa = filtroCasa;
       if (filtroEsporte !== 'todas') params.esporte = filtroEsporte;
       if (filtroStatus !== 'todos') params.status = filtroStatus;
+      params.escopo = escopo;
 
       const data = await ApiBots.list(params);
       setBots(data.items || []);
       setTotal(data.total || 0);
+      setEhAdmin(Boolean(data.admin));
     } catch (e) {
       setErro(e.message);
       setBots([]);
@@ -449,7 +456,7 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
     } finally {
       setLoading(false);
     }
-  }, [page, filtroCasa, filtroEsporte, filtroStatus]);
+  }, [page, filtroCasa, filtroEsporte, filtroStatus, escopo]);
 
   useEffect(() => { fetchBots(); }, [fetchBots]);
 
@@ -588,7 +595,7 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
     return () => document.removeEventListener('keydown', handler);
   }, [modalConfirm, filtrosAbertos]);
 
-  const algumFiltroAtivo = filtroCasa !== 'todas' || filtroEsporte !== 'todas' || filtroStatus !== 'todos' || busca;
+  const algumFiltroAtivo = filtroCasa !== 'todas' || filtroEsporte !== 'todas' || filtroStatus !== 'todos' || escopo !== 'todos' || busca;
   const totalPages = Math.max(1, Math.ceil(total / LIMIT));
 
   const themeVars = {
@@ -697,7 +704,7 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
             Filtros
             {algumFiltroAtivo && (
               <span className="ml-0.5 px-1.5 py-0 rounded-full bg-[--mike-accent] text-[--mike-bg] text-[9px] font-black">
-                {[filtroCasa !== 'todas', filtroEsporte !== 'todas', filtroStatus !== 'todos', busca].filter(Boolean).length}
+                {[filtroCasa !== 'todas', filtroEsporte !== 'todas', filtroStatus !== 'todos', escopo !== 'todos', busca].filter(Boolean).length}
               </span>
             )}
           </button>
@@ -728,6 +735,15 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
                   { value: 'pausado', label: 'Pausado' },
                 ]} />
               </div>
+              {ehAdmin && (
+                <div>
+                  <label className="block text-[10px] text-[--mike-fg-muted] mb-1">Dono</label>
+                  <MikeSelect value={escopo} onChange={(v) => { setEscopo(v); setPage(0); }} options={[
+                    { value: 'todos', label: 'Todos os bots' },
+                    { value: 'meus', label: 'Somente os meus' },
+                  ]} />
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -784,6 +800,7 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
                   setFiltroCasa('todas');
                   setFiltroEsporte('todas');
                   setFiltroStatus('todos');
+                  setEscopo('todos');
                   setBusca('');
                   adicionarToast('Filtros limpos', 'info');
                 }}
