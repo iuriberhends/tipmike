@@ -155,6 +155,8 @@ export default function MikeDbPanel({ onGerado }) {
   const [erro, setErro] = useState(null);
   const [resultado, setResultado] = useState(null);
   const [baixando, setBaixando] = useState(false);
+  const [cancelando, setCancelando] = useState(false);
+  const [jobAtivo, setJobAtivo] = useState(null);
 
   const pollRef = useRef(null);
   const vivoRef = useRef(true);
@@ -261,14 +263,34 @@ export default function MikeDbPanel({ onGerado }) {
     setErro(null); setResultado(null); setLog([]); setPct(0);
     setEtapa('enviando pedido...'); setFase('gerando');
     try {
-      const { job_id } = await ApiMikeDb.gerar({
+      const r0 = await ApiMikeDb.gerar({
         casa: casa || undefined, liga: liga || undefined,
         sport: esporte || undefined,
         mercado: mercado || undefined, jogador: jogador || undefined,
         de: de || undefined, ate: ate || undefined,
       });
-      seguir(job_id);
+      setJobAtivo(r0?.job_id || null);
+      seguir(r0?.job_id);
     } catch (e) { setErro(String(e.message || e)); setFase('idle'); }
+  };
+
+  // CANCELAR (v16): mata o coletor/converter no servidor e libera a trava de
+  // "uma geração por vez". Matar o coletor é seguro (o CSV é gravado por
+  // evento e o resume re-raspa o último); o parquet pela metade é apagado
+  // pelo backend.
+  const cancelar = async () => {
+    if (!jobAtivo) return;
+    setCancelando(true);
+    try {
+      await ApiMikeDb.cancelar(jobAtivo);
+      clearInterval(pollRef.current);
+      setFase('idle'); setPct(0); setEtapa('');
+      setErro('Geração cancelada.');
+    } catch (e) {
+      setErro(String(e.message || e));
+    } finally {
+      if (vivoRef.current) setCancelando(false);
+    }
   };
 
   const baixar = async () => {
@@ -432,6 +454,14 @@ export default function MikeDbPanel({ onGerado }) {
             {gerando ? <><RefreshCw className="w-3.5 h-3.5 mike-spin" /> Gerando...</>
                      : <><Play className="w-3.5 h-3.5" /> Gerar ticks</>}
           </button>
+          {gerando && jobAtivo && (
+            <button onClick={cancelar} disabled={cancelando}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-md text-[11px] font-semibold transition disabled:opacity-40"
+              style={{ border: '0.5px solid rgba(239,68,68,0.4)', color: '#fca5a5' }}>
+              {cancelando ? <RefreshCw className="w-3.5 h-3.5 mike-spin" /> : <X className="w-3.5 h-3.5" />}
+              Cancelar
+            </button>
+          )}
         </div>
       </div>
 

@@ -19,7 +19,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import {
   Home, ChevronRight, FlaskConical, Upload, Filter, Play, RefreshCw,
   AlertCircle, AlertTriangle, Target, Percent, DollarSign, Hash, Trophy,
-  TrendingDown, Layers, Ban, CheckCircle2, FileUp, Download,
+  TrendingDown, Layers, Ban, CheckCircle2, FileUp, Download, X,
 } from 'lucide-react';
 import MikeHeader from '../shared/MikeHeader.jsx';
 import H2hSyncPanel from '../shared/H2hSyncPanel.jsx';
@@ -398,7 +398,11 @@ export default function BacktestAvulso({ onNavegar } = {}) {
   // filtros de historico (WR): lista de chips + campos do editor atual
   const [filtrosHist, setFiltrosHist] = useState([]);
   const [histJanela, setHistJanela] = useState('last_10');
-  const [histWrMin, setHistWrMin] = useState('');
+  // v16 (11/ago): min do WR ja nasce 0 — o caso comum e' usar so o TETO
+  // (ex.: 'WR maximo 40%') e digitar o 0 toda vez era atrito puro.
+  // Atencao: chip [0,100] nao filtra WR, mas AINDA exige minPartidas —
+  // vira um filtro de maturidade do par, que e' util e proposital.
+  const [histWrMin, setHistWrMin] = useState('0');
   const [histWrMax, setHistWrMax] = useState('');
   const [histMinPartidas, setHistMinPartidas] = useState('10');
   // v11: base do histórico (confronto x individual) + alvo do individual no HC
@@ -424,7 +428,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
       base: histBase,
       ...(histBase === 'individual' ? { indivAlvo: histIndivAlvo } : {}),
     }]);
-    setHistWrMin(''); setHistWrMax('');
+    setHistWrMin('0'); setHistWrMax('');   // volta ao padrao, nao ao vazio
   }, [histJanela, histWrMin, histWrMax, histMinPartidas, histBase, histIndivAlvo]);
 
   const removerHist = useCallback((idx) => {
@@ -482,6 +486,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
 
   // execucao
   const [rodando, setRodando] = useState(false);
+  const [cancelando, setCancelando] = useState(false);
   // v14: progresso do job — o motor ja grava progresso (0-100) e progresso_msg
   // no banco a cada lote; a tela so nao lia. Nada muda no backend.
   const [progresso, setProgresso] = useState(0);
@@ -503,6 +508,22 @@ export default function BacktestAvulso({ onNavegar } = {}) {
       if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
     };
   }, []);
+
+  const handleCancelar = useCallback(async () => {
+    if (!jobId) return;
+    setCancelando(true);
+    try {
+      await ApiBacktest.cancelar(jobId);
+      limparPoll();
+      setRodando(false);
+      setErro('Backtest cancelado.');
+    } catch (e) {
+      setErro(e?.message || 'Falha ao cancelar.');
+    } finally {
+      if (montadoRef.current) setCancelando(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobId]);
 
   const limparPoll = () => {
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
@@ -1126,6 +1147,22 @@ export default function BacktestAvulso({ onNavegar } = {}) {
               >
                 {rodando ? <><RefreshCw className="w-4 h-4 mike-spin" /> Rodando backtest...</> : <><Play className="w-4 h-4" /> Rodar backtest</>}
               </button>
+
+              {/* CANCELAR (v16): mata o processo do job no servidor e marca
+                  status 'cancelado' no banco. Antes, job disparado errado so
+                  saia terminando sozinho (podia levar 40min) ou com restart da
+                  API — que matava os outros jobs junto. */}
+              {rodando && jobId && (
+                <button
+                  onClick={handleCancelar}
+                  disabled={cancelando}
+                  className="w-full mt-2 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-xs font-semibold transition disabled:opacity-40"
+                  style={{ border: '0.5px solid rgba(239,68,68,0.4)', color: '#fca5a5' }}
+                >
+                  {cancelando ? <><RefreshCw className="w-3.5 h-3.5 mike-spin" /> Cancelando...</>
+                              : <><X className="w-3.5 h-3.5" /> Cancelar backtest</>}
+                </button>
+              )}
 
               {/* v14: barra de progresso do job */}
               {rodando && (

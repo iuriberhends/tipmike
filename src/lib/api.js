@@ -120,6 +120,7 @@ export const ApiMikeDb = {
   mercados: (casa, sport) => api.get('/mikedb/mercados', { casa, sport }),
   gerar:    (body)        => api.post('/mikedb/gerar', body),
   job:      (jobId)       => api.get(`/mikedb/gerar/${jobId}`),
+  cancelar: (jobId)       => api.post(`/mikedb/gerar/${jobId}/cancelar`, {}),
   // download com Authorization (link direto tomaria 401) — mesmo padrão do CSV
   download: (uploadId, nomeArquivo) =>
     _downloadBlob(`${BASE_URL}/mikedb/download/${encodeURIComponent(uploadId)}`,
@@ -246,6 +247,8 @@ export const ApiTorneios = {
   },
 };
 export const ApiBacktest = {
+  // v16: para um backtest em andamento (mata o processo no servidor)
+  cancelar: (jobId) => api.post(`/backtest/jobs/${jobId}/cancelar`, {}),
   create: (body) => api.post('/backtest/jobs', body),
   get:    (jobId, incluirDetalhe = false) =>
     api.get(`/backtest/jobs/${jobId}`, incluirDetalhe ? { incluir_detalhe: 'true' } : null),
