@@ -32,14 +32,16 @@ import { BASE_URL, getAccessToken } from '../lib/auth.js';
 import MikeHeader from '../shared/MikeHeader.jsx';
 
 // ------------------------------------------------------------- constantes --
+// cores tiradas do tema (accent #10b981 / accent-2 #0891b2 / fg-muted #6b7691)
+// mais amber e red so' onde o significado exige
 const STATUS = {
-  pendente:   { rotulo: 'Na fila',    cor: '#94a3b8', Icone: Clock },
-  planejando: { rotulo: 'Preparando', cor: '#38bdf8', Icone: Loader2, girando: true },
-  planejado:  { rotulo: 'Aguardando', cor: '#fbbf24', Icone: AlertTriangle },
-  rodando:    { rotulo: 'Garimpando', cor: '#22d3ee', Icone: Loader2, girando: true },
+  pendente:   { rotulo: 'Na fila',    cor: '#6b7691', Icone: Clock },
+  planejando: { rotulo: 'Preparando', cor: '#0891b2', Icone: Loader2, girando: true },
+  planejado:  { rotulo: 'Aguardando', cor: '#f59e0b', Icone: AlertTriangle },
+  rodando:    { rotulo: 'Garimpando', cor: '#0891b2', Icone: Loader2, girando: true },
   concluido:  { rotulo: 'Pronto',     cor: '#10b981', Icone: CheckCircle2 },
-  erro:       { rotulo: 'Erro',       cor: '#f87171', Icone: AlertTriangle },
-  cancelado:  { rotulo: 'Cancelado',  cor: '#94a3b8', Icone: X },
+  erro:       { rotulo: 'Erro',       cor: '#ef4444', Icone: AlertTriangle },
+  cancelado:  { rotulo: 'Cancelado',  cor: '#6b7691', Icone: X },
 };
 const ATIVO = ['pendente', 'planejando', 'rodando'];
 
@@ -90,18 +92,25 @@ async function baixar(jobId, tipo) {
   setTimeout(() => window.URL.revokeObjectURL(url), 1000);
 }
 
-// --------------------------------------------------------------- widgets ---
-const CARD = {
-  backgroundColor: 'rgba(20,26,40,.55)',
-  border: '0.5px solid rgba(60,85,130,.35)',
+// As variaveis --mike-* NAO sao globais: cada tela as declara no wrapper
+// (mesmo objeto do Today/Backtest). Sem isto o proprio MikeHeader renderiza
+// sem cor — aba ativa sem destaque, logo sem gradiente. NAO REMOVER.
+const TEMA = {
+  '--mike-bg': '#0b0f1a', '--mike-bg-2': '#070a13', '--mike-card': '#141a28',
+  '--mike-card-2': '#1a2030', '--mike-card-hover': '#1d2434',
+  '--mike-border': '#222a3d', '--mike-fg': '#eaeef7', '--mike-fg-soft': '#a8b3c9',
+  '--mike-fg-muted': '#6b7691', '--mike-accent': '#10b981',
+  '--mike-accent-2': '#0891b2',
 };
+const ACCENT = '#10b981';        // igual ao --mike-accent, pra interpolar hex
+
+// --------------------------------------------------------------- widgets ---
 
 function Secao({ numero, icone: Ic, titulo, desc, children, aninhada }) {
   return (
-    <div className={aninhada ? 'rounded-lg p-3.5' : 'rounded-xl p-4'}
-         style={aninhada
-           ? { backgroundColor: 'rgba(11,15,26,.45)', border: '0.5px solid rgba(60,85,130,.25)' }
-           : CARD}>
+    <div className={aninhada
+        ? 'rounded-lg p-3.5 bg-[--mike-card-2] border border-[--mike-border]'
+        : 'rounded-2xl p-4 bg-[--mike-card] border border-[--mike-border]'}>
       <div className="flex items-center gap-2">
         <span className="w-[3px] h-4 rounded-full shrink-0"
               style={{ backgroundColor: 'var(--mike-accent)' }} />
@@ -132,9 +141,10 @@ function Campo({ label, hint, children }) {
   );
 }
 
+// mesmo desenho dos inputs do Backtest: fundo card-2, borda do tema, foco no accent
 const inputCls =
-  'w-full rounded-lg px-3 py-2 text-[13px] bg-[rgba(11,15,26,.7)] text-[--mike-fg] ' +
-  'border border-[rgba(60,85,130,.4)] outline-none transition focus:border-[--mike-accent]';
+  'w-full rounded-lg px-3 py-2 text-[13px] bg-[--mike-card-2] text-[--mike-fg] ' +
+  'border border-[--mike-border] outline-none transition focus:border-[--mike-accent]';
 
 const subTitulo = 'text-[10px] uppercase tracking-[0.08em] text-[--mike-fg-muted] font-bold';
 
@@ -154,11 +164,11 @@ function Pill({ status }) {
 function Botao({ tipo = 'ghost', icone: Ic, children, ...props }) {
   const cores = {
     primario: { backgroundColor: 'var(--mike-accent)', color: 'var(--mike-bg)' },
-    alerta:   { backgroundColor: '#fbbf24', color: '#0b0f1a' },
-    perigo:   { backgroundColor: 'rgba(248,113,113,.15)', color: '#fca5a5',
-                border: '0.5px solid rgba(248,113,113,.35)' },
-    ghost:    { backgroundColor: 'rgba(60,85,130,.22)', color: '#a9b6d0',
-                border: '0.5px solid rgba(60,85,130,.35)' },
+    alerta:   { backgroundColor: '#f59e0b', color: 'var(--mike-bg)' },
+    perigo:   { backgroundColor: 'rgba(239,68,68,.15)', color: '#fca5a5',
+                border: '1px solid rgba(239,68,68,.35)' },
+    ghost:    { backgroundColor: 'var(--mike-card-2)', color: 'var(--mike-fg-soft)',
+                border: '1px solid var(--mike-border)' },
   };
   return (
     <button {...props}
@@ -289,7 +299,9 @@ export default function Varredura({ onNavegar }) {
 
   // ------------------------------------------------------------- render ---
   return (
-    <div className="min-h-screen bg-[--mike-bg] text-[--mike-fg]">
+    <div className="min-h-screen"
+         style={{ ...TEMA, backgroundColor: 'var(--mike-bg)', color: 'var(--mike-fg)',
+                  fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       <MikeHeader telaAtiva="varredura" onNavegar={onNavegar} />
 
       <div className="max-w-screen-xl mx-auto px-4 lg:px-8 py-5">
@@ -386,8 +398,8 @@ export default function Varredura({ onNavegar }) {
                     <button key={m.id} onClick={() => setForm({ ...form, modo: m.id })}
                       className="rounded-lg px-3 py-2.5 text-left transition"
                       style={{
-                        backgroundColor: on ? 'rgba(34,211,238,.12)' : 'rgba(11,15,26,.6)',
-                        border: `0.5px solid ${on ? 'var(--mike-accent)' : 'rgba(60,85,130,.35)'}`,
+                        backgroundColor: on ? 'rgba(16,185,129,.12)' : 'var(--mike-card-2)',
+                        border: `1px solid ${on ? ACCENT : 'var(--mike-border)'}`,
                       }}>
                       <div className="text-[12px] font-bold"
                            style={{ color: on ? 'var(--mike-accent)' : 'var(--mike-fg-soft)' }}>
@@ -435,7 +447,7 @@ export default function Varredura({ onNavegar }) {
               )}
 
               <div className="flex items-center justify-between gap-4 pt-3"
-                   style={{ borderTop: '0.5px solid rgba(60,85,130,.25)' }}>
+                   style={{ borderTop: '1px solid var(--mike-border)' }}>
                 <p className="text-[10px] text-[--mike-fg-muted] leading-relaxed flex-1">
                   A busca só enxerga o treino; o resto vira <b>holdout</b> e é medido no fim.
                   No encerramento o resultado passa pelo <b>carimbo</b> — se a liquidação não
@@ -455,7 +467,7 @@ export default function Varredura({ onNavegar }) {
                 <div className="space-y-2">
                   {[0, 1, 2].map((i) => (
                     <div key={i} className="rounded-lg h-12 animate-pulse"
-                         style={{ backgroundColor: 'rgba(11,15,26,.5)' }} />
+                         style={{ backgroundColor: 'var(--mike-card-2)' }} />
                   ))}
                 </div>
               )}
@@ -481,8 +493,8 @@ export default function Varredura({ onNavegar }) {
                     <button key={j.id} onClick={() => selecionar(j.id)}
                       className="w-full text-left rounded-lg px-3 py-2.5 transition"
                       style={{
-                        backgroundColor: on ? 'rgba(34,211,238,.08)' : 'rgba(11,15,26,.45)',
-                        border: `0.5px solid ${on ? 'var(--mike-accent)' : 'rgba(60,85,130,.25)'}`,
+                        backgroundColor: on ? 'rgba(16,185,129,.10)' : 'var(--mike-card-2)',
+                        border: `1px solid ${on ? ACCENT : 'var(--mike-border)'}`,
                       }}>
                       <div className="flex items-center gap-2.5">
                         <span className="text-[11px] font-black shrink-0 w-7"
@@ -504,7 +516,7 @@ export default function Varredura({ onNavegar }) {
                       {ATIVO.includes(j.status) && (
                         <div className="mt-2 pl-[38px]">
                           <div className="w-full h-1 rounded-full overflow-hidden"
-                               style={{ backgroundColor: 'rgba(60,85,130,.25)' }}>
+                               style={{ backgroundColor: 'var(--mike-border)' }}>
                             <div className="h-full rounded-full transition-all duration-700"
                                  style={{ width: `${Math.max(3, j.progresso || 0)}%`,
                                           background: `linear-gradient(90deg, ${s.cor}88, ${s.cor})` }} />
@@ -578,8 +590,8 @@ export default function Varredura({ onNavegar }) {
 
                     {((d.resumo || {}).gate || {}).t1 && (
                       <div className="flex items-start gap-2 mb-3 px-3 py-2 rounded-lg text-[11px] leading-relaxed"
-                           style={{ backgroundColor: 'rgba(11,15,26,.55)',
-                                    border: '0.5px solid rgba(60,85,130,.3)',
+                           style={{ backgroundColor: 'var(--mike-card-2)',
+                                    border: '1px solid var(--mike-border)',
                                     color: d.resumo.gate.passou === false ? '#fca5a5' : '#a9b6d0' }}>
                         {d.resumo.gate.passou === false
                           ? <AlertTriangle className="w-3.5 h-3.5 mt-px shrink-0" />
@@ -592,7 +604,7 @@ export default function Varredura({ onNavegar }) {
                     )}
 
                     <div className="flex flex-wrap gap-2 pt-3"
-                         style={{ borderTop: '0.5px solid rgba(60,85,130,.25)' }}>
+                         style={{ borderTop: '1px solid var(--mike-border)' }}>
                       {d.status === 'planejado' && (
                         <Botao tipo="alerta" icone={Play} onClick={() => acao(d.id, 'confirmar')}>
                           Confirmar e rodar
