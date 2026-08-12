@@ -1,20 +1,22 @@
 // ============================================================
 // Varredura.jsx — o garimpo como tela do painel
 //
-// A API e' so' despachante: cria o job e responde. Quem roda e' o servico
-// TipMikeVarredura, em processo separado e prioridade baixa — entao a tela
-// nunca "trava esperando", ela acompanha.
+// LAYOUT: espelha o BacktestAvulso de proposito — breadcrumb, titulo com
+// icone inline, secoes NUMERADAS com a barrinha de destaque, e a coluna da
+// direita com o painel "Resultado". Duas telas que fazem coisas parecidas
+// devem se parecer; o usuario nao deveria reaprender a navegar.
 //
-// DECISOES DE UX (o porque, pra nao desfazer sem querer):
-//  · O formulario nasce FECHADO. Na maior parte das visitas voce vem olhar
-//    o que ja rodou, nao criar. Criar e' um clique a mais; consultar e' zero.
-//  · Os 5 campos tecnicos ficam em "opcoes avancadas". Quem abre a tela pela
-//    primeira vez so' precisa escolher a origem e o modo — o resto tem
-//    default bom.
-//  · O poll de 4s so' liga quando existe job ativo, e desliga sozinho. Tela
-//    aberta a tarde inteira nao fica batendo no servidor a toa.
-//  · Cada card ja mostra o que importa SEM abrir: configs achadas, duracao,
-//    apostas e carimbo.
+// A API e' so' despachante: cria o job e responde. Quem roda e' o servico
+// TipMikeVarredura, em processo separado e prioridade baixa — a tela nunca
+// "trava esperando", ela acompanha.
+//
+// DECISOES DE UX:
+//  · Selecionar uma varredura na lista joga o detalhe no painel da direita
+//    (em vez de acordeao) — mesmo gesto do backtest, e da' pra comparar
+//    a lista inteira sem perder o que estava lendo.
+//  · Os 5 campos tecnicos ficam em "opcoes avancadas": quem chega precisa
+//    escolher duas coisas — origem e modo. O resto tem default bom.
+//  · O poll de 4s so' liga quando existe job ativo e desliga sozinho.
 //
 // Endpoints: /varredura/{origens,jobs,jobs/{id},jobs/{id}/confirmar,
 //            jobs/{id}/cancelar,jobs/{id}/download}
@@ -22,8 +24,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Radar, Plus, ChevronDown, Download, X, Play, AlertTriangle,
-  CheckCircle2, Loader2, Clock, Database, Sliders, Info, Layers,
+  Home, ChevronRight, ChevronDown, Radar, Database, Sliders, Layers,
+  Trophy, Play, Download, X, Clock, Loader2, CheckCircle2, AlertTriangle,
 } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { BASE_URL, getAccessToken } from '../lib/auth.js';
@@ -89,30 +91,52 @@ async function baixar(jobId, tipo) {
 }
 
 // --------------------------------------------------------------- widgets ---
-function Rotulo({ children, hint }) {
+const CARD = {
+  backgroundColor: 'rgba(20,26,40,.55)',
+  border: '0.5px solid rgba(60,85,130,.35)',
+};
+
+function Secao({ numero, icone: Ic, titulo, desc, children, aninhada }) {
   return (
-    <div className="flex items-center gap-1 mb-1.5">
-      <span className="text-[10px] uppercase tracking-[0.08em] font-bold text-[--mike-fg-muted]">
-        {children}
-      </span>
+    <div className={aninhada ? 'rounded-lg p-3.5' : 'rounded-xl p-4'}
+         style={aninhada
+           ? { backgroundColor: 'rgba(11,15,26,.45)', border: '0.5px solid rgba(60,85,130,.25)' }
+           : CARD}>
+      <div className="flex items-center gap-2">
+        <span className="w-[3px] h-4 rounded-full shrink-0"
+              style={{ backgroundColor: 'var(--mike-accent)' }} />
+        {Ic && <Ic className="w-4 h-4 shrink-0" style={{ color: 'var(--mike-accent)' }} />}
+        <h2 className={aninhada ? 'text-[13px] font-bold' : 'text-[15px] font-bold'}>
+          {numero ? `${numero}. ` : ''}{titulo}
+        </h2>
+      </div>
+      {desc && (
+        <p className="text-[11px] text-[--mike-fg-muted] mt-1 mb-3 pl-[13px] leading-relaxed">
+          {desc}
+        </p>
+      )}
+      <div className={desc ? '' : 'mt-3'}>{children}</div>
+    </div>
+  );
+}
+
+function Campo({ label, hint, children }) {
+  return (
+    <div>
+      <div className="text-[11px] text-[--mike-fg-soft] mb-1.5">{label}</div>
+      {children}
       {hint && (
-        <span className="group relative flex items-center">
-          <Info className="w-3 h-3 text-[--mike-fg-muted] opacity-50" />
-          <span className="pointer-events-none absolute left-4 -top-1 z-20 w-56 rounded-md px-2 py-1.5
-                           text-[10px] leading-snug opacity-0 group-hover:opacity-100 transition"
-                style={{ backgroundColor: '#0f1626', border: '0.5px solid rgba(60,85,130,.5)',
-                         color: '#c8d3e8', boxShadow: '0 8px 24px rgba(0,0,0,.5)' }}>
-            {hint}
-          </span>
-        </span>
+        <div className="text-[10px] text-[--mike-fg-muted] mt-1 leading-snug">{hint}</div>
       )}
     </div>
   );
 }
 
 const inputCls =
-  'w-full rounded-lg px-3 py-2 text-[13px] bg-[rgba(11,15,26,.75)] text-[--mike-fg] ' +
+  'w-full rounded-lg px-3 py-2 text-[13px] bg-[rgba(11,15,26,.7)] text-[--mike-fg] ' +
   'border border-[rgba(60,85,130,.4)] outline-none transition focus:border-[--mike-accent]';
+
+const subTitulo = 'text-[10px] uppercase tracking-[0.08em] text-[--mike-fg-muted] font-bold';
 
 function Pill({ status }) {
   const s = STATUS[status] || STATUS.pendente;
@@ -123,17 +147,6 @@ function Pill({ status }) {
                    border: `0.5px solid ${s.cor}55` }}>
       <Icone className={`w-3 h-3 ${s.girando ? 'animate-spin' : ''}`} />
       {s.rotulo}
-    </span>
-  );
-}
-
-function Metrica({ icone: Ic, valor, label }) {
-  if (valor === null || valor === undefined || valor === '') return null;
-  return (
-    <span className="inline-flex items-center gap-1.5 text-[11px] text-[--mike-fg-soft]">
-      {Ic && <Ic className="w-3 h-3 opacity-60" />}
-      <span className="font-bold" style={{ fontFamily: 'JetBrains Mono, monospace' }}>{valor}</span>
-      {label && <span className="text-[--mike-fg-muted]">{label}</span>}
     </span>
   );
 }
@@ -159,16 +172,25 @@ function Botao({ tipo = 'ghost', icone: Ic, children, ...props }) {
   );
 }
 
+function Dado({ k, v }) {
+  if (v === null || v === undefined || v === '') return null;
+  return (
+    <div className="min-w-0">
+      <div className="text-[9px] uppercase tracking-wider text-[--mike-fg-muted] mb-0.5">{k}</div>
+      <div className="text-[11px] text-[--mike-fg-soft] break-words">{String(v)}</div>
+    </div>
+  );
+}
+
 // ============================================================ componente ===
 export default function Varredura({ onNavegar }) {
   const [origens, setOrigens] = useState([]);
   const [jobs, setJobs] = useState([]);
   const [carregando, setCarregando] = useState(true);
-  const [aberto, setAberto] = useState(null);
+  const [selecionado, setSelecionado] = useState(null);
   const [detalhe, setDetalhe] = useState({});
   const [erro, setErro] = useState(null);
   const [aviso, setAviso] = useState(null);
-  const [formAberto, setFormAberto] = useState(false);
   const [avancado, setAvancado] = useState(false);
   const [criando, setCriando] = useState(false);
   const [form, setForm] = useState({
@@ -182,6 +204,7 @@ export default function Varredura({ onNavegar }) {
     [origens, form.job_backtest_id]);
   const ativos = useMemo(
     () => jobs.filter((j) => ATIVO.includes(j.status)).length, [jobs]);
+  const d = selecionado ? detalhe[selecionado] : null;
 
   const carregarJobs = useCallback(async () => {
     try {
@@ -191,23 +214,22 @@ export default function Varredura({ onNavegar }) {
     } catch (e) { setErro(e.message); return []; }
   }, []);
 
-  const abrirDetalhe = useCallback(async (id, silencioso = false) => {
-    if (!silencioso && aberto === id) { setAberto(null); return; }
-    setAberto(id);
+  const carregarDetalhe = useCallback(async (id, silencioso = false) => {
     try {
-      const d = await api.get(`/varredura/jobs/${id}`);
-      setDetalhe((prev) => ({ ...prev, [id]: d }));
+      const r = await api.get(`/varredura/jobs/${id}`);
+      setDetalhe((prev) => ({ ...prev, [id]: r }));
     } catch (e) { if (!silencioso) setErro(e.message); }
-  }, [aberto]);
+  }, []);
 
   useEffect(() => {
     (async () => {
       try { setOrigens((await api.get('/varredura/origens', { limite: 80 })) || []); }
       catch (e) { setErro(e.message); }
-      await carregarJobs();
+      const l = await carregarJobs();
+      if (l.length) { setSelecionado(l[0].id); carregarDetalhe(l[0].id, true); }
       setCarregando(false);
     })();
-  }, [carregarJobs]);
+  }, [carregarJobs, carregarDetalhe]);
 
   // poll condicional: liga com job ativo, desliga sozinho quando acaba
   useEffect(() => {
@@ -215,11 +237,18 @@ export default function Varredura({ onNavegar }) {
     if (ativos > 0) {
       timer.current = setInterval(async () => {
         const l = await carregarJobs();
-        if (aberto && l.some((j) => j.id === aberto)) abrirDetalhe(aberto, true);
+        if (selecionado && l.some((j) => j.id === selecionado)) {
+          carregarDetalhe(selecionado, true);
+        }
       }, 4000);
     }
     return () => { if (timer.current) clearInterval(timer.current); };
-  }, [ativos, aberto, carregarJobs, abrirDetalhe]);
+  }, [ativos, selecionado, carregarJobs, carregarDetalhe]);
+
+  function selecionar(id) {
+    setSelecionado(id);
+    if (!detalhe[id]) carregarDetalhe(id);
+  }
 
   async function criar() {
     setErro(null); setAviso(null);
@@ -238,8 +267,8 @@ export default function Varredura({ onNavegar }) {
       setAviso(r.na_frente > 0
         ? `Varredura #${r.id} criada — ${r.na_frente} na frente na fila.`
         : `Varredura #${r.id} criada e entrando na fila.`);
-      setFormAberto(false);
-      await carregarJobs();
+      const l = await carregarJobs();
+      if (l.length) { setSelecionado(l[0].id); carregarDetalhe(l[0].id, true); }
     } catch (e) { setErro(e.message); }
     finally { setCriando(false); }
   }
@@ -249,7 +278,7 @@ export default function Varredura({ onNavegar }) {
     try {
       await api.post(`/varredura/jobs/${id}/${qual}`, {});
       await carregarJobs();
-      abrirDetalhe(id, true);
+      carregarDetalhe(id, true);
     } catch (e) { setErro(e.message); }
   }
 
@@ -263,30 +292,30 @@ export default function Varredura({ onNavegar }) {
     <div className="min-h-screen bg-[--mike-bg] text-[--mike-fg]">
       <MikeHeader telaAtiva="varredura" onNavegar={onNavegar} />
 
-      <div className="max-w-screen-xl mx-auto px-4 lg:px-8 py-6">
+      <div className="max-w-screen-xl mx-auto px-4 lg:px-8 py-5">
 
-        {/* ------------------------------------------------------ hero -- */}
-        <div className="flex items-start justify-between gap-4 mb-6">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                 style={{ background: 'linear-gradient(135deg, var(--mike-accent), var(--mike-accent-2))' }}>
-              <Radar className="w-5 h-5" style={{ color: 'var(--mike-bg)' }} />
-            </div>
-            <div>
-              <h1 className="text-lg font-black tracking-tight">Varredura</h1>
-              <p className="text-[11px] text-[--mike-fg-muted] mt-0.5 max-w-2xl leading-relaxed">
-                Combina os filtros do mínimo ao máximo em cima de um backtest já rodado
-                e devolve cada combinação como um bot pronto — com holdout e carimbo.
-              </p>
-            </div>
-          </div>
-          <Botao tipo="primario" icone={formAberto ? X : Plus}
-                 onClick={() => setFormAberto((v) => !v)}>
-            {formAberto ? 'Fechar' : 'Nova varredura'}
-          </Botao>
+        {/* -------------------------------------------------- breadcrumb */}
+        <nav className="flex items-center gap-1.5 text-[11px] text-[--mike-fg-muted] mb-3">
+          <button onClick={() => onNavegar?.('today')} className="hover:text-[--mike-fg] transition">
+            <Home className="w-3.5 h-3.5" />
+          </button>
+          <ChevronRight className="w-3 h-3 opacity-50" />
+          <span className="flex items-center gap-1.5 text-[--mike-fg-soft]">
+            <Radar className="w-3.5 h-3.5" /> Varredura
+          </span>
+        </nav>
+
+        {/* ------------------------------------------------------ titulo */}
+        <div className="flex items-center gap-2.5 mb-1">
+          <Radar className="w-6 h-6" style={{ color: 'var(--mike-accent)' }} />
+          <h1 className="text-[26px] font-black tracking-tight leading-none">Varredura</h1>
         </div>
+        <p className="text-[12px] text-[--mike-fg-muted] mb-5">
+          Combina os filtros do mínimo ao máximo em cima de um backtest já rodado e
+          devolve cada combinação como um bot pronto — com holdout e carimbo.
+        </p>
 
-        {/* --------------------------------------------------- avisos --- */}
+        {/* ------------------------------------------------------ avisos */}
         {erro && (
           <div className="mb-3 flex items-start gap-2 px-3 py-2.5 rounded-lg text-[11px]"
                style={{ backgroundColor: 'rgba(248,113,113,.1)',
@@ -310,315 +339,291 @@ export default function Varredura({ onNavegar }) {
           </div>
         )}
 
-        {/* ------------------------------------------------ formulario -- */}
-        {formAberto && (
-          <div className="rounded-2xl p-5 mb-6"
-               style={{ backgroundColor: 'rgba(20,26,40,.6)',
-                        border: '0.5px solid rgba(60,85,130,.4)',
-                        boxShadow: '0 12px 40px rgba(0,0,0,.35)' }}>
+        {/* ============================ duas colunas ==================== */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-4">
-              <div className="lg:col-span-3">
-                <Rotulo hint="O garimpo lê as apostas deste job. Prefira um escancarado: job já filtrado só deixa procurar dentro da estratégia dele.">
-                  Backtest de origem
-                </Rotulo>
-                <select className={inputCls} value={form.job_backtest_id}
-                        onChange={(e) => setForm({ ...form, job_backtest_id: e.target.value })}>
-                  <option value="">Escolha o job de origem…</option>
-                  {origens.map((o) => (
-                    <option key={o.job_id} value={o.job_id}>
-                      #{o.job_id} · {o.mercado || 'mercado?'} · {num(o.apostas)} apostas
-                      {o.escancarado ? ' · escancarado' : ' · filtrado'}
-                    </option>
+          {/* ------------------------------------------ coluna esquerda */}
+          <div className="lg:col-span-2 space-y-4">
+
+            <Secao numero="1" icone={Database} titulo="Origem"
+                   desc="O garimpo lê as apostas de um backtest já concluído — nada de upload.">
+              <select className={inputCls} value={form.job_backtest_id}
+                      onChange={(e) => setForm({ ...form, job_backtest_id: e.target.value })}>
+                <option value="">Escolha o job de origem…</option>
+                {origens.map((o) => (
+                  <option key={o.job_id} value={o.job_id}>
+                    #{o.job_id} · {o.mercado || 'mercado?'} · {num(o.apostas)} apostas
+                    {o.escancarado ? ' · escancarado' : ' · filtrado'}
+                  </option>
+                ))}
+              </select>
+              {origens.length === 0 && !carregando && (
+                <div className="text-[10px] text-[--mike-fg-muted] mt-2">
+                  Nenhum backtest elegível — precisa estar concluído e ter 500+ apostas.
+                </div>
+              )}
+              {origemSel && !origemSel.escancarado && (
+                <div className="mt-3 flex items-start gap-2 px-3 py-2.5 rounded-lg text-[11px] leading-relaxed"
+                     style={{ backgroundColor: 'rgba(251,191,36,.1)',
+                              border: '0.5px solid rgba(251,191,36,.35)', color: '#fcd34d' }}>
+                  <AlertTriangle className="w-3.5 h-3.5 mt-px shrink-0" />
+                  <span>
+                    Esse backtest já tem filtro. A busca vai procurar <b>dentro</b> da
+                    estratégia dele e nunca fora — para garimpar de verdade, use um job
+                    escancarado (sem chip, sem linha, sem teto).
+                  </span>
+                </div>
+              )}
+            </Secao>
+
+            <Secao numero="2" icone={Sliders} titulo="Escopo da busca"
+                   desc="Quanto do espaço de combinações vale a pena varrer — e quanto tempo isso custa.">
+              <div className={subTitulo + ' mb-2'}>Modo</div>
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                {MODOS.map((m) => {
+                  const on = form.modo === m.id;
+                  return (
+                    <button key={m.id} onClick={() => setForm({ ...form, modo: m.id })}
+                      className="rounded-lg px-3 py-2.5 text-left transition"
+                      style={{
+                        backgroundColor: on ? 'rgba(34,211,238,.12)' : 'rgba(11,15,26,.6)',
+                        border: `0.5px solid ${on ? 'var(--mike-accent)' : 'rgba(60,85,130,.35)'}`,
+                      }}>
+                      <div className="text-[12px] font-bold"
+                           style={{ color: on ? 'var(--mike-accent)' : 'var(--mike-fg-soft)' }}>
+                        {m.titulo}
+                      </div>
+                      <div className="text-[9px] text-[--mike-fg-muted] leading-tight mt-0.5">
+                        {m.desc}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button onClick={() => setAvancado((v) => !v)}
+                      className="flex items-center gap-1.5 text-[11px] font-bold text-[--mike-fg-muted]
+                                 hover:text-[--mike-fg-soft] transition mb-3">
+                <Sliders className="w-3.5 h-3.5" />
+                Opções avançadas
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${avancado ? 'rotate-180' : ''}`} />
+              </button>
+
+              {avancado && (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+                  <Campo label="Mín. apostas" hint="config com pouca aposta não opera, e cortar cedo acelera a busca">
+                    <input type="number" className={inputCls} value={form.min_apostas}
+                           onChange={(e) => setForm({ ...form, min_apostas: e.target.value })} />
+                  </Campo>
+                  <Campo label="Guardar" hint="quantas configurações por ranking">
+                    <input type="number" className={inputCls} value={form.guardar}
+                           onChange={(e) => setForm({ ...form, guardar: e.target.value })} />
+                  </Campo>
+                  <Campo label="Tetos de linha" hint="em total de pontos quem decide é o teto — nesse mercado, 14">
+                    <input type="number" className={inputCls} value={form.nlmax} placeholder="ex: 14"
+                           onChange={(e) => setForm({ ...form, nlmax: e.target.value })} />
+                  </Campo>
+                  <Campo label="Janelas" hint="vazio = todas; menos janelas deixa muito mais rápido">
+                    <input className={inputCls} value={form.janelas} placeholder="ult.10,ult.30,todas"
+                           onChange={(e) => setForm({ ...form, janelas: e.target.value })} />
+                  </Campo>
+                  <Campo label="Corte do holdout" hint="vazio = separa 30% do fim sozinho">
+                    <input type="date" className={inputCls} value={form.data_corte}
+                           onChange={(e) => setForm({ ...form, data_corte: e.target.value })} />
+                  </Campo>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between gap-4 pt-3"
+                   style={{ borderTop: '0.5px solid rgba(60,85,130,.25)' }}>
+                <p className="text-[10px] text-[--mike-fg-muted] leading-relaxed flex-1">
+                  A busca só enxerga o treino; o resto vira <b>holdout</b> e é medido no fim.
+                  No encerramento o resultado passa pelo <b>carimbo</b> — se a liquidação não
+                  fechar, o job vai para erro em vez de mostrar número furado.
+                </p>
+                <Botao tipo="primario" icone={criando ? Loader2 : Play}
+                       onClick={criar} disabled={criando}>
+                  {criando ? 'Criando…' : 'Garimpar'}
+                </Botao>
+              </div>
+            </Secao>
+
+            <Secao icone={Layers} titulo="Varreduras"
+                   desc={ativos > 0 ? `${ativos} em andamento — a lista se atualiza sozinha.`
+                                    : 'Clique numa varredura para ver o resultado ao lado.'}>
+              {carregando && (
+                <div className="space-y-2">
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className="rounded-lg h-12 animate-pulse"
+                         style={{ backgroundColor: 'rgba(11,15,26,.5)' }} />
                   ))}
-                </select>
-                {origens.length === 0 && !carregando && (
-                  <div className="text-[10px] text-[--mike-fg-muted] mt-1.5">
-                    Nenhum backtest elegível (precisa estar concluído e ter 500+ apostas).
-                  </div>
+                </div>
+              )}
+
+              {!carregando && jobs.length === 0 && (
+                <div className="py-8 text-center">
+                  <Radar className="w-7 h-7 mx-auto mb-2 text-[--mike-fg-muted] opacity-40" />
+                  <div className="text-[12px] font-bold mb-1">Nenhuma varredura ainda</div>
+                  <p className="text-[11px] text-[--mike-fg-muted] max-w-xs mx-auto leading-relaxed">
+                    Escolha a origem acima e clique em Garimpar. Ela roda em segundo
+                    plano — pode fechar a aba.
+                  </p>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                {jobs.map((j) => {
+                  const s = STATUS[j.status] || STATUS.pendente;
+                  const on = selecionado === j.id;
+                  const dj = detalhe[j.id];
+                  const rj = (dj && dj.resumo) || {};
+                  return (
+                    <button key={j.id} onClick={() => selecionar(j.id)}
+                      className="w-full text-left rounded-lg px-3 py-2.5 transition"
+                      style={{
+                        backgroundColor: on ? 'rgba(34,211,238,.08)' : 'rgba(11,15,26,.45)',
+                        border: `0.5px solid ${on ? 'var(--mike-accent)' : 'rgba(60,85,130,.25)'}`,
+                      }}>
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-[11px] font-black shrink-0 w-7"
+                              style={{ fontFamily: 'JetBrains Mono, monospace', color: s.cor }}>
+                          #{j.id}
+                        </span>
+                        <span className="text-[12px] font-bold flex-1 truncate">{j.nome}</span>
+                        {j.status === 'concluido' && rj.linhas_saida && (
+                          <span className="text-[10px] text-[--mike-fg-muted] hidden sm:inline"
+                                style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                            {num(rj.linhas_saida)} configs
+                          </span>
+                        )}
+                        <Pill status={j.status} />
+                        <span className="text-[10px] text-[--mike-fg-muted] w-14 text-right shrink-0">
+                          {tempoRelativo(j.criado_em)}
+                        </span>
+                      </div>
+                      {ATIVO.includes(j.status) && (
+                        <div className="mt-2 pl-[38px]">
+                          <div className="w-full h-1 rounded-full overflow-hidden"
+                               style={{ backgroundColor: 'rgba(60,85,130,.25)' }}>
+                            <div className="h-full rounded-full transition-all duration-700"
+                                 style={{ width: `${Math.max(3, j.progresso || 0)}%`,
+                                          background: `linear-gradient(90deg, ${s.cor}88, ${s.cor})` }} />
+                          </div>
+                          <div className="text-[10px] text-[--mike-fg-muted] mt-1">
+                            {j.progresso_msg || 'iniciando…'}
+                          </div>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </Secao>
+          </div>
+
+          {/* ------------------------------------------- coluna direita */}
+          <div className="lg:col-span-1">
+            <div className="lg:sticky lg:top-20">
+              <Secao icone={Trophy} titulo="Resultado">
+                {!d && (
+                  <p className="text-[12px] text-[--mike-fg-muted] text-center py-10 leading-relaxed">
+                    Escolha uma varredura na lista pra ver o resultado aqui.
+                  </p>
                 )}
-              </div>
 
-              <div className="lg:col-span-2">
-                <Rotulo hint="Grosso é sonda; completo é o do dia a dia; total varre tudo e pode levar horas — nesse caso o job para e pede confirmação antes.">
-                  Modo
-                </Rotulo>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {MODOS.map((m) => {
-                    const on = form.modo === m.id;
-                    return (
-                      <button key={m.id} onClick={() => setForm({ ...form, modo: m.id })}
-                        className="rounded-lg px-2 py-2 text-left transition"
-                        style={{
-                          backgroundColor: on ? 'rgba(34,211,238,.12)' : 'rgba(11,15,26,.6)',
-                          border: `0.5px solid ${on ? 'var(--mike-accent)' : 'rgba(60,85,130,.35)'}`,
-                        }}>
-                        <div className="text-[11px] font-bold"
-                             style={{ color: on ? 'var(--mike-accent)' : 'var(--mike-fg-soft)' }}>
-                          {m.titulo}
-                        </div>
-                        <div className="text-[9px] text-[--mike-fg-muted] leading-tight mt-0.5">
-                          {m.desc}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            {origemSel && !origemSel.escancarado && (
-              <div className="mb-4 flex items-start gap-2 px-3 py-2.5 rounded-lg text-[11px] leading-relaxed"
-                   style={{ backgroundColor: 'rgba(251,191,36,.1)',
-                            border: '0.5px solid rgba(251,191,36,.35)', color: '#fcd34d' }}>
-                <AlertTriangle className="w-3.5 h-3.5 mt-px shrink-0" />
-                <span>
-                  Esse backtest já tem filtro. A busca vai procurar <b>dentro</b> da
-                  estratégia dele e nunca fora — para garimpar de verdade, use um job
-                  escancarado (sem chip, sem linha, sem teto).
-                </span>
-              </div>
-            )}
-
-            <button onClick={() => setAvancado((v) => !v)}
-                    className="flex items-center gap-1.5 text-[11px] font-bold text-[--mike-fg-muted]
-                               hover:text-[--mike-fg-soft] transition mb-3">
-              <Sliders className="w-3.5 h-3.5" />
-              Opções avançadas
-              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${avancado ? 'rotate-180' : ''}`} />
-            </button>
-
-            {avancado && (
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4 pb-4"
-                   style={{ borderBottom: '0.5px solid rgba(60,85,130,.25)' }}>
-                <div>
-                  <Rotulo hint="Config com pouca aposta não serve pra operar — cortar cedo também acelera muito a busca.">Mín. apostas</Rotulo>
-                  <input type="number" className={inputCls} value={form.min_apostas}
-                         onChange={(e) => setForm({ ...form, min_apostas: e.target.value })} />
-                </div>
-                <div>
-                  <Rotulo hint="Quantas configurações guardar por ranking.">Guardar</Rotulo>
-                  <input type="number" className={inputCls} value={form.guardar}
-                         onChange={(e) => setForm({ ...form, guardar: e.target.value })} />
-                </div>
-                <div>
-                  <Rotulo hint="Em total de pontos quem decide é o TETO de linha. Nesse mercado, suba para 14.">Tetos de linha</Rotulo>
-                  <input type="number" className={inputCls} value={form.nlmax} placeholder="ex: 14"
-                         onChange={(e) => setForm({ ...form, nlmax: e.target.value })} />
-                </div>
-                <div>
-                  <Rotulo hint="O passe de duas janelas cresce ao quadrado. Menos janelas = muito mais rápido.">Janelas</Rotulo>
-                  <input className={inputCls} value={form.janelas} placeholder="todas"
-                         onChange={(e) => setForm({ ...form, janelas: e.target.value })} />
-                </div>
-                <div>
-                  <Rotulo hint="A busca só enxerga até esta data; o resto vira holdout e é medido no fim. Vazio = separa 30% do fim sozinho.">Corte do holdout</Rotulo>
-                  <input type="date" className={inputCls} value={form.data_corte}
-                         onChange={(e) => setForm({ ...form, data_corte: e.target.value })} />
-                </div>
-              </div>
-            )}
-
-            <div className="flex items-center justify-between gap-4">
-              <p className="text-[10px] text-[--mike-fg-muted] leading-relaxed max-w-xl">
-                A busca só enxerga o treino; o resto vira holdout e é medido no fim.
-                No encerramento o resultado passa pelo carimbo — se a liquidação não
-                fechar, o job vai para erro em vez de mostrar número furado.
-              </p>
-              <Botao tipo="primario" icone={criando ? Loader2 : Play}
-                     onClick={criar} disabled={criando}>
-                {criando ? 'Criando…' : 'Garimpar'}
-              </Botao>
-            </div>
-          </div>
-        )}
-
-        {/* ---------------------------------------------------- lista --- */}
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-[10px] uppercase tracking-[0.08em] font-bold text-[--mike-fg-muted]">
-            Varreduras
-          </span>
-          {ativos > 0 && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[--mike-accent]">
-              <Loader2 className="w-3 h-3 animate-spin" />
-              {ativos} em andamento
-            </span>
-          )}
-        </div>
-
-        {carregando && (
-          <div className="space-y-2">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="rounded-xl h-16 animate-pulse"
-                   style={{ backgroundColor: 'rgba(20,26,40,.4)' }} />
-            ))}
-          </div>
-        )}
-
-        {!carregando && jobs.length === 0 && (
-          <div className="rounded-2xl py-12 px-6 text-center"
-               style={{ backgroundColor: 'rgba(20,26,40,.4)',
-                        border: '0.5px dashed rgba(60,85,130,.4)' }}>
-            <Radar className="w-8 h-8 mx-auto mb-3 text-[--mike-fg-muted] opacity-40" />
-            <div className="text-sm font-bold mb-1">Nenhuma varredura ainda</div>
-            <p className="text-[11px] text-[--mike-fg-muted] max-w-sm mx-auto leading-relaxed">
-              Escolha um backtest escancarado e deixe a máquina combinar os filtros.
-              Ela roda em segundo plano — pode fechar a aba.
-            </p>
-          </div>
-        )}
-
-        <div className="space-y-2">
-          {jobs.map((j) => {
-            const d = detalhe[j.id];
-            const c = (d && d.contrato) || {};
-            const r = (d && d.resumo) || {};
-            const g = r.gate || {};
-            const expandido = aberto === j.id;
-            const s = STATUS[j.status] || STATUS.pendente;
-            return (
-              <div key={j.id} className="rounded-xl overflow-hidden transition"
-                   style={{ backgroundColor: 'rgba(20,26,40,.6)',
-                            border: `0.5px solid ${expandido ? 'rgba(60,85,130,.7)' : 'rgba(60,85,130,.35)'}` }}>
-
-                <div className="p-3.5 cursor-pointer transition hover:bg-[rgba(60,85,130,.08)]"
-                     onClick={() => abrirDetalhe(j.id)}>
-                  <div className="flex items-center gap-3">
-                    <span className="text-[11px] font-black shrink-0 w-8"
-                          style={{ fontFamily: 'JetBrains Mono, monospace', color: s.cor }}>
-                      #{j.id}
-                    </span>
-                    <span className="text-[13px] font-bold flex-1 truncate">{j.nome}</span>
-                    <Pill status={j.status} />
-                    <span className="text-[10px] text-[--mike-fg-muted] w-16 text-right shrink-0">
-                      {tempoRelativo(j.criado_em)}
-                    </span>
-                    <ChevronDown className={`w-4 h-4 text-[--mike-fg-muted] transition-transform shrink-0 ${expandido ? 'rotate-180' : ''}`} />
-                  </div>
-
-                  {ATIVO.includes(j.status) && (
-                    <div className="mt-2.5 pl-11">
-                      <div className="w-full h-1 rounded-full overflow-hidden"
-                           style={{ backgroundColor: 'rgba(60,85,130,.25)' }}>
-                        <div className="h-full rounded-full transition-all duration-700"
-                             style={{ width: `${Math.max(3, j.progresso || 0)}%`,
-                                      background: `linear-gradient(90deg, ${s.cor}88, ${s.cor})` }} />
-                      </div>
-                      <div className="text-[10px] text-[--mike-fg-muted] mt-1.5">
-                        {j.progresso_msg || 'iniciando…'}
-                      </div>
+                {d && (
+                  <>
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-[12px] font-black"
+                            style={{ fontFamily: 'JetBrains Mono, monospace' }}>#{d.id}</span>
+                      <span className="text-[12px] font-bold flex-1 truncate">{d.nome}</span>
+                      <Pill status={d.status} />
                     </div>
-                  )}
 
-                  {j.status === 'concluido' && d && (
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 pl-11">
-                      <Metrica icone={Layers} valor={num(r.linhas_saida)} label="configs" />
-                      <Metrica icone={Clock} valor={duracao(r.segundos)} label="" />
-                      <Metrica icone={Database} valor={num(c.apostas)} label="apostas" />
-                      {g.t2_pct && <Metrica icone={CheckCircle2} valor={`${g.t2_pct}%`} label="carimbo" />}
-                    </div>
-                  )}
-
-                  {j.status === 'erro' && j.erro && (
-                    <div className="text-[11px] mt-2 pl-11 leading-relaxed" style={{ color: '#fca5a5' }}>
-                      {j.erro}
-                    </div>
-                  )}
-                </div>
-
-                {expandido && (
-                  <div className="px-3.5 pb-3.5" style={{ borderTop: '0.5px solid rgba(60,85,130,.25)' }}>
-                    {!d && (
-                      <div className="flex items-center gap-2 py-3 text-[11px] text-[--mike-fg-muted]">
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" /> carregando…
+                    {d.status === 'erro' && d.erro && (
+                      <div className="mb-3 px-3 py-2.5 rounded-lg text-[11px] leading-relaxed"
+                           style={{ backgroundColor: 'rgba(248,113,113,.1)',
+                                    border: '0.5px solid rgba(248,113,113,.35)', color: '#fca5a5' }}>
+                        {d.erro}
                       </div>
                     )}
-                    {d && (
-                      <>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-3 mt-3 mb-4">
-                          {[
-                            ['origem', `#${d.job_backtest_id}`],
-                            ['período', c.periodo],
-                            ['treino até', c.treino_ate],
-                            ['holdout', c.holdout],
-                            ['apostas', num(c.apostas)],
-                            ['jogos', num(c.jogos)],
-                            ['baseline', c.baseline],
-                            ['configs achadas', num(r.linhas_saida)],
-                            ['combinações', num(c.total_estimado)],
-                            ['janelas', c.janelas],
-                            ['eixos', c.complementares],
-                            ['duração', duracao(r.segundos)],
-                          ].filter((par) => par[1]).map((par) => (
-                            <div key={par[0]} className="min-w-0">
-                              <div className="text-[9px] uppercase tracking-wider text-[--mike-fg-muted] mb-0.5">
-                                {par[0]}
-                              </div>
-                              <div className="text-[11px] text-[--mike-fg-soft] truncate" title={String(par[1])}>
-                                {String(par[1])}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
 
-                        {g.t1 && (
-                          <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg text-[11px]"
-                               style={{ backgroundColor: 'rgba(11,15,26,.55)',
-                                        border: '0.5px solid rgba(60,85,130,.3)',
-                                        color: g.passou === false ? '#fca5a5' : '#a9b6d0' }}>
-                            {g.passou === false
-                              ? <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                              : <CheckCircle2 className="w-3.5 h-3.5 shrink-0" style={{ color: '#10b981' }} />}
-                            <span>
-                              <b>Carimbo</b> · liquidação {g.t1} · leitura {g.t2_pct}%
-                              {g.passou === false && ' — reprovado, os números não são confiáveis'}
-                            </span>
-                          </div>
-                        )}
-
-                        {d.status === 'planejado' && (
-                          <div className="flex items-start gap-2 mb-4 px-3 py-2.5 rounded-lg text-[11px] leading-relaxed"
-                               style={{ backgroundColor: 'rgba(251,191,36,.1)',
-                                        border: '0.5px solid rgba(251,191,36,.35)', color: '#fcd34d' }}>
-                            <AlertTriangle className="w-3.5 h-3.5 mt-px shrink-0" />
-                            <span>{d.progresso_msg || 'Estimativa alta — confirme para rodar.'}</span>
-                          </div>
-                        )}
-
-                        <div className="flex flex-wrap gap-2">
-                          {d.status === 'planejado' && (
-                            <Botao tipo="alerta" icone={Play} onClick={() => acao(j.id, 'confirmar')}>
-                              Confirmar e rodar
-                            </Botao>
-                          )}
-                          {ATIVO.includes(d.status) && (
-                            <Botao tipo="perigo" icone={X} onClick={() => acao(j.id, 'cancelar')}>
-                              Cancelar
-                            </Botao>
-                          )}
-                          {d.tem_saida && (
-                            <>
-                              <Botao tipo="primario" icone={Download} onClick={() => download(j.id, 'xlsx')}>
-                                Rankings (.xlsx)
-                              </Botao>
-                              <Botao icone={Download} onClick={() => download(j.id, 'tudo')}>
-                                Tudo (.csv)
-                              </Botao>
-                            </>
-                          )}
-                          {d.tem_holdout && (
-                            <Botao icone={Download} onClick={() => download(j.id, 'holdout')}>
-                              Holdout
-                            </Botao>
-                          )}
-                        </div>
-                      </>
+                    {d.status === 'planejado' && (
+                      <div className="mb-3 px-3 py-2.5 rounded-lg text-[11px] leading-relaxed"
+                           style={{ backgroundColor: 'rgba(251,191,36,.1)',
+                                    border: '0.5px solid rgba(251,191,36,.35)', color: '#fcd34d' }}>
+                        {d.progresso_msg || 'Estimativa alta — confirme para rodar.'}
+                      </div>
                     )}
-                  </div>
+
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 mb-3">
+                      <Dado k="origem" v={`#${d.job_backtest_id}`} />
+                      <Dado k="configs achadas" v={num((d.resumo || {}).linhas_saida)} />
+                      <Dado k="período" v={(d.contrato || {}).periodo} />
+                      <Dado k="duração" v={duracao((d.resumo || {}).segundos)} />
+                      <Dado k="treino até" v={(d.contrato || {}).treino_ate} />
+                      <Dado k="holdout" v={(d.contrato || {}).holdout} />
+                      <Dado k="apostas" v={num((d.contrato || {}).apostas)} />
+                      <Dado k="jogos" v={num((d.contrato || {}).jogos)} />
+                      <Dado k="baseline" v={(d.contrato || {}).baseline} />
+                      <Dado k="combinações" v={num((d.contrato || {}).total_estimado)} />
+                    </div>
+
+                    <div className="mb-3">
+                      <Dado k="janelas" v={(d.contrato || {}).janelas} />
+                    </div>
+                    <div className="mb-3">
+                      <Dado k="eixos" v={(d.contrato || {}).complementares} />
+                    </div>
+
+                    {((d.resumo || {}).gate || {}).t1 && (
+                      <div className="flex items-start gap-2 mb-3 px-3 py-2 rounded-lg text-[11px] leading-relaxed"
+                           style={{ backgroundColor: 'rgba(11,15,26,.55)',
+                                    border: '0.5px solid rgba(60,85,130,.3)',
+                                    color: d.resumo.gate.passou === false ? '#fca5a5' : '#a9b6d0' }}>
+                        {d.resumo.gate.passou === false
+                          ? <AlertTriangle className="w-3.5 h-3.5 mt-px shrink-0" />
+                          : <CheckCircle2 className="w-3.5 h-3.5 mt-px shrink-0" style={{ color: '#10b981' }} />}
+                        <span>
+                          <b>Carimbo</b> · liquidação {d.resumo.gate.t1} · leitura {d.resumo.gate.t2_pct}%
+                          {d.resumo.gate.passou === false && ' — reprovado, os números não são confiáveis'}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap gap-2 pt-3"
+                         style={{ borderTop: '0.5px solid rgba(60,85,130,.25)' }}>
+                      {d.status === 'planejado' && (
+                        <Botao tipo="alerta" icone={Play} onClick={() => acao(d.id, 'confirmar')}>
+                          Confirmar e rodar
+                        </Botao>
+                      )}
+                      {ATIVO.includes(d.status) && (
+                        <Botao tipo="perigo" icone={X} onClick={() => acao(d.id, 'cancelar')}>
+                          Cancelar
+                        </Botao>
+                      )}
+                      {d.tem_saida && (
+                        <>
+                          <Botao tipo="primario" icone={Download} onClick={() => download(d.id, 'xlsx')}>
+                            Rankings
+                          </Botao>
+                          <Botao icone={Download} onClick={() => download(d.id, 'tudo')}>
+                            Tudo (.csv)
+                          </Botao>
+                        </>
+                      )}
+                      {d.tem_holdout && (
+                        <Botao icone={Download} onClick={() => download(d.id, 'holdout')}>
+                          Holdout
+                        </Botao>
+                      )}
+                    </div>
+                  </>
                 )}
-              </div>
-            );
-          })}
+              </Secao>
+            </div>
+          </div>
         </div>
       </div>
     </div>
