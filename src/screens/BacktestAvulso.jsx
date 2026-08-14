@@ -500,6 +500,17 @@ export default function BacktestAvulso({ onNavegar } = {}) {
   const montadoRef = useRef(true);
 
   const ehBasket = esporte === 'nba2k';
+  // v17 (11/ago): em HANDICAP nao existe over/under. O motor deriva o lado da
+  // PALAVRA da selecao ('Mais de'/'Menos de'); uma selecao de HC e
+  // 'CHI Bulls (GRAVITY) (+2.5)' — sem palavra nenhuma dessas, entao o filtro
+  // de lado era simplesmente IGNORADO (escolher Over ou Under dava o mesmo
+  // resultado, em silencio).
+  // Quem escolhe o lado no HC e' a FAIXA DE LINHA COM SINAL, por design do
+  // motor: negativa = favorito (da a linha), positiva = zebra (recebe).
+  const ehHc = mercado === 'ah_ft' || mercado === 'ah_ht';
+  // trocou pra HC com Over/Under marcado de antes: volta pra 'ambos', senao
+  // ficaria um filtro morto viajando no snapshot do job.
+  useEffect(() => { if (ehHc && lado !== 'ambos') setLado('ambos'); }, [ehHc, lado]);
 
   useEffect(() => {
     montadoRef.current = true;
@@ -905,8 +916,36 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                     <Campo label="Casa"><Select value={casa} onChange={setCasa} options={CASAS} /></Campo>
                     <Campo label="Esporte"><Select value={esporte} onChange={setEsporte} options={ESPORTES} /></Campo>
                     <Campo label="Mercado"><Select value={mercado} onChange={setMercado} options={MERCADOS} /></Campo>
-                    <Campo label="Lado"><Select value={lado} onChange={setLado} options={LADOS} /></Campo>
+                    {!ehHc && (
+                      <Campo label="Lado"><Select value={lado} onChange={setLado} options={LADOS} /></Campo>
+                    )}
                   </div>
+                  {ehHc && (
+                    <div className="mt-2 rounded-md p-2 text-[10px] space-y-1.5"
+                         style={{ backgroundColor: 'rgba(255,255,255,0.02)', border: '0.5px solid rgba(255,255,255,0.07)' }}>
+                      <div className="text-[--mike-fg-soft]">
+                        No handicap o lado vem da <b>faixa de linha</b>: negativa = <b>favorito</b> (dá a linha),
+                        positiva = <b>zebra</b> (recebe).
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        <button type="button" onClick={() => { setLinhaMin('0.5'); setLinhaMax('40.5'); }}
+                          className="px-2 py-1 rounded text-[10px] text-[--mike-fg-muted] hover:text-cyan-300 transition"
+                          style={{ border: '0.5px solid rgba(255,255,255,0.08)' }}>
+                          só zebra (+0.5 a +40.5)
+                        </button>
+                        <button type="button" onClick={() => { setLinhaMin('-40.5'); setLinhaMax('-0.5'); }}
+                          className="px-2 py-1 rounded text-[10px] text-[--mike-fg-muted] hover:text-cyan-300 transition"
+                          style={{ border: '0.5px solid rgba(255,255,255,0.08)' }}>
+                          só favorito (-40.5 a -0.5)
+                        </button>
+                        <button type="button" onClick={() => { setLinhaMin(''); setLinhaMax(''); }}
+                          className="px-2 py-1 rounded text-[10px] text-[--mike-fg-muted] hover:text-cyan-300 transition"
+                          style={{ border: '0.5px solid rgba(255,255,255,0.08)' }}>
+                          os dois lados
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   <DivFina />
                   <SubLabel>Faixa de linha (opcional)</SubLabel>
                   <div className="grid grid-cols-2 gap-3">
