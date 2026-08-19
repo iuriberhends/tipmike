@@ -1770,6 +1770,21 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
   const [folgaMax, setFolgaMax] = useState('');
   const [momentoAtivo, setMomentoAtivo] = useState(false);
   const [momentoMax, setMomentoMax] = useState('2');
+  // ATROPELO (v16 do motor): % dos jogos ANTERIORES de cada jogador que
+  // terminaram com N+ de diferenca; vale o PIOR dos dois. Eixo de DOIS
+  // sentidos: zebra quer atropelo BAIXO (goleada mata a almofada), favorito
+  // quer ALTO (goleada cobre o handicap). Por isso min E max.
+  const [atropeloAtivo, setAtropeloAtivo] = useState(false);
+  const [atropeloMin, setAtropeloMin] = useState('');
+  const [atropeloMax, setAtropeloMax] = useState('');
+  const [atropeloMargem, setAtropeloMargem] = useState('15');
+  const [atropeloMinJogos, setAtropeloMinJogos] = useState('6');
+  // TOT_ENV (v17 do motor): soma do placar no envio (score_home+score_away).
+  // NAO e' o `momento` acima, que e' o ESTAGIO do jogo lido do live_time —
+  // sao dois eixos diferentes que por azar tinham nomes parecidos.
+  const [totEnvAtivo, setTotEnvAtivo] = useState(false);
+  const [totEnvMin, setTotEnvMin] = useState('');
+  const [totEnvMax, setTotEnvMax] = useState('');
   // MAX TIPS POR JOGO
   const [maxTipsPorJogo, setMaxTipsPorJogo] = useState('ilimitado');
 
@@ -1920,6 +1935,14 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     folgaMax: folgaMax === '' ? null : Number(folgaMax),
     momentoAtivo,
     momentoMax: momentoMax === '' ? null : Number(momentoMax),
+    atropeloAtivo,
+    atropeloMin: atropeloMin === '' ? null : Number(atropeloMin),
+    atropeloMax: atropeloMax === '' ? null : Number(atropeloMax),
+    atropeloMargem: atropeloMargem === '' ? null : Number(atropeloMargem),
+    atropeloMinJogos: atropeloMinJogos === '' ? null : Number(atropeloMinJogos),
+    totEnvAtivo,
+    totEnvMin: totEnvMin === '' ? null : Number(totEnvMin),
+    totEnvMax: totEnvMax === '' ? null : Number(totEnvMax),
   };
 
   // Aplica state salvo: chama todos os setters
@@ -2018,6 +2041,14 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     if (s.folgaMax !== undefined && s.folgaMax !== null) setFolgaMax(String(s.folgaMax)); else setFolgaMax('');
     if (s.momentoAtivo !== undefined) setMomentoAtivo(!!s.momentoAtivo);
     if (s.momentoMax !== undefined && s.momentoMax !== null) setMomentoMax(String(s.momentoMax));
+    if (s.atropeloAtivo !== undefined) setAtropeloAtivo(!!s.atropeloAtivo);
+    if (s.atropeloMin !== undefined && s.atropeloMin !== null) setAtropeloMin(String(s.atropeloMin)); else setAtropeloMin('');
+    if (s.atropeloMax !== undefined && s.atropeloMax !== null) setAtropeloMax(String(s.atropeloMax)); else setAtropeloMax('');
+    if (s.atropeloMargem !== undefined && s.atropeloMargem !== null) setAtropeloMargem(String(s.atropeloMargem));
+    if (s.atropeloMinJogos !== undefined && s.atropeloMinJogos !== null) setAtropeloMinJogos(String(s.atropeloMinJogos));
+    if (s.totEnvAtivo !== undefined) setTotEnvAtivo(!!s.totEnvAtivo);
+    if (s.totEnvMin !== undefined && s.totEnvMin !== null) setTotEnvMin(String(s.totEnvMin)); else setTotEnvMin('');
+    if (s.totEnvMax !== undefined && s.totEnvMax !== null) setTotEnvMax(String(s.totEnvMax)); else setTotEnvMax('');
     if (s.maxTipsPorJogo !== undefined) setMaxTipsPorJogo(s.maxTipsPorJogo);
   };
 
@@ -3059,6 +3090,44 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
               </div>
             )}
             <p className="text-[10px] text-[--mike-fg-muted] mt-1.5">Lido do estagio do jogo no tick (1Q/2Q/3Q/4Q). Comprovado no vivo: apostas do 1o tempo renderam <b>+18,7%</b> vs <b>-7,6%</b> no 2o. So funciona onde o coletor marca o periodo (hoje: Superbet). Grava em filtros.momentoMax.</p>
+          </div>
+
+          {/* ATROPELO (v16) — taxa de goleada do jogador. Eixo de dois sentidos. */}
+          <div className="pt-3 mt-1" style={{ borderTop: '0.5px solid rgba(60,85,130,0.25)' }}>
+            <label className="inline-flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" className="mike-checkbox" checked={atropeloAtivo} onChange={(e) => setAtropeloAtivo(e.target.checked)} />
+              <span className="text-xs text-[--mike-fg-soft]">Atropelo: filtrar pela taxa de jogos que viram goleada.</span>
+            </label>
+            {atropeloAtivo && (
+              <div className="flex items-center gap-3 flex-wrap mt-2">
+                <span className="text-xs text-[--mike-fg-soft]">min. %</span>
+                <div className="w-24"><input type="number" step="1" value={atropeloMin} onChange={(e) => setAtropeloMin(e.target.value)} placeholder="favorito" className="mike-input w-full text-xs px-2 py-1.5 rounded-md" /></div>
+                <span className="text-xs text-[--mike-fg-soft]">max. %</span>
+                <div className="w-24"><input type="number" step="1" value={atropeloMax} onChange={(e) => setAtropeloMax(e.target.value)} placeholder="zebra" className="mike-input w-full text-xs px-2 py-1.5 rounded-md" /></div>
+                <span className="text-xs text-[--mike-fg-soft]">margem</span>
+                <div className="w-20"><input type="number" step="1" value={atropeloMargem} onChange={(e) => setAtropeloMargem(e.target.value)} placeholder="15" className="mike-input w-full text-xs px-2 py-1.5 rounded-md" /></div>
+                <span className="text-xs text-[--mike-fg-soft]">min. jogos</span>
+                <div className="w-20"><input type="number" step="1" value={atropeloMinJogos} onChange={(e) => setAtropeloMinJogos(e.target.value)} placeholder="6" className="mike-input w-full text-xs px-2 py-1.5 rounded-md" /></div>
+              </div>
+            )}
+            <p className="text-[10px] text-[--mike-fg-muted] mt-1.5">% dos jogos ANTERIORES do jogador que acabaram com <b>{atropeloMargem || 15}+</b> de diferenca; vale o PIOR dos dois. Eixo de DOIS sentidos: na <b>zebra</b> use o MAXIMO (goleada mata a almofada); no <b>favorito</b> use o MINIMO (goleada cobre o handicap). Grava em filtros.atropeloMin/atropeloMax.</p>
+          </div>
+
+          {/* TOT_ENV (v17) — soma do placar no envio. NAO e' o momento acima. */}
+          <div className="pt-3 mt-1" style={{ borderTop: '0.5px solid rgba(60,85,130,0.25)' }}>
+            <label className="inline-flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" className="mike-checkbox" checked={totEnvAtivo} onChange={(e) => setTotEnvAtivo(e.target.checked)} />
+              <span className="text-xs text-[--mike-fg-soft]">Soma do placar (tot_env): filtrar por quanto de jogo ja passou.</span>
+            </label>
+            {totEnvAtivo && (
+              <div className="flex items-center gap-3 flex-wrap mt-2">
+                <span className="text-xs text-[--mike-fg-soft]">min.</span>
+                <div className="w-24"><input type="number" step="1" value={totEnvMin} onChange={(e) => setTotEnvMin(e.target.value)} placeholder="ex: 58" className="mike-input w-full text-xs px-2 py-1.5 rounded-md" /></div>
+                <span className="text-xs text-[--mike-fg-soft]">max.</span>
+                <div className="w-24"><input type="number" step="1" value={totEnvMax} onChange={(e) => setTotEnvMax(e.target.value)} placeholder="ex: 24" className="mike-input w-full text-xs px-2 py-1.5 rounded-md" /></div>
+              </div>
+            )}
+            <p className="text-[10px] text-[--mike-fg-muted] mt-1.5">Soma dos dois placares no instante da aposta — mede quanto de jogo passou. NAO confundir com o <b>Momento</b> acima, que e' o ESTAGIO (1Q/1T/3Q). Medido na Blitz (HC zebra, folga&ge;2,5): sem filtro ROI 13,6% &middot; <b>&ge;40</b> 23,2% &middot; <b>&ge;58</b> 34,9%. Grava em filtros.totEnvMin/totEnvMax.</p>
           </div>
         </div>
 

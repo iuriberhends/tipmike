@@ -162,10 +162,11 @@ function _labelChipHist(f) {
   const jstr = jl ? jl.label : f.janela;
   const wr = (f.prob[1] >= 100) ? `≥${f.prob[0]}%` : `${f.prob[0]}-${f.prob[1]}%`;
   const mp = f.minPartidas ? ` · ${f.minPartidas}+ conf.` : '';
+  const xp = f.maxPartidas ? ` · ate ${f.maxPartidas} conf.` : '';
   // v11: marca chips de base individual (e o alvo, se zebra+favorito)
   const base = f.base === 'individual'
     ? (f.indivAlvo === 'ambos' ? ' · IND z+fav' : ' · IND') : '';
-  return `${jstr} · ${wr}${mp}${base}`;
+  return `${jstr} · ${wr}${mp}${xp}${base}`;
 }
 
 const POLL_MS = 2000;
@@ -380,8 +381,18 @@ export default function BacktestAvulso({ onNavegar } = {}) {
   // almofada, e o efeito bate nos DOIS lados — e' propriedade do JOGO.
   const [atropeloAtivo, setAtropeloAtivo] = useState(false);
   const [atropeloMax, setAtropeloMax] = useState('22');
+  // v18: o PISO. Zebra quer atropelo BAIXO (goleada mata a almofada);
+  // FAVORITO quer atropelo ALTO (goleada cobre o handicap). Mesmo eixo,
+  // sinal invertido conforme o lado — so' o teto nao dava pra expressar.
+  const [atropeloMin, setAtropeloMin] = useState('');
   const [atropeloMargem, setAtropeloMargem] = useState('15');
   const [atropeloMinJogos, setAtropeloMinJogos] = useState('6');
+  // v17 — TOT_ENV: soma do placar no envio (score_home + score_away).
+  // Mede quanto de jogo ja passou. NAO e' o "momento" acima, que e' o
+  // ESTAGIO (1Q/1T/3Q) — sao dois eixos diferentes.
+  const [totEnvAtivo, setTotEnvAtivo] = useState(false);
+  const [totEnvMin, setTotEnvMin] = useState('');
+  const [totEnvMax, setTotEnvMax] = useState('');
   // upload
   const [arquivo, setArquivo] = useState(null);
   const [subindo, setSubindo] = useState(false);
@@ -405,6 +416,9 @@ export default function BacktestAvulso({ onNavegar } = {}) {
   const [histWrMin, setHistWrMin] = useState('0');
   const [histWrMax, setHistWrMax] = useState('');
   const [histMinPartidas, setHistMinPartidas] = useState('10');
+  // v15 do motor (maxPartidas): TETO de confrontos. Apareceu no topo de 7
+  // garimpos seguidos e nao dava pra usar pelo painel. Vazio = sem teto.
+  const [histMaxPartidas, setHistMaxPartidas] = useState('');
   // v11: base do histórico (confronto x individual) + alvo do individual no HC
   const [histBase, setHistBase] = useState('match');
   const [histIndivAlvo, setHistIndivAlvo] = useState('zebra');
@@ -425,11 +439,13 @@ export default function BacktestAvulso({ onNavegar } = {}) {
       janela: histJanela,
       prob: [mn, mx],
       minPartidas: Math.max(0, Math.trunc(Number(histMinPartidas) || 0)),
+      ...(histMaxPartidas !== '' && Number(histMaxPartidas) > 0
+          ? { maxPartidas: Math.trunc(Number(histMaxPartidas)) } : {}),
       base: histBase,
       ...(histBase === 'individual' ? { indivAlvo: histIndivAlvo } : {}),
     }]);
     setHistWrMin('0'); setHistWrMax('');   // volta ao padrao, nao ao vazio
-  }, [histJanela, histWrMin, histWrMax, histMinPartidas, histBase, histIndivAlvo]);
+  }, [histJanela, histWrMin, histWrMax, histMinPartidas, histMaxPartidas, histBase, histIndivAlvo]);
 
   const removerHist = useCallback((idx) => {
     setFiltrosHist(prev => prev.filter((_, i) => i !== idx));
@@ -595,17 +611,25 @@ export default function BacktestAvulso({ onNavegar } = {}) {
       if (fmin == null && fmax == null) return 'Folga ligada: informe a folga mínima e/ou máxima.';
       if (fmin != null && fmax != null && fmin > fmax) return 'Folga mín não pode ser maior que a máx.';
     }
+    if (totEnvAtivo) {
+      const tmin = numOuNull(totEnvMin), tmax = numOuNull(totEnvMax);
+      if (tmin == null && tmax == null) return 'Tot_env ligado: informe o mínimo e/ou o máximo.';
+      if (tmin != null && tmax != null && tmin > tmax) return 'Tot_env mín não pode ser maior que o máx.';
+      if ((tmin != null && tmin < 0) || (tmax != null && tmax < 0)) return 'Tot_env não pode ser negativo.';
+    }
     if (atropeloAtivo) {
-      const a = numOuNull(atropeloMax);
-      if (a == null) return 'Atropelo ligado: informe o atropelo máximo (%).';
-      if (a <= 0 || a > 100) return 'Atropelo máximo: use um valor entre 1 e 100.';
+      const a = numOuNull(atropeloMax), amin = numOuNull(atropeloMin);
+      if (a == null && amin == null) return 'Atropelo ligado: informe o mínimo e/ou o máximo (%).';
+      if (a != null && (a <= 0 || a > 100)) return 'Atropelo máximo: use um valor entre 1 e 100.';
+      if (amin != null && (amin < 0 || amin > 100)) return 'Atropelo mínimo: use um valor entre 0 e 100.';
+      if (a != null && amin != null && amin > a) return 'Atropelo mín não pode ser maior que o máx.';
       const mg = numOuNull(atropeloMargem);
       if (mg != null && mg <= 0) return 'Margem do atropelo deve ser maior que zero.';
       const mj = numOuNull(atropeloMinJogos);
       if (mj != null && mj < 1) return 'Mín. de jogos do atropelo deve ser pelo menos 1.';
     }
     return null;
-  }, [escadaLinhas, folgaAtiva, folgaMin, folgaMax, momentoAtivo, momentoMax, atropeloAtivo, atropeloMax, atropeloMargem, atropeloMinJogos, maxPorJogo, uploadId, mercado, linhaMin, linhaMax, oddMin, oddMax, stakeValor, bancaInicial, ehBasket, quartos]);
+  }, [escadaLinhas, folgaAtiva, folgaMin, folgaMax, momentoAtivo, momentoMax, atropeloAtivo, atropeloMax, atropeloMin, atropeloMargem, atropeloMinJogos, totEnvAtivo, totEnvMin, totEnvMax, maxPorJogo, uploadId, mercado, linhaMin, linhaMax, oddMin, oddMax, stakeValor, bancaInicial, ehBasket, quartos]);
 
   const handleRodar = useCallback(async () => {
     const msgErro = validarFiltros();
@@ -627,6 +651,10 @@ export default function BacktestAvulso({ onNavegar } = {}) {
       momento_max: momentoAtivo ? numOuNull(momentoMax) : null,
       atropelo_ativo: atropeloAtivo,
       atropelo_max: atropeloAtivo ? numOuNull(atropeloMax) : null,
+      atropelo_min: atropeloAtivo ? numOuNull(atropeloMin) : null,
+      tot_env_ativo: totEnvAtivo,
+      tot_env_min: totEnvAtivo ? numOuNull(totEnvMin) : null,
+      tot_env_max: totEnvAtivo ? numOuNull(totEnvMax) : null,
       atropelo_margem: atropeloAtivo ? numOuNull(atropeloMargem) : null,
       atropelo_min_jogos: atropeloAtivo ? numOuNull(atropeloMinJogos) : null,
       upload_id: uploadId,
@@ -695,7 +723,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
     } catch (e) {
       if (montadoRef.current) { setRodando(false); setErro(e?.message || 'Falha ao criar job.'); }
     }
-  }, [validarFiltros, escadaLinhas, folgaAtiva, folgaMin, folgaMax, momentoAtivo, momentoMax, atropeloAtivo, atropeloMax, atropeloMargem, atropeloMinJogos, maxPorJogo, uploadId, mercado, lado, casa, esporte, filtrosHist,
+  }, [validarFiltros, escadaLinhas, folgaAtiva, folgaMin, folgaMax, momentoAtivo, momentoMax, atropeloAtivo, atropeloMax, atropeloMin, atropeloMargem, atropeloMinJogos, totEnvAtivo, totEnvMin, totEnvMax, maxPorJogo, uploadId, mercado, lado, casa, esporte, filtrosHist,
       cenario, difPlacar, quartos, ehBasket, linhaMin, linhaMax, oddMin, oddMax,
       blacklist, whitelist, stakeValor, bancaInicial, filtrosComp]);
 
@@ -1031,8 +1059,11 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                     <span className="text-[11px] text-[--mike-fg-soft]">Evitar jogadores cujos jogos viram massacre</span>
                   </label>
                   {atropeloAtivo && (
-                    <div className="grid grid-cols-3 gap-3 mt-2">
-                      <Campo label="Atropelo máx. (%)" hint="corta se o PIOR dos dois passar disso">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-2">
+                      <Campo label="Atropelo mín. (%)" hint="pro FAVORITO: goleada cobre o handicap">
+                        <Input type="number" min="0" value={atropeloMin} onChange={setAtropeloMin} placeholder="vazio = sem piso" />
+                      </Campo>
+                      <Campo label="Atropelo máx. (%)" hint="pra ZEBRA: goleada mata a almofada">
                         <Input type="number" min="0" value={atropeloMax} onChange={setAtropeloMax} placeholder="ex: 22" />
                       </Campo>
                       <Campo label="Margem (pontos)" hint="diferença que conta como atropelo">
@@ -1050,6 +1081,32 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                     unidades subiram em 13 delas. <b>No Over piora.</b>
                   </div>
                 </div>
+                {/* TOT_ENV (v17): soma do placar no envio. Mede quanto de jogo
+                    ja passou. NAO e' o "Momento" acima (que e' o estagio do
+                    jogo lido do live_time) — dois eixos, nomes parecidos. */}
+                <div className="mt-3">
+                  <div className="text-[10px] uppercase tracking-wider text-[--mike-fg-muted] font-bold mb-1.5">Soma do placar no envio (tot_env)</div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={totEnvAtivo} onChange={(e) => setTotEnvAtivo(e.target.checked)} className="accent-cyan-500" />
+                    <span className="text-[11px] text-[--mike-fg-soft]">Filtrar por quanto de jogo já passou</span>
+                  </label>
+                  {totEnvAtivo && (
+                    <div className="grid grid-cols-2 gap-3 mt-2">
+                      <Campo label="Mín. (pontos somados)" hint="entrada TARDE — menos tempo pra almofada evaporar">
+                        <Input type="number" min="0" value={totEnvMin} onChange={setTotEnvMin} placeholder="ex: 58" />
+                      </Campo>
+                      <Campo label="Máx. (pontos somados)" hint="entrada CEDO — pega o preço antes do jogo se definir">
+                        <Input type="number" min="0" value={totEnvMax} onChange={setTotEnvMax} placeholder="ex: 24" />
+                      </Campo>
+                    </div>
+                  )}
+                  <div className="text-[10px] text-[--mike-fg-muted] mt-1.5">
+                    Soma dos dois placares no instante da aposta. Medido na Blitz (HC zebra,
+                    base folga≥2,5): sem filtro ROI 13,6% · <b>tot_env≥40</b> → 23,2% ·
+                    <b>≥58</b> → 34,9% · <b>≥81</b> → 52,9% — escada limpa, mas o volume despenca.
+                    Na BATTLE o sinal é o oposto (favorito, <b>≤24</b>).
+                  </div>
+                </div>
                 </Grupo>
 
                 {/* GRUPO 2: Confronto direto (H2H) */}
@@ -1060,6 +1117,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                     <Campo label="WR mín. (%)"><Input type="number" min="0" max="100" value={histWrMin} onChange={setHistWrMin} placeholder="ex: 80" /></Campo>
                     <Campo label="WR máx. (%)"><Input type="number" min="0" max="100" value={histWrMax} onChange={setHistWrMax} placeholder="100" /></Campo>
                     <Campo label="Mín. confrontos"><Input type="number" min="0" value={histMinPartidas} onChange={setHistMinPartidas} placeholder="ex: 10" /></Campo>
+                    <Campo label="Máx. confrontos" hint="vazio = sem teto"><Input type="number" min="0" value={histMaxPartidas} onChange={setHistMaxPartidas} placeholder="ex: 60" /></Campo>
                     <Campo label="Base"><Select value={histBase} onChange={setHistBase} options={BASES_HIST} /></Campo>
                     {histBase === 'individual' && ['ah_ft', 'ah_ht', 'eh_ft'].includes(mercado) && (
                       <Campo label="Alvo (HC)"><Select value={histIndivAlvo} onChange={setHistIndivAlvo} options={INDIV_ALVOS} /></Campo>
