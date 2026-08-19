@@ -43,6 +43,113 @@ function Barra({ pct, msg }) {
   );
 }
 
+// ---------------------------------------------------------------
+// v3 (19/ago) — O VEREDITO EM PORTUGUES.
+// A tela dizia "cobertos pelo hist" e "so na perna dos ticks": nome de
+// coluna, nao pergunta. E nao respondia o que interessa — da' pra confiar
+// nesse dado? Agora quem decide o texto e a cor e o BACKEND (campo
+// `diagnostico`); aqui so' desenha. Assim painel, log e relatorio nunca
+// divergem.
+// ---------------------------------------------------------------
+const SELO = {
+  confiavel:    { cor: '#10b981', fundo: 'rgba(16,185,129,0.10)', borda: 'rgba(16,185,129,0.35)',
+                  icone: CheckCircle2, titulo: 'DADO CONFIÁVEL' },
+  atencao:      { cor: '#fbbf24', fundo: 'rgba(251,191,36,0.10)', borda: 'rgba(251,191,36,0.35)',
+                  icone: AlertTriangle, titulo: 'ATENÇÃO' },
+  nao_use:      { cor: '#f87171', fundo: 'rgba(248,113,113,0.10)', borda: 'rgba(248,113,113,0.35)',
+                  icone: AlertTriangle, titulo: 'NÃO USE ESTES NÚMEROS' },
+  indisponivel: { cor: '#6b7691', fundo: 'rgba(107,118,145,0.10)', borda: 'rgba(107,118,145,0.30)',
+                  icone: AlertTriangle, titulo: 'NÃO CONSEGUI CONFERIR' },
+};
+
+function Veredito({ d }) {
+  if (!d) return null;
+  const s = SELO[d.veredito] || SELO.indisponivel;
+  const Icone = s.icone;
+  return (
+    <div className="rounded-lg p-3 mb-3"
+         style={{ backgroundColor: s.fundo, border: `1px solid ${s.borda}` }}>
+      <div className="flex items-center gap-2">
+        <Icone className="w-4 h-4 shrink-0" style={{ color: s.cor }} />
+        <span className="text-[13px] font-bold" style={{ color: s.cor }}>{s.titulo}</span>
+        <span className="text-[11px] text-[--mike-fg-soft]">— {d.resumo}</span>
+      </div>
+
+      {d.checagens?.length > 0 && (
+        <div className="mt-2.5 space-y-1.5">
+          {d.checagens.map((c, i) => (
+            <div key={i}>
+              <div className="flex items-baseline gap-2 text-[11px]">
+                <span className="flex-1 text-[--mike-fg-soft]">{c.pergunta}</span>
+                <span className="font-mono font-bold"
+                      style={{ color: c.ok ? '#10b981' : '#fbbf24' }}>{c.valor}</span>
+                <span style={{ color: c.ok ? '#10b981' : '#fbbf24' }}>{c.ok ? '✓' : '⚠'}</span>
+              </div>
+              {c.detalhe && (
+                <div className="text-[10px] text-[--mike-fg-muted] pl-1">{c.detalhe}</div>
+              )}
+              {c.o_que_fazer && (
+                <div className="text-[10px] mt-0.5 pl-1" style={{ color: '#fbbf24' }}>
+                  <b>O que fazer:</b> {c.o_que_fazer}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {d.erro && (
+        <div className="text-[10px] text-[--mike-fg-muted] mt-2 font-mono">{d.erro}</div>
+      )}
+    </div>
+  );
+}
+
+function Fontes({ d }) {
+  if (!d?.fontes?.length) return null;
+  return (
+    <div className="mb-3">
+      <div className="text-[10px] uppercase tracking-wider text-[--mike-fg-muted] font-bold mb-1">
+        De onde vem o histórico
+      </div>
+      {d.fontes.map((f, i) => (
+        <div key={i} className="flex items-baseline gap-2 text-[11px]">
+          <span className="flex-1 text-[--mike-fg-soft]">{f.nome}</span>
+          <span className="font-mono">{(f.jogos || 0).toLocaleString('pt-BR')} jogos</span>
+          <span className="text-[--mike-fg-muted] w-20 text-right">
+            {f.ate ? `até ${f.ate.split('-').reverse().slice(0, 2).join('/')}` : '—'}
+          </span>
+        </div>
+      ))}
+      {d.sobreposicao > 0 && (
+        <div className="text-[10px] text-[--mike-fg-muted] mt-1">
+          As duas viram os mesmos {d.sobreposicao.toLocaleString('pt-BR')} jogos — é com essa
+          sobreposição que dá pra conferir uma contra a outra.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Filtros({ d }) {
+  if (!d?.filtros?.length) return null;
+  return (
+    <div className="mb-3">
+      <div className="text-[10px] uppercase tracking-wider text-[--mike-fg-muted] font-bold mb-1">
+        O que cada filtro consegue usar
+      </div>
+      {d.filtros.map((f, i) => (
+        <div key={i} className="flex items-baseline gap-2 text-[11px]">
+          <span className="flex-1 text-[--mike-fg-soft]">{f.nome}</span>
+          <span className="font-mono" style={{ color: f.ok ? '#10b981' : '#fbbf24' }}>
+            {f.pct}% dos jogos
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function H2hSyncPanel({
   casa, esporte, liga = null, dias = 3,
   dataInicio = null, dataFim = null, periodoLabel = null,
@@ -196,27 +303,33 @@ export default function H2hSyncPanel({
           {/* RELATORIO DA ANALISE */}
           {relatorio && fase !== 'analisando' && (
             <div className="mt-3 rounded-md p-3 text-xs" style={{ backgroundColor: 'rgba(15,23,42,0.5)' }}>
+              {/* v3: o veredito primeiro — a resposta antes dos numeros. */}
+              <Veredito d={relatorio.diagnostico} />
+              <Fontes d={relatorio.diagnostico} />
+              <Filtros d={relatorio.diagnostico} />
+
+              <div className="text-[10px] uppercase tracking-wider text-[--mike-fg-muted] font-bold mb-1">
+                Jogos que a TipManager ainda não confirmou
+              </div>
               <div className="grid grid-cols-2 gap-x-4 gap-y-1 font-mono">
-                <span className="text-[--mike-fg-muted]">pares no período</span>
+                <span className="text-[--mike-fg-muted]">confrontos no período</span>
                 <span className="text-right">{relatorio.pares_total}</span>
-                <span className="text-[--mike-fg-muted]">precisam</span>
-                <span className="text-right text-amber-300">{relatorio.pares_precisam}</span>
-                <span className="text-[--mike-fg-muted]">cobertos pelo hist</span>
+                <span className="text-[--mike-fg-muted]">confirmados pela TipManager</span>
                 <span className="text-right text-emerald-400">{relatorio.cobertos_hist_total}</span>
-                <span className="text-[--mike-fg-muted]">só na perna dos ticks</span>
+                <span className="text-[--mike-fg-muted]">só o nosso coletor viu</span>
                 <span className="text-right text-amber-300">{relatorio.so_tick_total}</span>
               </div>
 
               {paresPrecisam === 0 ? (
                 <div className="mt-2 flex items-center gap-2 text-emerald-400">
-                  <CheckCircle2 className="w-4 h-4" /> Banco já cobre os pares deste período.
+                  <CheckCircle2 className="w-4 h-4" /> A TipManager já confirmou todos os confrontos deste período.
                 </div>
               ) : (
                 <>
                   {relatorio.pares?.length > 0 && (
                     <button onClick={() => setVerPares(v => !v)}
                             className="mt-2 text-[11px] text-sky-400 hover:text-sky-300 underline">
-                      {verPares ? 'ocultar' : 'ver'} pares que precisam
+                      {verPares ? 'ocultar' : 'ver'} quais confrontos
                     </button>
                   )}
                   {verPares && (
