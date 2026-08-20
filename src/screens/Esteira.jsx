@@ -1325,12 +1325,7 @@ export default function Esteira({ onNavegar } = {}) {
               <div className="flex items-center gap-2">
                 {it.status === 'concluido' && it.snapshot
                  && it.papel !== 'sentinela' && it.papel !== 'controle' && (() => {
-                  const flb = (it.snapshot.filtros || {});
-                  const trava = flb.atropeloAtivo
-                    ? 'usa atropelo — o executor de bots ainda não aplica esse corte'
-                    : flb.totEnvAtivo
-                      ? 'usa tot_env — o executor de bots ainda não aplica esse corte'
-                      : null;
+                  const trava = null;   // atropelo e tot_env já rodam no executor
                   return (
                     <button
                       disabled={!!trava}
