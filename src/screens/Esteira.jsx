@@ -30,7 +30,7 @@ import {
   Home, ChevronRight, ListChecks, FileSpreadsheet, Database, Layers,
   Trophy, Play, Download, X, RefreshCw, AlertCircle, AlertTriangle,
   CheckCircle2, Clock, Hash, RotateCcw, Trash2, ShieldCheck, Settings2, Radar,
-  Copy, ArrowUp, ArrowDown, Minus,
+  Copy, ArrowUp, ArrowDown, Minus, Maximize2,
 } from 'lucide-react';
 import MikeHeader from '../shared/MikeHeader.jsx';
 import { api } from '../lib/api.js';
@@ -357,7 +357,7 @@ function CelRoi({ m, baseline }) {
   );
 }
 
-function LinhaItem({ it, mae, baseline, onFicha }) {
+function LinhaItem({ it, mae, baseline, onFicha, completo = false }) {
   const m = it.metricas || {};
   const emErro = it.status === 'erro';
   const rodando = it.status === 'rodando' || it.status === 'pendente';
@@ -371,7 +371,8 @@ function LinhaItem({ it, mae, baseline, onFicha }) {
     seta = Math.abs(d) < 0.5 ? 'igual' : d > 0 ? 'sobe' : 'desce';
   }
   const r3 = m.roi_3d, r7 = m.roi_7d;
-  const t37 = `${r3 != null ? fmt1(r3) : '–'} / ${r7 != null ? fmt1(r7) : '–'}`;
+  const cor37 = (v) => (v == null ? 'var(--mike-fg-muted)'
+    : v > 0 ? '#10b981' : v < 0 ? '#f87171' : 'var(--mike-fg-soft)');
   return (
     <tr onClick={() => onFicha && onFicha(it)}
         title={emErro ? (it.erro || 'erro') : it.nome}
@@ -403,15 +404,23 @@ function LinhaItem({ it, mae, baseline, onFicha }) {
       <td className="px-2 py-1.5 text-right font-bold text-[--mike-fg] whitespace-nowrap">{m['G-R'] || '–'}</td>
       <td className="px-2 py-1.5 text-right text-[--mike-fg-soft]">{m.WR != null ? fmt1(m.WR) : '–'}</td>
       <CelRoi m={m} baseline={baseline} />
-      <td className="px-2 py-1.5 text-right text-[--mike-fg-soft]">{m.u_dia != null ? fmt1(m.u_dia) : '–'}</td>
+      {completo && (
+        <td className="px-2 py-1.5 text-right text-[--mike-fg-soft]">{m.u_dia != null ? fmt1(m.u_dia) : '–'}</td>
+      )}
       <td className="px-2 py-1.5 text-right text-[--mike-fg-soft]">{m.DD != null ? fmt1(m.DD) : '–'}</td>
-      <td className="px-2 py-1.5 text-right text-[--mike-fg-muted] whitespace-nowrap"
-          title={`G–R: ${m.GR_3d || '–'} (3d) · ${m.GR_7d || '–'} (7d)`}>{t37}</td>
+      {completo && (
+        <td className="px-2 py-1.5 text-right whitespace-nowrap"
+            title={`G–R: ${m.GR_3d || '–'} (3d) · ${m.GR_7d || '–'} (7d)`}>
+          <span style={{ color: cor37(r3) }}>{r3 != null ? fmt1(r3) : '–'}</span>
+          <span className="text-[--mike-fg-muted]"> / </span>
+          <span style={{ color: cor37(r7) }}>{r7 != null ? fmt1(r7) : '–'}</span>
+        </td>
+      )}
     </tr>
   );
 }
 
-function Placar({ itens, baseline, onFicha }) {
+function Placar({ itens, baseline, onFicha, completo = false }) {
   if (!itens || itens.length === 0) {
     return (
       <div className="text-center py-6 text-[--mike-fg-muted] text-xs">
@@ -422,29 +431,33 @@ function Placar({ itens, baseline, onFicha }) {
   const { grupos, orfas } = agruparPlacar(itens);
   return (
     <div className="rounded-md overflow-hidden" style={{ border: '0.5px solid rgba(60,85,130,0.28)' }}>
-      <div className="max-h-[420px] overflow-y-auto">
+      <div className={completo ? 'max-h-[70vh] overflow-y-auto' : 'max-h-[420px] overflow-y-auto'}>
         <table className="w-full text-[10.5px] font-mono">
           <thead className="sticky top-0 z-10" style={{ backgroundColor: '#111726' }}>
             <tr className="text-[9px] uppercase tracking-wider text-[--mike-fg-muted]">
               <th className="text-left  px-2 py-1.5 font-bold">Estratégia</th>
               <th className="text-right px-2 py-1.5 font-bold">Ap</th>
-              <th className="text-right px-2 py-1.5 font-bold">G–R</th>
+              <th className="text-right px-2 py-1.5 font-bold whitespace-nowrap">G–R</th>
               <th className="text-right px-2 py-1.5 font-bold">WR</th>
               <th className="text-right px-2 py-1.5 font-bold">ROI</th>
-              <th className="text-right px-2 py-1.5 font-bold" title="unidades por dia">u/dia</th>
+              {completo && (
+                <th className="text-right px-2 py-1.5 font-bold whitespace-nowrap" title="unidades por dia">u/dia</th>
+              )}
               <th className="text-right px-2 py-1.5 font-bold">DD</th>
-              <th className="text-right px-2 py-1.5 font-bold" title="ROI dos últimos 3 e 7 dias">3d/7d</th>
+              {completo && (
+                <th className="text-right px-2 py-1.5 font-bold whitespace-nowrap" title="ROI dos últimos 3 e 7 dias">3d/7d</th>
+              )}
             </tr>
           </thead>
           <tbody>
             {grupos.map(({ mae, variacoes }) => (
-              [<LinhaItem key={mae.id} it={mae} baseline={baseline} onFicha={onFicha} />,
+              [<LinhaItem key={mae.id} it={mae} baseline={baseline} onFicha={onFicha} completo={completo} />,
                ...variacoes.map((v) => (
-                 <LinhaItem key={v.id} it={v} mae={mae} baseline={baseline} onFicha={onFicha} />
+                 <LinhaItem key={v.id} it={v} mae={mae} baseline={baseline} onFicha={onFicha} completo={completo} />
                ))]
             ))}
             {orfas.map((v) => (
-              <LinhaItem key={v.id} it={v} baseline={baseline} onFicha={onFicha} />
+              <LinhaItem key={v.id} it={v} baseline={baseline} onFicha={onFicha} completo={completo} />
             ))}
           </tbody>
         </table>
@@ -468,6 +481,7 @@ export default function Esteira({ onNavegar } = {}) {
   const [aviso, setAviso] = useState(null);
   const [criando, setCriando] = useState(false);
   const [fichaItem, setFichaItem] = useState(null);
+  const [placarCheio, setPlacarCheio] = useState(false);
 
   // formulário
   const [nome, setNome] = useState('');
@@ -909,7 +923,16 @@ export default function Esteira({ onNavegar } = {}) {
               )}
 
               <section className="rounded-lg p-4" style={cardStyle}>
-                <SecaoTitulo icon={Trophy}>Placar</SecaoTitulo>
+                <div className="flex items-center justify-between">
+                  <SecaoTitulo icon={Trophy}>Placar</SecaoTitulo>
+                  {d && its.length > 0 && (
+                    <button onClick={() => setPlacarCheio(true)}
+                      title="abrir o placar completo (todas as colunas)"
+                      className="mb-3 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10.5px] font-bold mike-border-thin text-[--mike-fg-soft] hover:text-[--mike-fg] transition">
+                      <Maximize2 className="w-3 h-3" /> expandir
+                    </button>
+                  )}
+                </div>
 
                 {!d && (
                   <div className="text-center py-10 text-[--mike-fg-muted] text-xs">
@@ -989,11 +1012,10 @@ export default function Esteira({ onNavegar } = {}) {
                     <Placar itens={its} baseline={d.baseline}
                             onFicha={(it) => setFichaItem(it)} />
                     <div className="text-[9px] text-[--mike-fg-muted] mt-1.5">
-                      Ordenado por ROI, variações aninhadas na mãe, zeradas
-                      apagadas no fim. A sentinela fica na faixa acima — é
-                      régua, não estratégia. Clique na linha pra ver a ficha
-                      completa. No ROI, o hover mostra a vantagem sobre o
-                      mercado.
+                      Ordenado por ROI, variações aninhadas na mãe, zeradas no
+                      fim. Clique na linha pra ficha; em <b>expandir</b>, todas
+                      as colunas (u/dia, 3d/7d). O hover do ROI mostra a
+                      vantagem sobre o mercado.
                     </div>
 
                     <div className="mt-3 space-y-2">
@@ -1033,6 +1055,44 @@ export default function Esteira({ onNavegar } = {}) {
 
         </div>
       </main>
+
+      {/* placar completo em tela cheia */}
+      {placarCheio && d && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center p-4 lg:p-8"
+             style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
+             onClick={() => setPlacarCheio(false)}>
+          <div className="rounded-lg p-4 w-full max-w-6xl max-h-[92vh] overflow-hidden flex flex-col"
+               style={{ backgroundColor: '#0f1420', border: '0.5px solid rgba(60,85,130,0.5)' }}
+               onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-2 mb-2">
+              <Trophy className="w-4 h-4 text-cyan-400" />
+              <span className="text-[13px] font-black text-[--mike-fg] flex-1 truncate">
+                Placar — #{d.id} {d.nome}
+              </span>
+              <button onClick={() => setPlacarCheio(false)}
+                      className="text-[--mike-fg-muted] hover:text-[--mike-fg]">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            {d.sentinela_ok != null && d.baseline && d.baseline.ROI != null && (
+              <div className="mb-2 text-[11px] text-[--mike-fg-soft]">
+                <ShieldCheck className="w-3.5 h-3.5 inline mr-1"
+                             style={{ color: d.sentinela_ok ? '#10b981' : '#f43f5e' }} />
+                Mercado inteiro: {fmt(d.baseline.apostas)} ap · ROI {fmt1(d.baseline.ROI)}%
+                — é isso que as estratégias precisam bater.
+              </div>
+            )}
+            <div className="flex-1 min-h-0 overflow-auto">
+              <Placar itens={its} baseline={d.baseline} completo
+                      onFicha={(it) => setFichaItem(it)} />
+            </div>
+            <div className="text-[9px] text-[--mike-fg-muted] mt-2">
+              u/dia e 3d/7d só existem em rodadas rodadas com o worker novo —
+              nas antigas aparecem como "–". Clique na linha pra ficha.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ficha do item: metricas completas + filtros em portugues */}
       {fichaItem && (() => {
