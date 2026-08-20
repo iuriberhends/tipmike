@@ -220,6 +220,21 @@ async function enviarPlanilha(file) {
   return j;   // {nome, kb}
 }
 
+async function enviarParquet(file) {
+  // o MESMO endpoint do backtest avulso (500 MB, valida e resume) — a
+  // esteira so consome o upload_id que ele devolve
+  const fd = new FormData();
+  fd.append('arquivo', file, file.name);
+  const res = await fetch(`${BASE_URL}/backtest/upload-ticks`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${getAccessToken()}` },
+    body: fd,
+  });
+  const j = await res.json().catch(() => null);
+  if (!res.ok) throw new Error((j && j.detail) || `HTTP ${res.status}`);
+  return j;   // {upload_id, arquivo, ...resumo}
+}
+
 async function baixarPlanilhaRodada(jobId) {
   const res = await fetch(`${BASE_URL}/esteira/rodadas/${jobId}/planilha`,
     { headers: { Authorization: `Bearer ${getAccessToken()}` } });
@@ -520,6 +535,8 @@ export default function Esteira({ onNavegar } = {}) {
   const [fichaItem, setFichaItem] = useState(null);
   const [enviandoPl, setEnviandoPl] = useState(false);
   const fileRef = useRef(null);
+  const [enviandoPq, setEnviandoPq] = useState(false);
+  const pqRef = useRef(null);
   const [placarCheio, setPlacarCheio] = useState(false);
   const [botForm, setBotForm] = useState(null);   // {it, nome, torneios, erro, criando}
 
@@ -616,7 +633,7 @@ export default function Esteira({ onNavegar } = {}) {
 
   const handleRodar = useCallback(async () => {
     if (!planilha) { setErro('Escolha a planilha de estratégias.'); return; }
-    if (fonteTipo === 'arquivo' && !fonteArquivo) {
+    if (fonteTipo === 'arquivo' && (!fonteArquivo || fonteArquivo === '__sep')) {
       setErro('Escolha o parquet de ticks.'); return;
     }
     if (fonteTipo === 'banco' && !(casa && dataInicio && dataFim)) {
@@ -631,9 +648,13 @@ export default function Esteira({ onNavegar } = {}) {
         planilha,
       };
       if (fonteTipo === 'arquivo') {
-        body.fonte_arquivo = fonteArquivo;
-        const nd = numOuNull(dias);
-        if (nd) body.dias = nd;
+        if (String(fonteArquivo).includes('uploads_backtest')) {
+          body.upload_id = fonteArquivo;          // gerado/enviado: entra pronto
+        } else {
+          body.fonte_arquivo = fonteArquivo;
+          const nd = numOuNull(dias);
+          if (nd) body.dias = nd;
+        }
       } else {
         body.fonte = 'banco';
         body.casa = casa.trim();
@@ -837,12 +858,53 @@ export default function Esteira({ onNavegar } = {}) {
                         ...arquivos.parquets.map((p) => ({
                           value: p.nome, label: `${p.nome} · ${p.mb} MB`,
                         })),
+                        ...((arquivos.uploads || []).length ? [
+                          { value: '__sep', label: '— gerados no servidor (backtest / MikeDB / enviados) —' },
+                        ] : []),
+                        ...(arquivos.uploads || []).map((p) => ({
+                          value: p.upload_id, label: `☁ ${p.nome} · ${p.mb} MB`,
+                        })),
                       ]} />
                     </Campo>
+                    <div className="mt-1.5">
+                      <input ref={pqRef} type="file" accept=".parquet" className="hidden"
+                        onChange={async (e) => {
+                          const f = e.target.files && e.target.files[0];
+                          e.target.value = '';
+                          if (!f) return;
+                          setEnviandoPq(true); setErro(null);
+                          try {
+                            const r = await enviarParquet(f);
+                            const a2 = await api.get('/esteira/arquivos');
+                            if (montadoRef.current) {
+                              setArquivos(a2 || { planilhas: [], parquets: [], uploads: [] });
+                              setFonteArquivo(r.upload_id);
+                              setAviso(`Parquet ${r.arquivo} enviado e já selecionado.`);
+                            }
+                          } catch (err) {
+                            if (montadoRef.current) setErro(err?.message || 'Falha no envio do parquet.');
+                          } finally {
+                            if (montadoRef.current) setEnviandoPq(false);
+                          }
+                        }} />
+                      <button onClick={() => pqRef.current && pqRef.current.click()}
+                        disabled={enviandoPq}
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-semibold mike-border-thin text-[--mike-fg-soft] hover:text-[--mike-fg] transition disabled:opacity-50">
+                        {enviandoPq
+                          ? <><RefreshCw className="w-3 h-3 mike-spin" /> Enviando (pode demorar)...</>
+                          : <><Database className="w-3 h-3" /> Enviar parquet do PC</>}
+                      </button>
+                    </div>
                   </div>
-                  <Campo label="Últimos N dias" hint="vazio = o arquivo inteiro">
-                    <Input type="number" min="1" value={dias} onChange={setDias} placeholder="tudo" />
-                  </Campo>
+                  {!String(fonteArquivo).includes('uploads_backtest') ? (
+                    <Campo label="Últimos N dias" hint="vazio = o arquivo inteiro">
+                      <Input type="number" min="1" value={dias} onChange={setDias} placeholder="tudo" />
+                    </Campo>
+                  ) : (
+                    <div className="text-[10px] text-[--mike-fg-muted] self-end pb-2">
+                      Arquivo enviado entra inteiro.
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
