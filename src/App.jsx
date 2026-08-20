@@ -20,7 +20,6 @@ import BacktestAvulso from './screens/BacktestAvulso.jsx';
 import Varredura from './screens/Varredura.jsx';
 import Esteira from './screens/Esteira.jsx';
 import EsteiraEscolha from './screens/EsteiraEscolha.jsx';
-import EsteiraEscolha from './screens/EsteiraEscolha.jsx';
 import { ModalHistorico } from './screens/Historico.jsx';
 
 import Login from './screens/Login.jsx';
