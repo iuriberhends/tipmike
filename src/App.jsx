@@ -1,8 +1,8 @@
-// ============================================================
+﻿// ============================================================
 // App.jsx - Orquestrador principal do TipMike
 //
-// Fase 2 (auth): AuthProvider envolve tudo; /login é pública e o
-// resto das telas fica atrás do <RequireAuth /> (layout route).
+// Fase 2 (auth): AuthProvider envolve tudo; /login Ã© pÃºblica e o
+// resto das telas fica atrÃ¡s do <RequireAuth /> (layout route).
 // ============================================================
 
 import { useState, useEffect, useCallback } from 'react';
@@ -20,7 +20,7 @@ import BacktestAvulso from './screens/BacktestAvulso.jsx';
 import Varredura from './screens/Varredura.jsx';
 import Esteira from './screens/Esteira.jsx';
 import EsteiraEscolha from './screens/EsteiraEscolha.jsx';
-import EscolherEstrategias from './screens/EscolherEstrategias.jsx';
+import EsteiraEscolha from './screens/EsteiraEscolha.jsx';
 import { ModalHistorico } from './screens/Historico.jsx';
 
 import Login from './screens/Login.jsx';
@@ -53,12 +53,12 @@ function TelaPlaceholder({ titulo, descricao }) {
           border: '0.5px solid rgba(251, 191, 36, 0.4)',
           color: '#fbbf24',
         }}>
-          🚧 Em desenvolvimento
+          ðŸš§ Em desenvolvimento
         </div>
       </div>
       <button onClick={() => navigate('/')} className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold transition"
         style={{ backgroundColor: '#10b981', color: '#0b0f1a', boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)' }}>
-        ← Voltar para o início
+        â† Voltar para o inÃ­cio
       </button>
     </div>
   );
@@ -69,7 +69,7 @@ function AppRoutes() {
   const location = useLocation();
   const [historicoBotId, setHistoricoBotId] = useState(null);
 
-  // Normaliza partida — converte snake_case (API) para camelCase (PartidaIndividual)
+  // Normaliza partida â€” converte snake_case (API) para camelCase (PartidaIndividual)
   const normalizarPartida = useCallback((p) => {
     if (!p) return p;
     const sportMap = {
@@ -133,11 +133,11 @@ function AppRoutes() {
   return (
     <>
       <Routes>
-        {/* Públicas */}
+        {/* PÃºblicas */}
         <Route path="/login" element={<Login />} />
         <Route path="/registro" element={<Registro />} />
 
-        {/* Protegidas (Fase 2): tudo abaixo exige sessão válida */}
+        {/* Protegidas (Fase 2): tudo abaixo exige sessÃ£o vÃ¡lida */}
         <Route element={<RequireAuth />}>
           <Route path="/" element={<Today onNavegar={navegar} onAbrirPartida={(p) => navegar('partida', p)} />} />
           <Route path="/live" element={<Live onNavegar={navegar} onAbrirPartida={(p) => navegar('partida', p)} />} />
@@ -149,12 +149,12 @@ function AppRoutes() {
           <Route path="/varredura" element={<Varredura onNavegar={navegar} />} />
           <Route path="/esteira" element={<Esteira onNavegar={navegar} />} />
           <Route path="/esteira/escolha" element={<EsteiraEscolha onNavegar={navegar} />} />
-          <Route path="/escolher" element={<EscolherEstrategias onNavegar={navegar} />} />
-          <Route path="/marketplace" element={<TelaPlaceholder titulo="Mercado de Bots" descricao="Loja para descobrir, comprar e vender estratégias de bots criadas pela comunidade." />} />
-          <Route path="/tables" element={<TelaPlaceholder titulo="Tabelas" descricao="Tabelas detalhadas de classificação, ROI por liga, ranking de jogadores e estatísticas históricas." />} />
-          <Route path="/extras" element={<TelaPlaceholder titulo="Extras" descricao="Configurações, integrações, calculadoras, calendário, perfil, suporte e ferramentas auxiliares." />} />
+          <Route path="/escolher" element={<EsteiraEscolha onNavegar={navegar} />} />
+          <Route path="/marketplace" element={<TelaPlaceholder titulo="Mercado de Bots" descricao="Loja para descobrir, comprar e vender estratÃ©gias de bots criadas pela comunidade." />} />
+          <Route path="/tables" element={<TelaPlaceholder titulo="Tabelas" descricao="Tabelas detalhadas de classificaÃ§Ã£o, ROI por liga, ranking de jogadores e estatÃ­sticas histÃ³ricas." />} />
+          <Route path="/extras" element={<TelaPlaceholder titulo="Extras" descricao="ConfiguraÃ§Ãµes, integraÃ§Ãµes, calculadoras, calendÃ¡rio, perfil, suporte e ferramentas auxiliares." />} />
 
-          {/* Só admin (Fase 5) */}
+          {/* SÃ³ admin (Fase 5) */}
           <Route element={<RequireAdmin />}>
             <Route path="/admin/usuarios" element={<AdminUsuarios onNavegar={navegar} />} />
           </Route>
@@ -178,3 +178,4 @@ export default function App() {
     </HashRouter>
   );
 }
+
