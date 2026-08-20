@@ -207,6 +207,19 @@ function filtrosEmPortugues(pl) {
   return L;
 }
 
+async function enviarPlanilha(file) {
+  const fd = new FormData();
+  fd.append('arquivo', file, file.name);
+  const res = await fetch(`${BASE_URL}/esteira/upload-planilha`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${getAccessToken()}` },
+    body: fd,
+  });
+  const j = await res.json().catch(() => null);
+  if (!res.ok) throw new Error((j && j.detail) || `HTTP ${res.status}`);
+  return j;   // {nome, kb}
+}
+
 async function baixarPlanilhaRodada(jobId) {
   const res = await fetch(`${BASE_URL}/esteira/rodadas/${jobId}/planilha`,
     { headers: { Authorization: `Bearer ${getAccessToken()}` } });
@@ -505,7 +518,10 @@ export default function Esteira({ onNavegar } = {}) {
   const [aviso, setAviso] = useState(null);
   const [criando, setCriando] = useState(false);
   const [fichaItem, setFichaItem] = useState(null);
+  const [enviandoPl, setEnviandoPl] = useState(false);
+  const fileRef = useRef(null);
   const [placarCheio, setPlacarCheio] = useState(false);
+  const [botForm, setBotForm] = useState(null);   // {it, nome, torneios, erro, criando}
 
   // formulário
   const [nome, setNome] = useState('');
@@ -749,9 +765,42 @@ export default function Esteira({ onNavegar } = {}) {
                   <Input value={nome} onChange={setNome} placeholder="ex: battle 15d, chips novos" />
                 </Campo>
               </div>
+              <div className="mt-2.5 flex items-center gap-2">
+                <input ref={fileRef} type="file" accept=".xlsx" className="hidden"
+                  onChange={async (e) => {
+                    const f = e.target.files && e.target.files[0];
+                    e.target.value = '';
+                    if (!f) return;
+                    setEnviandoPl(true); setErro(null);
+                    try {
+                      const r = await enviarPlanilha(f);
+                      const a = await api.get('/esteira/arquivos');
+                      if (montadoRef.current) {
+                        setArquivos(a || { planilhas: [], parquets: [] });
+                        setPlanilha(r.nome);
+                        setAviso(`Planilha ${r.nome} enviada (${r.kb} KB) e já selecionada.`);
+                      }
+                    } catch (err) {
+                      if (montadoRef.current) setErro(err?.message || 'Falha no envio da planilha.');
+                    } finally {
+                      if (montadoRef.current) setEnviandoPl(false);
+                    }
+                  }} />
+                <button onClick={() => fileRef.current && fileRef.current.click()}
+                  disabled={enviandoPl}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-semibold mike-border-thin text-[--mike-fg-soft] hover:text-[--mike-fg] transition disabled:opacity-50">
+                  {enviandoPl
+                    ? <><RefreshCw className="w-3 h-3 mike-spin" /> Enviando...</>
+                    : <><FileSpreadsheet className="w-3 h-3" /> Enviar planilha do PC</>}
+                </button>
+                <button onClick={() => onNavegar?.('esteira_escolha')}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-semibold mike-border-thin text-[--mike-fg-soft] hover:text-[--mike-fg] transition">
+                  <Radar className="w-3 h-3" /> ou escolher do garimpo
+                </button>
+              </div>
               {arquivos.planilhas.length === 0 && !carregando && (
                 <div className="mt-2 text-[10px] text-[--mike-fg-muted]">
-                  Nenhum .xlsx na raiz do tipmike_api — suba a planilha lá primeiro.
+                  Nenhum .xlsx na raiz — envia pelo botão acima que ele já entra no dropdown.
                 </div>
               )}
               <button onClick={() => onNavegar?.('escolher')}
@@ -1212,6 +1261,27 @@ export default function Esteira({ onNavegar } = {}) {
               )}
 
               <div className="flex items-center gap-2">
+                {it.status === 'concluido' && it.snapshot
+                 && it.papel !== 'sentinela' && it.papel !== 'controle' && (() => {
+                  const flb = (it.snapshot.filtros || {});
+                  const trava = flb.atropeloAtivo
+                    ? 'usa atropelo — o executor de bots ainda não aplica esse corte'
+                    : flb.totEnvAtivo
+                      ? 'usa tot_env — o executor de bots ainda não aplica esse corte'
+                      : null;
+                  return (
+                    <button
+                      disabled={!!trava}
+                      title={trava || 'vira bot de verdade, com os filtros exatos que rodaram'}
+                      onClick={() => setBotForm({ it, nome: rotuloDoItem(it).slice(0, 100),
+                                                  torneios: '', erro: null, criando: false })}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-bold transition disabled:opacity-40 disabled:cursor-not-allowed"
+                      style={{ backgroundColor: trava ? 'rgba(16,185,129,0.12)' : '#10b981',
+                               color: trava ? '#6b7691' : '#0b0f1a' }}>
+                      <Play className="w-3 h-3" /> Criar bot
+                    </button>
+                  );
+                })()}
                 {it.backtest_job_id && (
                   <button
                     onClick={() => {
@@ -1232,6 +1302,99 @@ export default function Esteira({ onNavegar } = {}) {
                     </pre>
                   </details>
                 )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* dialogo: criar bot a partir do item */}
+      {botForm && (() => {
+        const it = botForm.it;
+        const m = it.metricas || {};
+        const snap = it.snapshot || {};
+        const podeCriar = botForm.torneios.trim().length > 0 && !botForm.criando;
+        const criar = async () => {
+          setBotForm((p) => ({ ...p, criando: true, erro: null }));
+          try {
+            const r = await api.post(`/esteira/itens/${it.id}/criar-bot`, {
+              nome: botForm.nome.trim() || undefined,
+              torneios: botForm.torneios.split(',').map((t) => t.trim()).filter(Boolean),
+            });
+            setBotForm(null);
+            setFichaItem(null);
+            setAviso(`Bot #${r.bot_id} criado PAUSADO (${r.casa}) — confere os
+              filtros e ativa na tela de Bots.`);
+          } catch (e) {
+            setBotForm((p) => ({ ...p, criando: false,
+                                 erro: e?.message || 'falha ao criar o bot' }));
+          }
+        };
+        return (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+               style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
+               onClick={() => setBotForm(null)}>
+            <div className="rounded-lg p-4 w-full max-w-sm"
+                 style={{ backgroundColor: '#141a28', border: '0.5px solid rgba(60,85,130,0.5)' }}
+                 onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-2 mb-3">
+                <Play className="w-4 h-4 text-emerald-400" />
+                <h3 className="text-[13px] font-black text-[--mike-fg] flex-1">Criar bot</h3>
+                <button onClick={() => setBotForm(null)}
+                        className="text-[--mike-fg-muted] hover:text-[--mike-fg]">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                <label className="flex flex-col gap-1">
+                  <span className="text-[11px] text-[--mike-fg-soft] font-medium">Nome do bot</span>
+                  <Input value={botForm.nome}
+                         onChange={(v) => setBotForm((p) => ({ ...p, nome: v }))} />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-[11px] text-[--mike-fg-soft] font-medium">
+                    Torneios (onde o bot apita)
+                  </span>
+                  <Input value={botForm.torneios} placeholder="ex: H2H GG League - 4x5"
+                         onChange={(v) => setBotForm((p) => ({ ...p, torneios: v }))} />
+                  <span className="text-[9px] text-[--mike-fg-muted] leading-snug">
+                    O nome TRADUZIDO da liga, como aparece na tela de Bots — vários
+                    separados por vírgula. O código (B-EBASK..., ESOC-...) deixa o
+                    bot mudo; o backend recusa. O backtest rodou a liga inteira, o
+                    bot precisa saber onde apitar.
+                  </span>
+                </label>
+
+                <div className="rounded-md p-2.5 text-[10.5px] text-[--mike-fg-soft]"
+                     style={{ backgroundColor: 'rgba(13,17,27,0.6)', border: '0.5px solid rgba(60,85,130,0.28)' }}>
+                  Casa <b>{snap.casa || '—'}</b> · mercado <b>{snap.mercado || '—'}</b>.
+                  {m['G-R'] && (
+                    <> Esta estratégia fez <b>{m['G-R']}</b> · ROI <b>{m.ROI}%</b>
+                    {m.de ? <> de {String(m.de).slice(0, 10)} a {String(m.ate).slice(0, 10)}</> : null}.
+                    <b> Isso é passado.</b></>
+                  )}
+                </div>
+
+                {botForm.erro && (
+                  <div className="rounded-md p-2 text-[10.5px] text-rose-300"
+                       style={{ backgroundColor: 'rgba(244,63,94,0.08)', border: '0.5px solid rgba(244,63,94,0.3)' }}>
+                    {botForm.erro}
+                  </div>
+                )}
+
+                <button onClick={criar} disabled={!podeCriar}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-sm font-bold transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ backgroundColor: podeCriar ? '#10b981' : 'rgba(16,185,129,0.2)',
+                           color: podeCriar ? '#0b0f1a' : '#6b7691' }}>
+                  {botForm.criando
+                    ? <><RefreshCw className="w-4 h-4 mike-spin" /> Criando...</>
+                    : <><Play className="w-4 h-4" /> Criar bot (nasce pausado)</>}
+                </button>
+                <div className="text-[9px] text-[--mike-fg-muted] text-center -mt-1">
+                  Filtros exatos do backtest, com a origem gravada. Você confere
+                  e ativa na tela de Bots.
+                </div>
               </div>
             </div>
           </div>
