@@ -30,6 +30,7 @@ import {
   Home, ChevronRight, ListChecks, FileSpreadsheet, Database, Layers,
   Trophy, Play, Download, X, RefreshCw, AlertCircle, AlertTriangle,
   CheckCircle2, Clock, Hash, RotateCcw, Trash2, ShieldCheck, Settings2, Radar,
+  Copy, ArrowUp, ArrowDown, Minus,
 } from 'lucide-react';
 import MikeHeader from '../shared/MikeHeader.jsx';
 import { api } from '../lib/api.js';
@@ -123,6 +124,76 @@ function alertasLinhas(a) {
     }
     return [String(a)];
   } catch { return []; }
+}
+
+// ---- rotulo legivel a partir do snapshot._planilha (o codigo fica no hover)
+function rotuloDoItem(it) {
+  const p = it.snapshot && it.snapshot._planilha;
+  if (!p) return it.nome;
+  const lados = p.linha_min != null && Number(p.linha_min) < 0 ? 'FAV' :
+                p.linha_max != null && Number(p.linha_max) > 0 ? 'ZEB' : '';
+  const linha = (p.linha_min != null || p.linha_max != null)
+    ? `L${p.linha_min ?? ''}${p.linha_max != null ? `–${p.linha_max}` : '+'}` : '';
+  const chip = p.chip_wr_min != null
+    ? `${p.chip_janela || 'chip'}≥${Math.round(Number(p.chip_wr_min) * 100)}%` : '';
+  const extras = [];
+  if (p.atropelo_min != null) extras.push(`atr≥${p.atropelo_min}`);
+  if (p.tot_env_max != null) extras.push(`env≤${p.tot_env_max}`);
+  if (p.tot_env_min != null) extras.push(`env≥${p.tot_env_min}`);
+  if (p.folga_min != null || p.folga_max != null)
+    extras.push(`folga ${p.folga_min ?? ''}~${p.folga_max ?? ''}`);
+  if (p.teto) extras.push(`teto ${p.teto}`);
+  const r = [lados, linha, chip, ...extras].filter(Boolean).join(' ');
+  return r || it.nome;
+}
+
+// o que a variacao mudou: o [sufixo] que o worker poe no nome
+function sufixoVariacao(nome) {
+  const m = /\[([^\]]+)\]\s*$/.exec(nome || '');
+  return m ? m[1] : nome;
+}
+
+// ---- filtros do snapshot em portugues, pra ficha ----
+const JANELAS_PT = { 'Últ. 10': 'últimos 10 confrontos', 'Últ. 20': 'últimos 20 confrontos',
+                     'Últ. 30': 'últimos 30 confrontos', 'Todas': 'todos os confrontos' };
+function filtrosEmPortugues(pl) {
+  if (!pl) return [];
+  const L = [];
+  const pct = (v) => `${Math.round(Number(v) * 100)}%`;
+  if (pl.chip_wr_min != null || pl.chip_wr_max != null) {
+    let t = `${JANELAS_PT[pl.chip_janela] || pl.chip_janela || 'janela'} `;
+    if (pl.chip_wr_min != null) t += `≥ ${pct(pl.chip_wr_min)}`;
+    if (pl.chip_wr_max != null) t += `${pl.chip_wr_min != null ? ' e ' : ''}≤ ${pct(pl.chip_wr_max)}`;
+    if (pl.chip_conf != null) t += `, mínimo ${pl.chip_conf} confrontos`;
+    if (pl.chip_conf_max != null) t += `, máximo ${pl.chip_conf_max}`;
+    L.push(['Chip de winrate', t]);
+  }
+  if (pl.chip2_wr_min != null || pl.chip2_wr_max != null) {
+    let t = `${JANELAS_PT[pl.chip2_janela] || pl.chip2_janela || 'janela'} `;
+    if (pl.chip2_wr_min != null) t += `≥ ${pct(pl.chip2_wr_min)}`;
+    if (pl.chip2_wr_max != null) t += `${pl.chip2_wr_min != null ? ' e ' : ''}≤ ${pct(pl.chip2_wr_max)}`;
+    L.push(['2º chip', t]);
+  }
+  if (pl.linha_min != null || pl.linha_max != null) {
+    const fav = pl.linha_min != null && Number(pl.linha_min) < 0;
+    L.push(['Linha', `de ${pl.linha_min ?? '—'} a ${pl.linha_max ?? '—'}`
+                     + (fav ? ' (favorito)' : Number(pl.linha_min) > 0 ? ' (zebra)' : '')]);
+  }
+  if (pl.odd_min != null || pl.odd_max != null)
+    L.push(['Odd', `de ${pl.odd_min ?? '—'} a ${pl.odd_max ?? '—'}`]);
+  if (pl.atropelo_min != null || pl.atropelo_max != null)
+    L.push(['Filtro de goleada', `${pl.atropelo_min != null ? `a partir de ${pl.atropelo_min}%` : ''}`
+      + `${pl.atropelo_max != null ? `${pl.atropelo_min != null ? ' até ' : 'até '}${pl.atropelo_max}%` : ''}`]);
+  if (pl.tot_env_min != null || pl.tot_env_max != null)
+    L.push(['Soma do placar', `${pl.tot_env_min != null ? `a partir de ${pl.tot_env_min}` : ''}`
+      + `${pl.tot_env_max != null ? `${pl.tot_env_min != null ? ' até ' : 'até '}${pl.tot_env_max} pontos` : ''}`]);
+  if (pl.folga_min != null || pl.folga_max != null)
+    L.push(['Folga da linha', `de ${pl.folga_min ?? '—'} a ${pl.folga_max ?? '—'}`]);
+  if (pl.teto) L.push(['Máx. por jogo', `${pl.teto} aposta${pl.teto > 1 ? 's' : ''}`]);
+  if (pl.evitar_linhas_seq != null)
+    L.push(['Linhas em sequência', Number(pl.evitar_linhas_seq) ? 'evita' : 'não evita']);
+  if (pl.mercado) L.push(['Mercado', String(pl.mercado)]);
+  return L;
 }
 
 async function baixarPlanilhaRodada(jobId) {
@@ -251,21 +322,96 @@ function Selo({ status }) {
 // PLACAR — a tabela de itens. G–R sempre visível, do lado do resto.
 // ============================================================
 
-function ordenarPlacar(itens) {
-  const peso = (x) => {
-    if (x.papel === 'sentinela') return -2;            // sentinela no topo
-    if (x.papel === 'controle') return -1;
-    return 0;
-  };
+function agruparPlacar(itens) {
+  // sentinela e controle saem da tabela (sao regua, nao estrategia);
+  // variacoes aninham sob a mae; maes por ROI desc, zeradas no fim
+  const regua = itens.filter((x) => x.papel === 'sentinela' || x.papel === 'controle');
+  const maes = itens.filter((x) => x.papel !== 'sentinela' && x.papel !== 'controle'
+                                   && x.papel !== 'variacao');
+  const vars_ = itens.filter((x) => x.papel === 'variacao');
   const roi = (x) => {
     const r = x.metricas && Number(x.metricas.ROI);
-    return Number.isFinite(r) ? r : -Infinity;         // zeradas/erro no fim
+    return Number.isFinite(r) ? r : -Infinity;
   };
-  return [...itens].sort((a, b) =>
-    (peso(a) - peso(b)) || (roi(b) - roi(a)) || (a.ordem - b.ordem));
+  maes.sort((a, b) => (roi(b) - roi(a)) || (a.ordem - b.ordem));
+  const porPai = {};
+  vars_.forEach((v) => {
+    (porPai[v.pai_item_id] = porPai[v.pai_item_id] || []).push(v);
+  });
+  Object.values(porPai).forEach((l) => l.sort((a, b) => roi(b) - roi(a)));
+  const orfas = vars_.filter((v) => !maes.some((m) => m.id === v.pai_item_id));
+  return { regua, grupos: maes.map((m) => ({ mae: m, variacoes: porPai[m.id] || [] })), orfas };
 }
 
-function Placar({ itens }) {
+function CelRoi({ m, baseline }) {
+  const roiN = m && Number(m.ROI);
+  const cor = !Number.isFinite(roiN) ? 'var(--mike-fg-muted)'
+    : roiN > 0 ? '#10b981' : roiN < 0 ? '#f43f5e' : 'var(--mike-fg-soft)';
+  const premio = (Number.isFinite(roiN) && baseline && baseline.ROI != null)
+    ? roiN - Number(baseline.ROI) : null;
+  return (
+    <td className="px-2 py-1.5 text-right font-bold" style={{ color: cor }}
+        title={premio != null ? `${premio > 0 ? '+' : ''}${premio.toFixed(1)} pts sobre o mercado` : ''}>
+      {Number.isFinite(roiN) ? fmt1(roiN) : '–'}
+    </td>
+  );
+}
+
+function LinhaItem({ it, mae, baseline, onFicha }) {
+  const m = it.metricas || {};
+  const emErro = it.status === 'erro';
+  const rodando = it.status === 'rodando' || it.status === 'pendente';
+  const zerada = !emErro && Number(m.apostas || 0) === 0 && it.status === 'concluido';
+  const ehVar = it.papel === 'variacao';
+  // a seta da variacao: melhorou/igualou/piorou vs a mae
+  let seta = null;
+  if (ehVar && mae && mae.metricas && Number.isFinite(Number(m.ROI))
+      && Number.isFinite(Number(mae.metricas.ROI))) {
+    const d = Number(m.ROI) - Number(mae.metricas.ROI);
+    seta = Math.abs(d) < 0.5 ? 'igual' : d > 0 ? 'sobe' : 'desce';
+  }
+  const r3 = m.roi_3d, r7 = m.roi_7d;
+  const t37 = `${r3 != null ? fmt1(r3) : '–'} / ${r7 != null ? fmt1(r7) : '–'}`;
+  return (
+    <tr onClick={() => onFicha && onFicha(it)}
+        title={emErro ? (it.erro || 'erro') : it.nome}
+        style={{
+          borderTop: '0.5px solid rgba(60,85,130,0.18)',
+          backgroundColor: 'transparent',
+          opacity: zerada ? 0.45 : 1,
+          cursor: 'pointer',
+        }}>
+      <td className="px-2 py-1.5 text-left max-w-0 w-full">
+        <div className="flex items-center gap-1.5 min-w-0"
+             style={{ paddingLeft: ehVar ? 16 : 0 }}>
+          {ehVar && (
+            <span className="text-[9px] font-black flex-shrink-0 text-[--mike-fg-muted]">
+              ↳ {sufixoVariacao(it.nome)}
+            </span>
+          )}
+          {!ehVar && (
+            <span className="truncate text-[--mike-fg]">{rotuloDoItem(it)}</span>
+          )}
+          {seta === 'sobe' && <ArrowUp className="w-2.5 h-2.5 text-emerald-400 flex-shrink-0" title="melhorou vs a mãe" />}
+          {seta === 'desce' && <ArrowDown className="w-2.5 h-2.5 text-rose-400 flex-shrink-0" title="piorou vs a mãe" />}
+          {seta === 'igual' && <Minus className="w-2.5 h-2.5 text-[--mike-fg-muted] flex-shrink-0" title="igual à mãe" />}
+          {emErro && <AlertTriangle className="w-2.5 h-2.5 text-rose-400 flex-shrink-0" />}
+          {rodando && <RefreshCw className="w-2.5 h-2.5 text-cyan-400 mike-spin flex-shrink-0" />}
+        </div>
+      </td>
+      <td className="px-2 py-1.5 text-right text-[--mike-fg-soft]">{fmt(m.apostas) ?? '–'}</td>
+      <td className="px-2 py-1.5 text-right font-bold text-[--mike-fg] whitespace-nowrap">{m['G-R'] || '–'}</td>
+      <td className="px-2 py-1.5 text-right text-[--mike-fg-soft]">{m.WR != null ? fmt1(m.WR) : '–'}</td>
+      <CelRoi m={m} baseline={baseline} />
+      <td className="px-2 py-1.5 text-right text-[--mike-fg-soft]">{m.u_dia != null ? fmt1(m.u_dia) : '–'}</td>
+      <td className="px-2 py-1.5 text-right text-[--mike-fg-soft]">{m.DD != null ? fmt1(m.DD) : '–'}</td>
+      <td className="px-2 py-1.5 text-right text-[--mike-fg-muted] whitespace-nowrap"
+          title={`G–R: ${m.GR_3d || '–'} (3d) · ${m.GR_7d || '–'} (7d)`}>{t37}</td>
+    </tr>
+  );
+}
+
+function Placar({ itens, baseline, onFicha }) {
   if (!itens || itens.length === 0) {
     return (
       <div className="text-center py-6 text-[--mike-fg-muted] text-xs">
@@ -273,69 +419,33 @@ function Placar({ itens }) {
       </div>
     );
   }
-  const linhas = ordenarPlacar(itens);
+  const { grupos, orfas } = agruparPlacar(itens);
   return (
     <div className="rounded-md overflow-hidden" style={{ border: '0.5px solid rgba(60,85,130,0.28)' }}>
       <div className="max-h-[420px] overflow-y-auto">
         <table className="w-full text-[10.5px] font-mono">
-          <thead className="sticky top-0" style={{ backgroundColor: '#111726' }}>
+          <thead className="sticky top-0 z-10" style={{ backgroundColor: '#111726' }}>
             <tr className="text-[9px] uppercase tracking-wider text-[--mike-fg-muted]">
               <th className="text-left  px-2 py-1.5 font-bold">Estratégia</th>
               <th className="text-right px-2 py-1.5 font-bold">Ap</th>
               <th className="text-right px-2 py-1.5 font-bold">G–R</th>
               <th className="text-right px-2 py-1.5 font-bold">WR</th>
               <th className="text-right px-2 py-1.5 font-bold">ROI</th>
+              <th className="text-right px-2 py-1.5 font-bold" title="unidades por dia">u/dia</th>
               <th className="text-right px-2 py-1.5 font-bold">DD</th>
+              <th className="text-right px-2 py-1.5 font-bold" title="ROI dos últimos 3 e 7 dias">3d/7d</th>
             </tr>
           </thead>
           <tbody>
-            {linhas.map((it) => {
-              const m = it.metricas || {};
-              const p = PAPEL[it.papel] || PAPEL.estrategia;
-              const emErro = it.status === 'erro';
-              const rodando = it.status === 'rodando' || it.status === 'pendente';
-              const zerada = !emErro && Number(m.apostas || 0) === 0
-                             && it.status === 'concluido';
-              const roiN = Number(m.ROI);
-              const corRoi = !Number.isFinite(roiN) ? 'var(--mike-fg-muted)'
-                : roiN > 0 ? '#10b981' : roiN < 0 ? '#f43f5e' : 'var(--mike-fg-soft)';
-              return (
-                <tr key={it.id}
-                    title={emErro ? (it.erro || 'erro') : (it.nome + (m.roi_3d != null ? ` · roi_3d ${fmt1(m.roi_3d)}%` : ''))}
-                    style={{
-                      borderTop: '0.5px solid rgba(60,85,130,0.18)',
-                      backgroundColor: it.papel === 'sentinela'
-                        ? 'rgba(6,182,212,0.07)' : 'transparent',
-                      opacity: zerada ? 0.45 : 1,
-                    }}>
-                  <td className="px-2 py-1.5 text-left max-w-0 w-full">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      {it.papel !== 'estrategia' && (
-                        <span className="text-[8.5px] font-black flex-shrink-0"
-                              style={{ color: p.cor }}>
-                          {p.rotulo || it.papel}
-                        </span>
-                      )}
-                      <span className="truncate"
-                            style={{ color: emErro ? '#f43f5e'
-                              : it.papel === 'variacao' ? 'var(--mike-fg-soft)'
-                              : 'var(--mike-fg)' }}>
-                        {it.nome}
-                      </span>
-                      {emErro && <AlertTriangle className="w-2.5 h-2.5 text-rose-400 flex-shrink-0" />}
-                      {rodando && <RefreshCw className="w-2.5 h-2.5 text-cyan-400 mike-spin flex-shrink-0" />}
-                    </div>
-                  </td>
-                  <td className="px-2 py-1.5 text-right text-[--mike-fg-soft]">{fmt(m.apostas) ?? '–'}</td>
-                  <td className="px-2 py-1.5 text-right font-bold text-[--mike-fg]">{m['G-R'] || '–'}</td>
-                  <td className="px-2 py-1.5 text-right text-[--mike-fg-soft]">{m.WR != null ? `${fmt1(m.WR)}` : '–'}</td>
-                  <td className="px-2 py-1.5 text-right font-bold" style={{ color: corRoi }}>
-                    {Number.isFinite(roiN) ? fmt1(roiN) : '–'}
-                  </td>
-                  <td className="px-2 py-1.5 text-right text-[--mike-fg-soft]">{m.DD != null ? fmt1(m.DD) : '–'}</td>
-                </tr>
-              );
-            })}
+            {grupos.map(({ mae, variacoes }) => (
+              [<LinhaItem key={mae.id} it={mae} baseline={baseline} onFicha={onFicha} />,
+               ...variacoes.map((v) => (
+                 <LinhaItem key={v.id} it={v} mae={mae} baseline={baseline} onFicha={onFicha} />
+               ))]
+            ))}
+            {orfas.map((v) => (
+              <LinhaItem key={v.id} it={v} baseline={baseline} onFicha={onFicha} />
+            ))}
           </tbody>
         </table>
       </div>
@@ -357,6 +467,7 @@ export default function Esteira({ onNavegar } = {}) {
   const [erro, setErro] = useState(null);
   const [aviso, setAviso] = useState(null);
   const [criando, setCriando] = useState(false);
+  const [fichaItem, setFichaItem] = useState(null);
 
   // formulário
   const [nome, setNome] = useState('');
@@ -849,8 +960,9 @@ export default function Esteira({ onNavegar } = {}) {
                             <b>Sentinela</b>{' '}
                             {d.sentinela_ok ? 'passou' : 'reprovou'}
                             {d.baseline && d.baseline.ROI != null && (
-                              <> · baseline do mercado {fmt(d.baseline.apostas)} ap,
-                                ROI {fmt1(d.baseline.ROI)}%</>
+                              <> · mercado inteiro: {fmt(d.baseline.apostas)} ap,
+                                ROI {fmt1(d.baseline.ROI)}% — é isso que as
+                                estratégias precisam bater</>
                             )}
                           </span>
                         </div>
@@ -874,10 +986,14 @@ export default function Esteira({ onNavegar } = {}) {
                     </div>
 
                     {/* O PLACAR — G–R sempre visível */}
-                    <Placar itens={its} />
+                    <Placar itens={its} baseline={d.baseline}
+                            onFicha={(it) => setFichaItem(it)} />
                     <div className="text-[9px] text-[--mike-fg-muted] mt-1.5">
-                      Ordenado por ROI; sentinela e controle no topo, zeradas
-                      apagadas no fim. Passe o mouse pra ver o roi_3d.
+                      Ordenado por ROI, variações aninhadas na mãe, zeradas
+                      apagadas no fim. A sentinela fica na faixa acima — é
+                      régua, não estratégia. Clique na linha pra ver a ficha
+                      completa. No ROI, o hover mostra a vantagem sobre o
+                      mercado.
                     </div>
 
                     <div className="mt-3 space-y-2">
@@ -917,6 +1033,126 @@ export default function Esteira({ onNavegar } = {}) {
 
         </div>
       </main>
+
+      {/* ficha do item: metricas completas + filtros em portugues */}
+      {fichaItem && (() => {
+        const it = fichaItem;
+        const m = it.metricas || {};
+        const pl = it.snapshot && it.snapshot._planilha;
+        const filtros = filtrosEmPortugues(pl);
+        const premio = (m.ROI != null && d && d.baseline && d.baseline.ROI != null)
+          ? Number(m.ROI) - Number(d.baseline.ROI) : null;
+        const Lin = ({ a, b, hint }) => (
+          <div className="flex items-center justify-between gap-3 py-0.5"
+               title={hint || ''}
+               style={{ borderBottom: '0.5px solid rgba(60,85,130,0.15)' }}>
+            <span className="text-[--mike-fg-muted]">{a}</span>
+            <span className="text-[--mike-fg] font-semibold text-right">{b}</span>
+          </div>
+        );
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+               style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}
+               onClick={() => setFichaItem(null)}>
+            <div className="rounded-lg p-4 w-full max-w-md max-h-[85vh] overflow-y-auto"
+                 style={{ backgroundColor: '#141a28', border: '0.5px solid rgba(60,85,130,0.5)' }}
+                 onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-start gap-2 mb-3">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-[13px] font-black text-[--mike-fg]">
+                    {rotuloDoItem(it)}
+                  </h3>
+                  <div className="text-[10px] text-[--mike-fg-muted] font-mono truncate">
+                    {it.nome}{it.papel !== 'estrategia' ? ` · ${it.papel}` : ''}
+                  </div>
+                </div>
+                <button onClick={() => setFichaItem(null)}
+                        className="text-[--mike-fg-muted] hover:text-[--mike-fg] flex-shrink-0">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {it.erro && (
+                <div className="mb-2.5 rounded-md p-2 text-[10.5px] text-rose-300"
+                     style={{ backgroundColor: 'rgba(244,63,94,0.08)', border: '0.5px solid rgba(244,63,94,0.3)' }}>
+                  {it.erro}
+                </div>
+              )}
+
+              <div className="space-y-1 text-[11px] mb-3">
+                <Lin a="greens – reds" b={<span>
+                  <b style={{ color: '#10b981' }}>{m.greens ?? '—'}</b>
+                  <span className="text-[--mike-fg-muted]"> – </span>
+                  <b style={{ color: '#f87171' }}>{m.reds ?? '—'}</b></span>} />
+                <Lin a="apostas · taxa de acerto" b={`${fmt(m.apostas) ?? '—'} · ${m.WR ?? '—'}%`} />
+                <Lin a="unidades · retorno (ROI)" b={`${m.unidades ?? '—'}u · ${m.ROI ?? '—'}%`} />
+                {premio != null && (
+                  <Lin a="vantagem sobre o mercado"
+                       b={`${premio > 0 ? '+' : ''}${premio.toFixed(1)} pontos`}
+                       hint="ROI da estratégia menos o ROI do mercado inteiro (a sentinela)" />
+                )}
+                <Lin a="por dia" b={`${m.ap_dia ?? '—'} apostas · ${m.u_dia ?? '—'}u`} />
+                <Lin a="dias" b={`${m.dias_pos ?? '—'} bons / ${m.dias_neg ?? '—'} ruins de ${m.dias ?? '—'}`} />
+                <Lin a="dias ruins seguidos" b={m.seq_neg ?? '—'}
+                     hint="a maior sequência de dias no vermelho" />
+                <Lin a="pior dia" b={m.pior_dia != null ? `${m.pior_dia}u` : '—'} />
+                <Lin a="queda máxima · lucro por queda" b={`${m.DD ?? '—'}u · ${m.lucro_dd ?? '—'}`}
+                     hint="o maior tombo da banca; e quanto cada unidade arriscada rendeu" />
+                <Lin a="1ª metade → 2ª" b={`${m.roi_m1 ?? '—'}% → ${m.roi_m2 ?? '—'}%`}
+                     hint="estabilidade dentro do próprio período" />
+                <Lin a="últimos 3 dias" b={`${m.GR_3d || '—'} · ROI ${m.roi_3d ?? '—'}%`} />
+                <Lin a="últimos 7 dias" b={`${m.GR_7d || '—'} · ROI ${m.roi_7d ?? '—'}%`} />
+                <Lin a="quanto esfriou no fim" b={m.queda_ponta != null ? `${m.queda_ponta} pts` : '—'}
+                     hint="ROI recente menos o da 2ª metade — negativo forte = morrendo" />
+                <Lin a="treino → cego" b={m.roi_cego != null
+                       ? `${m.roi_treino ?? '—'}% → ${m.roi_cego}% (${m.ap_cego} ap)` : '—'}
+                     hint="os últimos ~30% das apostas, que a leitura do resto nunca viu" />
+                <Lin a="força do sinal (z)" b={m.z_jogo ?? '—'}
+                     hint="lucro médio por jogo dividido pela variação — acima de 2 é sinal firme" />
+                <Lin a="concentração (top 3 duplas)" b={m.top3_par_pct != null ? `${m.top3_par_pct}%` : '—'}
+                     hint="quanto do lucro vem de só 3 confrontos" />
+                <Lin a="jogos · período" b={`${m.jogos ?? '—'} · ${m.de ?? ''} a ${m.ate ?? ''}`} />
+                <Lin a="ainda está de pé?" b={m.vivo === 1 ? 'sim' : m.vivo === 0 ? 'não' : '—'}
+                     hint="a régua do worker: janelas recentes sem prejuízo" />
+              </div>
+
+              {filtros.length > 0 && (
+                <>
+                  <div className="text-[10px] uppercase tracking-wider font-bold text-[--mike-fg-muted] mb-1.5">
+                    Filtros desta estratégia
+                  </div>
+                  <div className="space-y-1 text-[11px] mb-3">
+                    {filtros.map(([a2, b2], i2) => <Lin key={i2} a={a2} b={b2} />)}
+                  </div>
+                </>
+              )}
+
+              <div className="flex items-center gap-2">
+                {it.backtest_job_id && (
+                  <button
+                    onClick={() => {
+                      navigator.clipboard && navigator.clipboard.writeText(String(it.backtest_job_id));
+                      setAviso(`id do backtest ${it.backtest_job_id} copiado.`);
+                    }}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-semibold mike-border-thin text-[--mike-fg-soft] hover:text-[--mike-fg] transition">
+                    <Copy className="w-3 h-3" /> backtest #{it.backtest_job_id}
+                  </button>
+                )}
+                <span className="flex-1" />
+                {it.snapshot && (
+                  <details className="text-[10px] text-[--mike-fg-muted]">
+                    <summary className="cursor-pointer hover:text-[--mike-fg-soft]">ver o JSON cru</summary>
+                    <pre className="mt-2 p-2 rounded-md max-w-[360px] max-h-48 overflow-auto text-[9px]"
+                         style={{ backgroundColor: 'rgba(0,0,0,0.35)' }}>
+                      {JSON.stringify(it.snapshot, null, 2)}
+                    </pre>
+                  </details>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
