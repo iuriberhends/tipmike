@@ -134,7 +134,7 @@ function rotuloDoItem(it) {
                 p.linha_max != null && Number(p.linha_max) > 0 ? 'ZEB' : '';
   const linha = (p.linha_min != null || p.linha_max != null)
     ? `L${p.linha_min ?? ''}${p.linha_max != null ? `–${p.linha_max}` : '+'}` : '';
-  const chip = p.chip_wr_min != null
+  const chip = (p.chip_wr_min != null && Number(p.chip_wr_min) > 0)
     ? `${p.chip_janela || 'chip'}≥${Math.round(Number(p.chip_wr_min) * 100)}%` : '';
   const extras = [];
   if (p.atropelo_min != null) extras.push(`atr≥${p.atropelo_min}`);
@@ -142,7 +142,7 @@ function rotuloDoItem(it) {
   if (p.tot_env_min != null) extras.push(`env≥${p.tot_env_min}`);
   if (p.folga_min != null || p.folga_max != null)
     extras.push(`folga ${p.folga_min ?? ''}~${p.folga_max ?? ''}`);
-  if (p.teto) extras.push(`teto ${p.teto}`);
+  if (p.teto) extras.push(`teto ${fmtN(p.teto)}`);
   const r = [lados, linha, chip, ...extras].filter(Boolean).join(' ');
   return r || it.nome;
 }
@@ -154,24 +154,35 @@ function sufixoVariacao(nome) {
 }
 
 // ---- filtros do snapshot em portugues, pra ficha ----
-const JANELAS_PT = { 'Últ. 10': 'últimos 10 confrontos', 'Últ. 20': 'últimos 20 confrontos',
-                     'Últ. 30': 'últimos 30 confrontos', 'Todas': 'todos os confrontos' };
+const JANELAS_PT = { 'últ. 10': 'últimos 10 confrontos', 'últ. 20': 'últimos 20 confrontos',
+                     'últ. 30': 'últimos 30 confrontos', 'todas': 'todos os confrontos',
+                     'all': 'todos os confrontos', 'l10': 'últimos 10 confrontos',
+                     'l20': 'últimos 20 confrontos', 'l30': 'últimos 30 confrontos' };
+const janelaPt = (j) => JANELAS_PT[String(j ?? '').toLowerCase()] || j || 'janela';
+// numeros da planilha vem como float ("2.0") — inteiro mostra sem casa
+const fmtN = (v) => {
+  const x = Number(v);
+  return Number.isFinite(x) ? (Number.isInteger(x) ? String(x) : String(x)) : String(v);
+};
+const semCorte = (mn, mx) => (mn == null || Number(mn) <= 0) && mx == null;
 function filtrosEmPortugues(pl) {
   if (!pl) return [];
   const L = [];
   const pct = (v) => `${Math.round(Number(v) * 100)}%`;
-  if (pl.chip_wr_min != null || pl.chip_wr_max != null) {
-    let t = `${JANELAS_PT[pl.chip_janela] || pl.chip_janela || 'janela'} `;
-    if (pl.chip_wr_min != null) t += `≥ ${pct(pl.chip_wr_min)}`;
-    if (pl.chip_wr_max != null) t += `${pl.chip_wr_min != null ? ' e ' : ''}≤ ${pct(pl.chip_wr_max)}`;
-    if (pl.chip_conf != null) t += `, mínimo ${pl.chip_conf} confrontos`;
-    if (pl.chip_conf_max != null) t += `, máximo ${pl.chip_conf_max}`;
+  if (!semCorte(pl.chip_wr_min, pl.chip_wr_max)) {
+    let t = `${janelaPt(pl.chip_janela)} `;
+    if (pl.chip_wr_min != null && Number(pl.chip_wr_min) > 0) t += `≥ ${pct(pl.chip_wr_min)}`;
+    if (pl.chip_wr_max != null) t += `${Number(pl.chip_wr_min) > 0 ? ' e ' : ''}≤ ${pct(pl.chip_wr_max)}`;
+    if (pl.chip_conf != null) t += `, mínimo ${fmtN(pl.chip_conf)} confrontos`;
+    if (pl.chip_conf_max != null) t += `, máximo ${fmtN(pl.chip_conf_max)}`;
     L.push(['Chip de winrate', t]);
+  } else if (pl.chip_conf != null) {
+    L.push(['Chip de winrate', `sem corte de % — mínimo ${fmtN(pl.chip_conf)} confrontos`]);
   }
-  if (pl.chip2_wr_min != null || pl.chip2_wr_max != null) {
-    let t = `${JANELAS_PT[pl.chip2_janela] || pl.chip2_janela || 'janela'} `;
-    if (pl.chip2_wr_min != null) t += `≥ ${pct(pl.chip2_wr_min)}`;
-    if (pl.chip2_wr_max != null) t += `${pl.chip2_wr_min != null ? ' e ' : ''}≤ ${pct(pl.chip2_wr_max)}`;
+  if (!semCorte(pl.chip2_wr_min, pl.chip2_wr_max)) {
+    let t = `${janelaPt(pl.chip2_janela)} `;
+    if (pl.chip2_wr_min != null && Number(pl.chip2_wr_min) > 0) t += `≥ ${pct(pl.chip2_wr_min)}`;
+    if (pl.chip2_wr_max != null) t += `${Number(pl.chip2_wr_min) > 0 ? ' e ' : ''}≤ ${pct(pl.chip2_wr_max)}`;
     L.push(['2º chip', t]);
   }
   if (pl.linha_min != null || pl.linha_max != null) {
@@ -189,7 +200,7 @@ function filtrosEmPortugues(pl) {
       + `${pl.tot_env_max != null ? `${pl.tot_env_min != null ? ' até ' : 'até '}${pl.tot_env_max} pontos` : ''}`]);
   if (pl.folga_min != null || pl.folga_max != null)
     L.push(['Folga da linha', `de ${pl.folga_min ?? '—'} a ${pl.folga_max ?? '—'}`]);
-  if (pl.teto) L.push(['Máx. por jogo', `${pl.teto} aposta${pl.teto > 1 ? 's' : ''}`]);
+  if (pl.teto) L.push(['Máx. por jogo', `${fmtN(pl.teto)} aposta${Number(pl.teto) > 1 ? 's' : ''}`]);
   if (pl.evitar_linhas_seq != null)
     L.push(['Linhas em sequência', Number(pl.evitar_linhas_seq) ? 'evita' : 'não evita']);
   if (pl.mercado) L.push(['Mercado', String(pl.mercado)]);
