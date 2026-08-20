@@ -412,8 +412,20 @@ function LinhaItem({ it, mae, baseline, onFicha, completo = false }) {
         </div>
       </td>
       <td className="px-2 py-1.5 text-right text-[--mike-fg-soft]">{fmt(m.apostas) ?? '–'}</td>
-      <td className="px-2 py-1.5 text-right font-bold text-[--mike-fg] whitespace-nowrap">{m['G-R'] || '–'}</td>
+      <td className="px-2 py-1.5 text-right font-bold whitespace-nowrap">
+        {m.greens != null
+          ? <><span style={{ color: '#10b981' }}>{m.greens}</span>
+              <span className="text-[--mike-fg-muted]">–</span>
+              <span style={{ color: '#f87171' }}>{m.reds}</span></>
+          : (m['G-R'] || '–')}
+      </td>
       <td className="px-2 py-1.5 text-right text-[--mike-fg-soft]">{m.WR != null ? fmt1(m.WR) : '–'}</td>
+      <td className="px-2 py-1.5 text-right font-bold"
+          style={{ color: m.unidades == null ? 'var(--mike-fg-muted)'
+            : Number(m.unidades) > 0 ? '#10b981'
+            : Number(m.unidades) < 0 ? '#f43f5e' : 'var(--mike-fg-soft)' }}>
+        {m.unidades != null ? fmt1(m.unidades) : '–'}
+      </td>
       <CelRoi m={m} baseline={baseline} />
       {completo && (
         <td className="px-2 py-1.5 text-right text-[--mike-fg-soft]">{m.u_dia != null ? fmt1(m.u_dia) : '–'}</td>
@@ -450,6 +462,7 @@ function Placar({ itens, baseline, onFicha, completo = false }) {
               <th className="text-right px-2 py-1.5 font-bold">Ap</th>
               <th className="text-right px-2 py-1.5 font-bold whitespace-nowrap">G–R</th>
               <th className="text-right px-2 py-1.5 font-bold">WR</th>
+              <th className="text-right px-2 py-1.5 font-bold" title="unidades — o lucro total">u</th>
               <th className="text-right px-2 py-1.5 font-bold">ROI</th>
               {completo && (
                 <th className="text-right px-2 py-1.5 font-bold whitespace-nowrap" title="unidades por dia">u/dia</th>
