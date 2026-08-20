@@ -1330,8 +1330,21 @@ export default function Esteira({ onNavegar } = {}) {
                     <button
                       disabled={!!trava}
                       title={trava || 'vira bot de verdade, com os filtros exatos que rodaram'}
-                      onClick={() => setBotForm({ it, nome: rotuloDoItem(it).slice(0, 100),
-                                                  torneios: '', erro: null, criando: false })}
+                      onClick={async () => {
+                        const snapB = it.snapshot || {};
+                        setBotForm({ it, nome: rotuloDoItem(it).slice(0, 100),
+                                     torneios: '', sel: [], manual: false,
+                                     ligas: null, erro: null, criando: false });
+                        try {
+                          const lg = await api.get('/esteira/ligas', {
+                            casa: snapB.casa || '', esporte: snapB.esporte || '' });
+                          setBotForm((p) => (p ? { ...p, ligas: lg,
+                            manual: !((lg.vivas || []).length || (lg.todas || []).length) } : p));
+                        } catch {
+                          setBotForm((p) => (p ? { ...p, ligas: { vivas: [], todas: [] },
+                                                   manual: true } : p));
+                        }
+                      }}
                       className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-bold transition disabled:opacity-40 disabled:cursor-not-allowed"
                       style={{ backgroundColor: trava ? 'rgba(16,185,129,0.12)' : '#10b981',
                                color: trava ? '#6b7691' : '#0b0f1a' }}>
@@ -1370,13 +1383,16 @@ export default function Esteira({ onNavegar } = {}) {
         const it = botForm.it;
         const m = it.metricas || {};
         const snap = it.snapshot || {};
-        const podeCriar = botForm.torneios.trim().length > 0 && !botForm.criando;
+        const torneiosEscolhidos = botForm.manual
+          ? botForm.torneios.split(',').map((t) => t.trim()).filter(Boolean)
+          : (botForm.sel || []);
+        const podeCriar = torneiosEscolhidos.length > 0 && !botForm.criando;
         const criar = async () => {
           setBotForm((p) => ({ ...p, criando: true, erro: null }));
           try {
             const r = await api.post(`/esteira/itens/${it.id}/criar-bot`, {
               nome: botForm.nome.trim() || undefined,
-              torneios: botForm.torneios.split(',').map((t) => t.trim()).filter(Boolean),
+              torneios: torneiosEscolhidos,
             });
             setBotForm(null);
             setFichaItem(null);
@@ -1409,19 +1425,80 @@ export default function Esteira({ onNavegar } = {}) {
                   <Input value={botForm.nome}
                          onChange={(v) => setBotForm((p) => ({ ...p, nome: v }))} />
                 </label>
-                <label className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1">
                   <span className="text-[11px] text-[--mike-fg-soft] font-medium">
-                    Torneios (onde o bot apita)
+                    Ligas (onde o bot apita)
                   </span>
-                  <Input value={botForm.torneios} placeholder="ex: H2H GG League - 4x5"
-                         onChange={(v) => setBotForm((p) => ({ ...p, torneios: v }))} />
-                  <span className="text-[9px] text-[--mike-fg-muted] leading-snug">
-                    O nome TRADUZIDO da liga, como aparece na tela de Bots — vários
-                    separados por vírgula. O código (B-EBASK..., ESOC-...) deixa o
-                    bot mudo; o backend recusa. O backtest rodou a liga inteira, o
-                    bot precisa saber onde apitar.
-                  </span>
-                </label>
+                  {!botForm.manual ? (
+                    <>
+                      {botForm.ligas === null ? (
+                        <div className="flex items-center gap-2 text-[11px] text-[--mike-fg-muted] py-2">
+                          <RefreshCw className="w-3 h-3 mike-spin" /> carregando as ligas...
+                        </div>
+                      ) : (
+                        <Select value=""
+                          onChange={(v) => {
+                            if (!v || v === '__sep') return;
+                            setBotForm((p) => (p && !p.sel.includes(v)
+                              ? { ...p, sel: [...p.sel, v] } : p));
+                          }}
+                          options={(() => {
+                            const vivas = (botForm.ligas.vivas || [])
+                              .filter((x) => !botForm.sel.includes(x));
+                            const resto = (botForm.ligas.todas || [])
+                              .filter((x) => !botForm.sel.includes(x)
+                                             && !(botForm.ligas.vivas || []).includes(x));
+                            return [
+                              { value: '', label: 'adicionar liga…' },
+                              ...vivas.map((x) => ({ value: x, label: `● ${x}` })),
+                              ...(vivas.length && resto.length
+                                ? [{ value: '__sep', label: '— demais ligas do mapa —' }] : []),
+                              ...resto.map((x) => ({ value: x, label: x })),
+                            ];
+                          })()} />
+                      )}
+                      {botForm.sel.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-1">
+                          {botForm.sel.map((t) => (
+                            <span key={t}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10.5px] font-semibold"
+                              style={{ backgroundColor: 'rgba(6,182,212,0.1)',
+                                       border: '0.5px solid rgba(6,182,212,0.4)', color: '#22d3ee' }}>
+                              {t}
+                              <button onClick={() => setBotForm((p) => (p
+                                  ? { ...p, sel: p.sel.filter((x) => x !== t) } : p))}
+                                className="hover:text-white"><X className="w-3 h-3" /></button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <span className="text-[9px] text-[--mike-fg-muted] leading-snug">
+                        ● = com jogo recente. O backtest rodou a liga inteira; o bot
+                        precisa saber onde apitar.{' '}
+                        <button onClick={() => setBotForm((p) => (p ? { ...p, manual: true } : p))}
+                          className="underline underline-offset-2 hover:text-[--mike-fg-soft]">
+                          digitar manualmente
+                        </button>
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Input value={botForm.torneios} placeholder="ex: H2H GG League - 4x5"
+                             onChange={(v) => setBotForm((p) => ({ ...p, torneios: v }))} />
+                      <span className="text-[9px] text-[--mike-fg-muted] leading-snug">
+                        O nome TRADUZIDO, vários por vírgula — código (B-EBASK...)
+                        deixa o bot mudo; o backend recusa.{' '}
+                        {(botForm.ligas && ((botForm.ligas.vivas || []).length
+                          || (botForm.ligas.todas || []).length)) ? (
+                          <button onClick={() => setBotForm((p) => (p ? { ...p, manual: false } : p))}
+                            className="underline underline-offset-2 hover:text-[--mike-fg-soft]">
+                            voltar pra lista
+                          </button>
+                        ) : null}
+                      </span>
+                    </>
+                  )}
+                </div>
 
                 <div className="rounded-md p-2.5 text-[10.5px] text-[--mike-fg-soft]"
                      style={{ backgroundColor: 'rgba(13,17,27,0.6)', border: '0.5px solid rgba(60,85,130,0.28)' }}>
