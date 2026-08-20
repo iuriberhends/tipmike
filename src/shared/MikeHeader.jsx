@@ -17,7 +17,7 @@ import { useState } from 'react';
 import {
   Bell, Settings, LogOut,
   Home, Activity, Store, Bot, Table2, BarChart3, Plus, FlaskConical, Users,
-  Radar,
+  Radar, ListChecks,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 
@@ -30,6 +30,7 @@ export const NAV_ITEMS = [
   { id: 'stats',       label: 'Estatísticas',    icon: BarChart3, novo: true },
   { id: 'backtest',    label: 'Backtest',        icon: FlaskConical, novo: true },
   { id: 'varredura',   label: 'Varredura',       icon: Radar, novo: true },
+  { id: 'esteira',     label: 'Esteira',         icon: ListChecks, novo: true },
   { id: 'extras',      label: 'Extras',          icon: Plus },
   { id: 'usuarios',    label: 'Usuários',        icon: Users, admin: true },
 ];
