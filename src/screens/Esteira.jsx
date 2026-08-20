@@ -29,7 +29,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Home, ChevronRight, ListChecks, FileSpreadsheet, Database, Layers,
   Trophy, Play, Download, X, RefreshCw, AlertCircle, AlertTriangle,
-  CheckCircle2, Clock, Hash, RotateCcw, Trash2, ShieldCheck, Settings2,
+  CheckCircle2, Clock, Hash, RotateCcw, Trash2, ShieldCheck, Settings2, Radar,
 } from 'lucide-react';
 import MikeHeader from '../shared/MikeHeader.jsx';
 import { api } from '../lib/api.js';
@@ -555,15 +555,23 @@ export default function Esteira({ onNavegar } = {}) {
         </div>
 
         {/* Título */}
-        <div className="mb-5">
-          <h1 className="text-xl font-black text-[--mike-fg] flex items-center gap-2">
-            <ListChecks className="w-5 h-5 text-cyan-400" />
-            Esteira
-          </h1>
-          <p className="text-[11px] text-[--mike-fg-muted] mt-0.5">
-            Roda a planilha de estratégias no motor real — com sentinela,
-            variações e o placar de cada uma.
-          </p>
+        <div className="mb-5 flex flex-wrap items-end gap-3">
+          <div className="flex-1 min-w-[240px]">
+            <h1 className="text-xl font-black text-[--mike-fg] flex items-center gap-2">
+              <ListChecks className="w-5 h-5 text-cyan-400" />
+              Esteira
+            </h1>
+            <p className="text-[11px] text-[--mike-fg-muted] mt-0.5">
+              Roda a planilha de estratégias no motor real — com sentinela,
+              variações e o placar de cada uma.
+            </p>
+          </div>
+          <button onClick={() => onNavegar?.('esteira_escolha')}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-md text-[12px] font-bold transition"
+            style={{ border: '0.5px solid rgba(6,182,212,0.5)', color: '#22d3ee',
+                     backgroundColor: 'rgba(6,182,212,0.08)' }}>
+            <Radar className="w-3.5 h-3.5" /> Escolher do garimpo
+          </button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
@@ -597,6 +605,11 @@ export default function Esteira({ onNavegar } = {}) {
                   Nenhum .xlsx na raiz do tipmike_api — suba a planilha lá primeiro.
                 </div>
               )}
+              <button onClick={() => onNavegar?.('escolher')}
+                className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md text-[11px] font-bold mike-border-thin text-cyan-300 hover:bg-cyan-500/10 transition">
+                <ListChecks className="w-3.5 h-3.5" />
+                Ou escolher direto de um garimpo (com alertas céticos)
+              </button>
             </section>
 
             {/* 2. FONTE DOS TICKS */}
