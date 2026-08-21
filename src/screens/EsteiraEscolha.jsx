@@ -31,6 +31,21 @@ import {
 } from 'lucide-react';
 import MikeHeader from '../shared/MikeHeader.jsx';
 import { api } from '../lib/api.js';
+import { BASE_URL, getAccessToken } from '../lib/auth.js';
+
+async function enviarParquet(file) {
+  // o MESMO endpoint do backtest avulso (500 MB, valida e resume)
+  const fd = new FormData();
+  fd.append('arquivo', file, file.name);
+  const res = await fetch(`${BASE_URL}/backtest/upload-ticks`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${getAccessToken()}` },
+    body: fd,
+  });
+  const j = await res.json().catch(() => null);
+  if (!res.ok) throw new Error((j && j.detail) || `HTTP ${res.status}`);
+  return j;   // {upload_id, arquivo, ...}
+}
 
 // ============================================================
 // CONSTANTES — copiadas do protótipo, valor por valor
@@ -168,7 +183,10 @@ export default function EsteiraEscolha({ onNavegar } = {}) {
   const debounceRef = useRef(null);
 
   // ---- envio ----
-  const [arquivos, setArquivos] = useState({ parquets: [] });
+  const [arquivos, setArquivos] = useState({ parquets: [], uploads: [] });
+  const [enviandoPq, setEnviandoPq] = useState(false);
+  const pqRef = useRef(null);
+  const [variar, setVariar] = useState(false);
   const [nomeRodada, setNomeRodada] = useState('');
   const [fonteArquivo, setFonteArquivo] = useState('');
   const [dias, setDias] = useState('');
@@ -193,7 +211,7 @@ export default function EsteiraEscolha({ onNavegar } = {}) {
       }
       try {
         const a = await api.get('/esteira/arquivos');
-        if (montadoRef.current) setArquivos(a || { parquets: [] });
+        if (montadoRef.current) setArquivos(a || { parquets: [], uploads: [] });
       } catch { /* o envio avisa se faltar */ }
     })();
   }, []);
@@ -358,7 +376,9 @@ export default function EsteiraEscolha({ onNavegar } = {}) {
   // ---- o envio: marcadas -> itens[] -> POST /esteira/rodadas ----
   const handleEnviar = useCallback(async () => {
     if (marcadas.size === 0) { setErro('Marque ao menos uma estratégia.'); return; }
-    if (!fonteArquivo) { setErro('Escolha o parquet de ticks pra rodada.'); return; }
+    if (!fonteArquivo || fonteArquivo === '__sep') {
+      setErro('Escolha o parquet de ticks pra rodada.'); return;
+    }
     setEnviando(true); setErro(null); setAviso(null);
     try {
       const ip = sel.itens_pack;
@@ -368,6 +388,7 @@ export default function EsteiraEscolha({ onNavegar } = {}) {
         if (!row) continue;            // bloqueada não deveria estar marcada
         const d = {};
         ip.cols.forEach((c, i) => { if (row[i] != null) d[c] = row[i]; });
+        if (variar) d.variar = 1;      // liga as vizinhas + hill-climb no worker
         itens.push(d);
       }
       const body = {
@@ -375,10 +396,14 @@ export default function EsteiraEscolha({ onNavegar } = {}) {
         origem: 'varredura',
         origem_ref: String(vid),
         itens,
-        fonte_arquivo: fonteArquivo,
       };
-      const nd = numOuNull(dias);
-      if (nd) body.dias = nd;
+      if (String(fonteArquivo).includes('uploads_backtest')) {
+        body.upload_id = fonteArquivo;
+      } else {
+        body.fonte_arquivo = fonteArquivo;
+        const nd = numOuNull(dias);
+        if (nd) body.dias = nd;
+      }
       const r = await api.post('/esteira/rodadas', body);
       if (!montadoRef.current) return;
       setAviso(`Rodada #${r.id} criada com ${itens.length} estratégias — `
@@ -388,7 +413,7 @@ export default function EsteiraEscolha({ onNavegar } = {}) {
     } finally {
       if (montadoRef.current) setEnviando(false);
     }
-  }, [marcadas, sel, vid, nomeRodada, fonteArquivo, dias]);
+  }, [marcadas, sel, vid, nomeRodada, fonteArquivo, dias, variar]);
 
   // ---- render ----
   const vis = lista.slice(0, visN);
@@ -712,11 +737,19 @@ export default function EsteiraEscolha({ onNavegar } = {}) {
                 {/* atalhos + contagem */}
                 <div className="flex flex-wrap items-center gap-2 mt-3">
                   <span className="text-[11px] text-[--mike-fg-soft] font-semibold">
-                    {marcadas.size} marcadas · ~{Math.round(marcadas.size * 1.2)} min de teste
+                    {marcadas.size} marcadas
+                    {marcadas.size > 0 && pk && (() => {
+                      let fav = 0;
+                      marcadas.forEach((r) => { if (pk.rows[r] && pk.rows[r][C.lado]) fav += 1; });
+                      return <span className="text-[--mike-fg-muted] font-normal">
+                        {' '}({fav} fav · {marcadas.size - fav} zeb)
+                      </span>;
+                    })()}
+                    {' '}· ~{Math.round(marcadas.size * (variar ? 6 : 1) * 1.2)} min
                   </span>
                   <span className="flex-1" />
                   <span className="text-[10.5px] text-[--mike-fg-muted]">marcar as primeiras:</span>
-                  {[10, 20, 30].map(n => (
+                  {[10, 20, 30, 50].map(n => (
                     <button key={n} onClick={() => marcarTop(n)}
                       className="mike-border-thin rounded-md px-2.5 py-1 text-[11px] font-bold text-[--mike-fg-soft] hover:text-[--mike-fg] transition">
                       {n}
@@ -737,20 +770,75 @@ export default function EsteiraEscolha({ onNavegar } = {}) {
                     <span className="text-[11px] text-[--mike-fg-soft] font-medium">Nome da rodada</span>
                     <Input value={nomeRodada} onChange={setNomeRodada} placeholder={`escolha do garimpo ${vid}`} />
                   </label>
-                  <label className="flex flex-col gap-1">
+                  <div className="flex flex-col gap-1">
                     <span className="text-[11px] text-[--mike-fg-soft] font-medium">Parquet de ticks</span>
                     <Select value={fonteArquivo} onChange={setFonteArquivo} options={[
                       { value: '', label: 'Escolha o parquet…' },
                       ...(arquivos.parquets || []).map(p => ({
                         value: p.nome, label: `${p.nome} · ${p.mb} MB`,
                       })),
+                      ...((arquivos.uploads || []).length ? [
+                        { value: '__sep', label: '— gerados no servidor (backtest / MikeDB / enviados) —' },
+                      ] : []),
+                      ...(arquivos.uploads || []).map(p => ({
+                        value: p.upload_id, label: `☁ ${p.nome} · ${p.mb} MB`,
+                      })),
                     ]} />
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-[11px] text-[--mike-fg-soft] font-medium">Últimos N dias</span>
-                    <Input type="number" min="1" value={dias} onChange={setDias} placeholder="tudo" />
-                  </label>
+                    <div>
+                      <input ref={pqRef} type="file" accept=".parquet" className="hidden"
+                        onChange={async (e) => {
+                          const f = e.target.files && e.target.files[0];
+                          e.target.value = '';
+                          if (!f) return;
+                          setEnviandoPq(true); setErro(null);
+                          try {
+                            const r = await enviarParquet(f);
+                            const a2 = await api.get('/esteira/arquivos');
+                            if (montadoRef.current) {
+                              setArquivos(a2 || { parquets: [], uploads: [] });
+                              setFonteArquivo(r.upload_id);
+                              setAviso(`Parquet ${r.arquivo} enviado e já selecionado.`);
+                            }
+                          } catch (err) {
+                            if (montadoRef.current) setErro(err?.message || 'Falha no envio do parquet.');
+                          } finally {
+                            if (montadoRef.current) setEnviandoPq(false);
+                          }
+                        }} />
+                      <button onClick={() => pqRef.current && pqRef.current.click()}
+                        disabled={enviandoPq}
+                        className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-semibold mike-border-thin text-[--mike-fg-soft] hover:text-[--mike-fg] transition disabled:opacity-50">
+                        {enviandoPq
+                          ? <><RefreshCw className="w-3 h-3 mike-spin" /> Enviando (pode demorar)...</>
+                          : <>Enviar parquet do PC</>}
+                      </button>
+                    </div>
+                  </div>
+                  {!String(fonteArquivo).includes('uploads_backtest') ? (
+                    <label className="flex flex-col gap-1">
+                      <span className="text-[11px] text-[--mike-fg-soft] font-medium">Últimos N dias</span>
+                      <Input type="number" min="1" value={dias} onChange={setDias} placeholder="tudo" />
+                    </label>
+                  ) : (
+                    <div className="text-[10px] text-[--mike-fg-muted] self-end pb-2">
+                      Enviado entra inteiro.
+                    </div>
+                  )}
                 </div>
+
+                <label className="mt-3 flex items-start gap-2 cursor-pointer select-none">
+                  <input type="checkbox" checked={variar}
+                         onChange={(e) => setVariar(e.target.checked)}
+                         style={{ accentColor: '#22d3ee', marginTop: 2 }} />
+                  <span className="text-[11px] text-[--mike-fg-soft] leading-snug">
+                    <b>Testar variações das marcadas</b> — cada uma ganha vizinhas
+                    de largada (chip ±5, linha ±1 passo, teto ±2, folga ±1) e, se
+                    uma vizinha render mais que a mãe, o hill-climb anda mais um
+                    passo sozinho na mesma direção.
+                    <span className="text-[--mike-fg-muted]"> Rodada fica ~3-9×
+                    maior; a sentinela e o cache da base seguem valendo.</span>
+                  </span>
+                </label>
                 <button onClick={handleEnviar}
                   disabled={enviando || marcadas.size === 0 || !fonteArquivo}
                   className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-sm font-bold transition disabled:opacity-40 disabled:cursor-not-allowed"
@@ -758,7 +846,8 @@ export default function EsteiraEscolha({ onNavegar } = {}) {
                            color: (enviando || marcadas.size === 0 || !fonteArquivo) ? '#6b7691' : '#0b0f1a',
                            boxShadow: (enviando || marcadas.size === 0 || !fonteArquivo) ? 'none' : '0 4px 12px rgba(16,185,129,0.3)' }}>
                   {enviando ? <><RefreshCw className="w-4 h-4 mike-spin" /> Criando rodada...</>
-                            : <><Play className="w-4 h-4" /> Testar as {marcadas.size || ''} marcadas na esteira</>}
+                            : <><Play className="w-4 h-4" /> Testar as {marcadas.size || ''} marcadas
+                                {variar ? ' + variações' : ''} na esteira</>}
                 </button>
                 <div className="text-[9px] text-[--mike-fg-muted] mt-1.5 text-center">
                   Cada marcada vira um backtest no motor real — com sentinela e variações.
