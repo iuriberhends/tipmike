@@ -1785,6 +1785,16 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
   const [totEnvAtivo, setTotEnvAtivo] = useState(false);
   const [totEnvMin, setTotEnvMin] = useState('');
   const [totEnvMax, setTotEnvMax] = useState('');
+  // ERR (v23 do motor): "erro da casa" na linha de total — total real menos a
+  // linha de ABERTURA, media dos ultimos N jogos de cada jogador, MENOR dos
+  // dois. Estado AO VIVO no executor (recalcula a cada jogo que liquida).
+  // So over_under_ft/ht — em outros mercados o executor rejeita fail-closed.
+  const [errAtivo, setErrAtivo] = useState(false);
+  const [errMin, setErrMin] = useState('');
+  const [errMax, setErrMax] = useState('');
+  const [errJanela, setErrJanela] = useState('5');
+  const [errMinJogos, setErrMinJogos] = useState('5');
+  const [errJanelaHoras, setErrJanelaHoras] = useState('');
   // MAX TIPS POR JOGO
   const [maxTipsPorJogo, setMaxTipsPorJogo] = useState('ilimitado');
 
@@ -1943,6 +1953,14 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     totEnvAtivo,
     totEnvMin: totEnvMin === '' ? null : Number(totEnvMin),
     totEnvMax: totEnvMax === '' ? null : Number(totEnvMax),
+    // v23: err so grava ligado em mercado de total (blindagem: bot de HC com
+    // errAtivo esquecido rejeitaria TODO tick fail-closed no executor)
+    errAtivo: errAtivo && (mercado === 'over_under_ft' || mercado === 'over_under_ht'),
+    errMin: errMin === '' ? null : Number(errMin),
+    errMax: errMax === '' ? null : Number(errMax),
+    errJanela: errJanela === '' ? null : Number(errJanela),
+    errMinJogos: errMinJogos === '' ? null : Number(errMinJogos),
+    errJanelaHoras: errJanelaHoras === '' ? null : Number(errJanelaHoras),
   };
 
   // Aplica state salvo: chama todos os setters
@@ -2049,6 +2067,12 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     if (s.totEnvAtivo !== undefined) setTotEnvAtivo(!!s.totEnvAtivo);
     if (s.totEnvMin !== undefined && s.totEnvMin !== null) setTotEnvMin(String(s.totEnvMin)); else setTotEnvMin('');
     if (s.totEnvMax !== undefined && s.totEnvMax !== null) setTotEnvMax(String(s.totEnvMax)); else setTotEnvMax('');
+    if (s.errAtivo !== undefined) setErrAtivo(!!s.errAtivo);
+    if (s.errMin !== undefined && s.errMin !== null) setErrMin(String(s.errMin)); else setErrMin('');
+    if (s.errMax !== undefined && s.errMax !== null) setErrMax(String(s.errMax)); else setErrMax('');
+    if (s.errJanela !== undefined && s.errJanela !== null) setErrJanela(String(s.errJanela));
+    if (s.errMinJogos !== undefined && s.errMinJogos !== null) setErrMinJogos(String(s.errMinJogos));
+    if (s.errJanelaHoras !== undefined && s.errJanelaHoras !== null) setErrJanelaHoras(String(s.errJanelaHoras)); else setErrJanelaHoras('');
     if (s.maxTipsPorJogo !== undefined) setMaxTipsPorJogo(s.maxTipsPorJogo);
   };
 
@@ -3129,6 +3153,31 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
             )}
             <p className="text-[10px] text-[--mike-fg-muted] mt-1.5">Soma dos dois placares no instante da aposta — mede quanto de jogo passou. NAO confundir com o <b>Momento</b> acima, que e' o ESTAGIO (1Q/1T/3Q). Medido na Blitz (HC zebra, folga&ge;2,5): sem filtro ROI 13,6% &middot; <b>&ge;40</b> 23,2% &middot; <b>&ge;58</b> 34,9%. Grava em filtros.totEnvMin/totEnvMax.</p>
           </div>
+
+          {/* ERR (v23) — erro da casa na linha de total. So over/under. */}
+          {(mercado === 'over_under_ft' || mercado === 'over_under_ht') && (
+          <div className="pt-3 mt-1" style={{ borderTop: '0.5px solid rgba(60,85,130,0.25)' }}>
+            <label className="inline-flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" className="mike-checkbox" checked={errAtivo} onChange={(e) => setErrAtivo(e.target.checked)} />
+              <span className="text-xs text-[--mike-fg-soft]">Err: filtrar pelo erro recente da casa na linha de total.</span>
+            </label>
+            {errAtivo && (
+              <div className="flex items-center gap-3 flex-wrap mt-2">
+                <span className="text-xs text-[--mike-fg-soft]">min.</span>
+                <div className="w-24"><input type="number" step="0.5" value={errMin} onChange={(e) => setErrMin(e.target.value)} placeholder="ex: 5" className="mike-input w-full text-xs px-2 py-1.5 rounded-md" /></div>
+                <span className="text-xs text-[--mike-fg-soft]">max.</span>
+                <div className="w-24"><input type="number" step="0.5" value={errMax} onChange={(e) => setErrMax(e.target.value)} placeholder="sem teto" className="mike-input w-full text-xs px-2 py-1.5 rounded-md" /></div>
+                <span className="text-xs text-[--mike-fg-soft]">janela</span>
+                <div className="w-20"><input type="number" step="1" value={errJanela} onChange={(e) => setErrJanela(e.target.value)} placeholder="5" className="mike-input w-full text-xs px-2 py-1.5 rounded-md" /></div>
+                <span className="text-xs text-[--mike-fg-soft]">min. jogos</span>
+                <div className="w-20"><input type="number" step="1" value={errMinJogos} onChange={(e) => setErrMinJogos(e.target.value)} placeholder="5" className="mike-input w-full text-xs px-2 py-1.5 rounded-md" /></div>
+                <span className="text-xs text-[--mike-fg-soft]">janela em horas</span>
+                <div className="w-20"><input type="number" step="0.5" value={errJanelaHoras} onChange={(e) => setErrJanelaHoras(e.target.value)} placeholder="opc." className="mike-input w-full text-xs px-2 py-1.5 rounded-md" /></div>
+              </div>
+            )}
+            <p className="text-[10px] text-[--mike-fg-muted] mt-1.5">Err do jogo = total real − linha de <b>abertura</b>; na aposta vale a média dos últimos <b>{errJanela || 5}</b> jogos de cada jogador, ficando o <b>MENOR</b> dos dois. Ao vivo é estado recalculado a cada jogo que fecha (janela de 30h reconstruída na subida). Validado no holdout: BATTLE Over <b>err≥5</b> → +18,4% · Blitz Over <b>err≥1</b> → +7,7%. Grava em filtros.errAtivo/errMin/errMax/errJanela/errMinJogos/errJanelaHoras.</p>
+          </div>
+          )}
         </div>
 
         {/* AÇÕES */}

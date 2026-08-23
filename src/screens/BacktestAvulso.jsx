@@ -393,6 +393,16 @@ export default function BacktestAvulso({ onNavegar } = {}) {
   const [totEnvAtivo, setTotEnvAtivo] = useState(false);
   const [totEnvMin, setTotEnvMin] = useState('');
   const [totEnvMax, setTotEnvMax] = useState('');
+  // ERR (v23 do motor): "erro da casa" na linha de total — total real do jogo
+  // menos a linha de ABERTURA. Na aposta vale a media dos ultimos N jogos de
+  // cada jogador, ficando o MENOR dos dois (err5). So over_under_ft/ht.
+  const [errAtivo, setErrAtivo] = useState(false);
+  const [errMin, setErrMin] = useState('');
+  const [errMax, setErrMax] = useState('');
+  const [errJanela, setErrJanela] = useState('5');
+  const [errMinJogos, setErrMinJogos] = useState('5');
+  const [errJanelaHoras, setErrJanelaHoras] = useState('');
+  const [errAnotar, setErrAnotar] = useState(false);
   // upload
   const [arquivo, setArquivo] = useState(null);
   const [subindo, setSubindo] = useState(false);
@@ -405,6 +415,8 @@ export default function BacktestAvulso({ onNavegar } = {}) {
   const [casa, setCasa] = useState('betano');
   const [esporte, setEsporte] = useState('fifa');
   const [mercado, setMercado] = useState('over_under_ft');
+  // v23: err so existe em total seco (over/under) — controla card e payload
+  const ehOU = mercado === 'over_under_ft' || mercado === 'over_under_ht';
   const [lado, setLado] = useState('ambos');
   // filtros de historico (WR): lista de chips + campos do editor atual
   const [filtrosHist, setFiltrosHist] = useState([]);
@@ -628,8 +640,19 @@ export default function BacktestAvulso({ onNavegar } = {}) {
       const mj = numOuNull(atropeloMinJogos);
       if (mj != null && mj < 1) return 'Mín. de jogos do atropelo deve ser pelo menos 1.';
     }
+    if (ehOU && errAtivo) {
+      const emin = numOuNull(errMin), emax = numOuNull(errMax);
+      if (emin == null && emax == null) return 'Err ligado: informe o mínimo e/ou o máximo.';
+      if (emin != null && emax != null && emin > emax) return 'Err mín não pode ser maior que o máx.';
+      const ej = numOuNull(errJanela);
+      if (ej != null && ej < 1) return 'Janela do err deve ser pelo menos 1 jogo.';
+      const emj = numOuNull(errMinJogos);
+      if (emj != null && emj < 1) return 'Mín. de jogos do err deve ser pelo menos 1.';
+      const ejh = numOuNull(errJanelaHoras);
+      if (ejh != null && ejh <= 0) return 'Janela em horas do err deve ser maior que zero.';
+    }
     return null;
-  }, [escadaLinhas, folgaAtiva, folgaMin, folgaMax, momentoAtivo, momentoMax, atropeloAtivo, atropeloMax, atropeloMin, atropeloMargem, atropeloMinJogos, totEnvAtivo, totEnvMin, totEnvMax, maxPorJogo, uploadId, mercado, linhaMin, linhaMax, oddMin, oddMax, stakeValor, bancaInicial, ehBasket, quartos]);
+  }, [escadaLinhas, folgaAtiva, folgaMin, folgaMax, momentoAtivo, momentoMax, atropeloAtivo, atropeloMax, atropeloMin, atropeloMargem, atropeloMinJogos, totEnvAtivo, totEnvMin, totEnvMax, ehOU, errAtivo, errMin, errMax, errJanela, errMinJogos, errJanelaHoras, maxPorJogo, uploadId, mercado, linhaMin, linhaMax, oddMin, oddMax, stakeValor, bancaInicial, ehBasket, quartos]);
 
   const handleRodar = useCallback(async () => {
     const msgErro = validarFiltros();
@@ -655,6 +678,13 @@ export default function BacktestAvulso({ onNavegar } = {}) {
       tot_env_ativo: totEnvAtivo,
       tot_env_min: totEnvAtivo ? numOuNull(totEnvMin) : null,
       tot_env_max: totEnvAtivo ? numOuNull(totEnvMax) : null,
+      err_ativo: ehOU && errAtivo,
+      err_min: ehOU && errAtivo ? numOuNull(errMin) : null,
+      err_max: ehOU && errAtivo ? numOuNull(errMax) : null,
+      err_janela: ehOU && (errAtivo || errAnotar) ? numOuNull(errJanela) : null,
+      err_min_jogos: ehOU && (errAtivo || errAnotar) ? numOuNull(errMinJogos) : null,
+      err_janela_horas: ehOU && (errAtivo || errAnotar) ? numOuNull(errJanelaHoras) : null,
+      err_anotar: ehOU && errAnotar,
       atropelo_margem: atropeloAtivo ? numOuNull(atropeloMargem) : null,
       atropelo_min_jogos: atropeloAtivo ? numOuNull(atropeloMinJogos) : null,
       upload_id: uploadId,
@@ -723,7 +753,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
     } catch (e) {
       if (montadoRef.current) { setRodando(false); setErro(e?.message || 'Falha ao criar job.'); }
     }
-  }, [validarFiltros, escadaLinhas, folgaAtiva, folgaMin, folgaMax, momentoAtivo, momentoMax, atropeloAtivo, atropeloMax, atropeloMin, atropeloMargem, atropeloMinJogos, totEnvAtivo, totEnvMin, totEnvMax, maxPorJogo, uploadId, mercado, lado, casa, esporte, filtrosHist,
+  }, [validarFiltros, escadaLinhas, folgaAtiva, folgaMin, folgaMax, momentoAtivo, momentoMax, atropeloAtivo, atropeloMax, atropeloMin, atropeloMargem, atropeloMinJogos, totEnvAtivo, totEnvMin, totEnvMax, ehOU, errAtivo, errMin, errMax, errJanela, errMinJogos, errJanelaHoras, errAnotar, maxPorJogo, uploadId, mercado, lado, casa, esporte, filtrosHist,
       cenario, difPlacar, quartos, ehBasket, linhaMin, linhaMax, oddMin, oddMax,
       blacklist, whitelist, stakeValor, bancaInicial, filtrosComp]);
 
@@ -1107,6 +1137,47 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                     Na BATTLE o sinal é o oposto (favorito, <b>≤24</b>).
                   </div>
                 </div>
+                {/* ERR (v23): "erro da casa" na linha de total. So over/under —
+                    o card nem aparece nos outros mercados (e o payload blinda). */}
+                {ehOU && (
+                <div className="mt-3">
+                  <div className="text-[10px] uppercase tracking-wider text-[--mike-fg-muted] font-bold mb-1.5">Erro da casa na linha (err)</div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={errAtivo} onChange={(e) => setErrAtivo(e.target.checked)} className="accent-cyan-500" />
+                    <span className="text-[11px] text-[--mike-fg-soft]">Filtrar pelo erro recente da casa na linha de total</span>
+                  </label>
+                  {errAtivo && (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-2">
+                      <Campo label="Mín." hint="casa ABRINDO BAIXO — jogos fechando acima da abertura (pró-Over)">
+                        <Input type="number" step="0.5" value={errMin} onChange={setErrMin} placeholder="ex: 5" />
+                      </Campo>
+                      <Campo label="Máx." hint="casa abrindo alto (pró-Under)">
+                        <Input type="number" step="0.5" value={errMax} onChange={setErrMax} placeholder="vazio = sem teto" />
+                      </Campo>
+                      <Campo label="Janela (jogos)" hint="média dos últimos N de cada jogador">
+                        <Input type="number" min="1" value={errJanela} onChange={setErrJanela} placeholder="5" />
+                      </Campo>
+                      <Campo label="Mín. jogos" hint="cada jogador precisa de N fechados">
+                        <Input type="number" min="1" value={errMinJogos} onChange={setErrMinJogos} placeholder="5" />
+                      </Campo>
+                      <Campo label="Janela em horas" hint="opcional: troca a contagem por TEMPO (regime do turno)">
+                        <Input type="number" step="0.5" value={errJanelaHoras} onChange={setErrJanelaHoras} placeholder="ex: 2" />
+                      </Campo>
+                    </div>
+                  )}
+                  <label className="flex items-center gap-2 cursor-pointer mt-2">
+                    <input type="checkbox" checked={errAnotar} onChange={(e) => setErrAnotar(e.target.checked)} className="accent-cyan-500" />
+                    <span className="text-[11px] text-[--mike-fg-soft]">Só anotar a coluna <b>Err</b> na planilha (sem filtrar) — modo garimpo</span>
+                  </label>
+                  <div className="text-[10px] text-[--mike-fg-muted] mt-1.5">
+                    Err de um jogo = total real − linha de <b>abertura</b>; na aposta vale a média dos
+                    últimos {errJanela || 5} jogos de cada jogador, ficando o <b>menor</b> dos dois. Mede o
+                    regime da casa no turno, por liga. Validado no holdout: BATTLE Over <b>err≥5</b> →
+                    ROI +18,4% · Blitz Over <b>err≥1</b> → +7,7%. Jogos sem histórico suficiente são
+                    recusados (contador <b>err_hist_insuf</b>).
+                  </div>
+                </div>
+                )}
                 </Grupo>
 
                 {/* GRUPO 2: Confronto direto (H2H) */}
