@@ -137,6 +137,11 @@ const CAPACIDADES = {
   },
 };
 
+// v26: topo do slider de Diferenca de Placar. Valor no topo = SEM teto
+// (grava null no filtro) — bot antigo e bot novo com o slider no fim se
+// comportam igual.
+const DIF_PLACAR_TOPO = 50;
+
 // Cenarios completos (e-Soccer/Fifa/Nba2K)
 const CENARIOS_FULL = [
   { value: 'casa_vencendo', label: 'Casa vencendo' },
@@ -1476,6 +1481,15 @@ function formStateToPayload(s) {
   // filtros JSONB: backup de TODO o formState pra reidratação fiel ao editar
   // (permite recuperar fixarJ1Casa, gradesModo, filtros hist, comp, live, etc)
   payload.filtros = { ...s, lados };  // adiciona 'lados' (canonico) no JSONB
+  // v26: TETO da diferenca de placar. O motor le `diferencaPlacarMax`
+  // (ausente/null = sem teto). Slider no topo (50+) = sem teto: grava null
+  // pra NAO introduzir um corte que o bot nao tinha.
+  {
+    const _difMax = Number(s.diferencaPlacarMax);
+    payload.filtros.diferencaPlacarMax =
+      (s.diferencaPlacarAtivo && !isNaN(_difMax) && _difMax < DIF_PLACAR_TOPO)
+        ? _difMax : null;
+  }
   // Filtros 6 e 7 do HC: grava as listas de nicks direto no JSONB que o
   // bot_executor le (filtros.blacklist_zebra / filtros.blacklist_favorito).
   if (payload.filtros_blacklist_zebra) {
@@ -1721,6 +1735,10 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
 
   const [diferencaPlacarAtivo, setDiferencaPlacarAtivo] = useState(false);
   const [diferencaPlacar, setDiferencaPlacar] = useState(0);
+  // v26: TETO da diferenca de placar. DIF_PLACAR_TOPO = topo do slider e
+  // significa "sem teto" (o rotulo mostra 50+), entao o default nao muda
+  // nada em bot nenhum.
+  const [diferencaPlacarMax, setDiferencaPlacarMax] = useState(DIF_PLACAR_TOPO);
 
   // FILTROS AO VIVO
   const [subfCasaFora, setSubfCasaFora] = useState(false);
@@ -1930,6 +1948,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     cenarioPartidaAtivo, cenarioPartida,
     casaFavoritoAtivo, casaFavorito, existeFavoritoAtivo, existeFavorito,
     alvoFavoritoAtivo, alvoFavorito, diferencaPlacarAtivo, diferencaPlacar,
+    diferencaPlacarMax,
     subfCasaFora, subfFavAzarao, subfAlvoOpon, quartosAtivos,
     tempoAtivo, tempo, ataquesAtivo, ataques, chutesAtivo, chutes,
     cantosAtivo, cantos, cartVermelhosAtivo, cartVermelhos,
@@ -2023,6 +2042,9 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     if (s.alvoFavorito !== undefined) setAlvoFavorito(s.alvoFavorito);
     if (s.diferencaPlacarAtivo !== undefined) setDiferencaPlacarAtivo(s.diferencaPlacarAtivo);
     if (s.diferencaPlacar !== undefined) setDiferencaPlacar(s.diferencaPlacar);
+    // null no JSONB = sem teto -> volta pro topo do slider
+    if (s.diferencaPlacarMax !== undefined)
+      setDiferencaPlacarMax(s.diferencaPlacarMax === null ? DIF_PLACAR_TOPO : s.diferencaPlacarMax);
     if (s.subfCasaFora !== undefined) setSubfCasaFora(s.subfCasaFora);
     if (s.subfFavAzarao !== undefined) setSubfFavAzarao(s.subfFavAzarao);
     if (s.subfAlvoOpon !== undefined) setSubfAlvoOpon(s.subfAlvoOpon);
@@ -2886,8 +2908,17 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
 
             {/* "Diferenca de placar" so em esportes com placar comum (soccer/fifa/nba2k) */}
             {capacidades.cenariosFull && (
-              <LinhaFiltro label="Diferença de Placar" info="Diferença máxima entre os placares" ativo={diferencaPlacarAtivo} onToggle={setDiferencaPlacarAtivo}>
-                <SingleSlider min={0} max={50} step={1} value={diferencaPlacar} onChange={setDiferencaPlacar} sufixoMin={0} sufixoMax="50+" disabled={!diferencaPlacarAtivo} />
+              <LinhaFiltro label="Diferença de Placar" info="Faixa da diferença absoluta entre os placares no momento do envio (|casa − fora|). Mín. e máx. valem os dois: 5 a 12 = só entra com o jogo separado por 5 a 12 pontos. Com o máximo no topo (50+) não há teto." ativo={diferencaPlacarAtivo} onToggle={setDiferencaPlacarAtivo}>
+                <RangeSlider
+                  min={0}
+                  max={DIF_PLACAR_TOPO}
+                  step={1}
+                  value={[diferencaPlacar, diferencaPlacarMax]}
+                  onChange={([mn, mx]) => { setDiferencaPlacar(mn); setDiferencaPlacarMax(mx); }}
+                  sufixoMin={0}
+                  sufixoMax="50+"
+                  disabled={!diferencaPlacarAtivo}
+                />
               </LinhaFiltro>
             )}
           </div>

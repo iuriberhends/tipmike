@@ -464,6 +464,8 @@ export default function BacktestAvulso({ onNavegar } = {}) {
   }, []);
   const [cenario, setCenario] = useState('');
   const [difPlacar, setDifPlacar] = useState('');
+  // v26: teto da diferenca de placar. Vazio = sem teto (job identico ao antigo)
+  const [difPlacarMax, setDifPlacarMax] = useState('');
   const [quartos, setQuartos] = useState({ q1: true, q2: true, q3: true, q4: true });
   const [linhaMin, setLinhaMin] = useState('');
   const [linhaMax, setLinhaMax] = useState('');
@@ -692,6 +694,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
       filtros_hist: filtrosHist,
       cenario: cenario || null,
       diferenca_placar: numOuNull(difPlacar),
+      diferenca_placar_max: numOuNull(difPlacarMax),
       quartos: quartosAtivos,
       linha_min: numOuNull(linhaMin),
       linha_max: numOuNull(linhaMax),
@@ -754,7 +757,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
       if (montadoRef.current) { setRodando(false); setErro(e?.message || 'Falha ao criar job.'); }
     }
   }, [validarFiltros, escadaLinhas, folgaAtiva, folgaMin, folgaMax, momentoAtivo, momentoMax, atropeloAtivo, atropeloMax, atropeloMin, atropeloMargem, atropeloMinJogos, totEnvAtivo, totEnvMin, totEnvMax, ehOU, errAtivo, errMin, errMax, errJanela, errMinJogos, errJanelaHoras, errAnotar, maxPorJogo, uploadId, mercado, lado, casa, esporte, filtrosHist,
-      cenario, difPlacar, quartos, ehBasket, linhaMin, linhaMax, oddMin, oddMax,
+      cenario, difPlacar, difPlacarMax, quartos, ehBasket, linhaMin, linhaMax, oddMin, oddMax,
       blacklist, whitelist, stakeValor, bancaInicial, filtrosComp]);
 
   // helpers de resultado (campos REAIS do job: roi/win_rate sao fracao 0-1)
@@ -1259,6 +1262,9 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                   <div className="grid grid-cols-2 gap-3">
                     <Campo label="Cenário"><Select value={cenario} onChange={setCenario} options={CENARIOS} /></Campo>
                     <Campo label="Diferença de placar (mín.)"><Input type="number" min="0" value={difPlacar} onChange={setDifPlacar} placeholder="ex: 2" /></Campo>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Campo label="Diferença de placar (máx.)"><Input type="number" min="0" value={difPlacarMax} onChange={setDifPlacarMax} placeholder="vazio = sem teto" /></Campo>
                   </div>
                   {ehBasket && (
                     <>
