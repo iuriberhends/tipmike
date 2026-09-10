@@ -253,6 +253,9 @@ function Linha({ k, v }) {
 
 export default function Varredura({ onNavegar } = {}) {
   const [origens, setOrigens] = useState([]);
+  const [filtroOrigem, setFiltroOrigem] = useState('');
+  const [editandoApelido, setEditandoApelido] = useState(false);
+  const [apelidoTxt, setApelidoTxt] = useState('');
   const [jobs, setJobs] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [selecionado, setSelecionado] = useState(null);
@@ -442,16 +445,90 @@ export default function Varredura({ onNavegar } = {}) {
                 O garimpo lê as apostas de um backtest já concluído — nada de upload.
               </p>
 
+              {/* v030: a lista dizia so "#2242 · over_under_ft · 887 apostas" —
+                  nao dava pra saber de QUE liga/periodo era o job, e o usuario
+                  tinha que decorar o nome do parquet. Agora o rotulo traz
+                  apelido (se tiver), casa, liga, periodo e lado; ESCANCARADO
+                  vem primeiro, porque job filtrado so procura dentro da propria
+                  estrategia. */}
+              <input
+                value={filtroOrigem}
+                onChange={(e) => setFiltroOrigem(e.target.value)}
+                placeholder="filtrar por apelido, casa, liga, mercado ou data"
+                className="w-full mb-2 px-2.5 py-1.5 rounded-md text-[11px] mike-border-thin bg-transparent text-[--mike-fg]"
+              />
+
               <Campo label="Backtest de origem"
                      hint="Prefira um escancarado: job já filtrado só deixa procurar dentro da estratégia dele.">
                 <Select value={origem} onChange={setOrigem} options={[
                   { value: '', label: 'Escolha o job de origem…' },
-                  ...origens.map((o) => ({
-                    value: String(o.job_id),
-                    label: `#${o.job_id} · ${o.mercado || 'mercado?'} · ${fmt(o.apostas)} apostas${o.escancarado ? ' · escancarado' : ' · filtrado'}`,
-                  })),
+                  ...origens
+                    .filter((o) => {
+                      const q = filtroOrigem.trim().toLowerCase();
+                      if (!q) return true;
+                      return `${o.apelido} ${o.casa} ${o.liga} ${o.mercado} ${o.lado} ${o.de} ${o.ate} ${o.job_id}`
+                        .toLowerCase().includes(q);
+                    })
+                    .slice()
+                    .sort((a, b) => (b.escancarado - a.escancarado) || (b.job_id - a.job_id))
+                    .map((o) => {
+                      const periodo = o.de ? ` · ${o.de.slice(5)}→${o.ate?.slice(5) || '?'}` : '';
+                      const onde = [o.casa, o.liga].filter(Boolean).join(' ');
+                      const lado = o.lado && o.lado !== 'ambos' ? ` ${o.lado}` : '';
+                      return {
+                        value: String(o.job_id),
+                        label: `${o.apelido ? o.apelido + ' · ' : ''}#${o.job_id}`
+                          + `${onde ? ' · ' + onde : ''}${periodo}`
+                          + ` · ${o.mercado || 'mercado?'}${lado}`
+                          + ` · ${fmt(o.apostas)} ap`
+                          + `${o.escancarado ? ' · ESCANCARADO' : ' · filtrado'}`
+                          + `${o.carimbado ? ' · h2h fixo' : ''}`,
+                      };
+                    }),
                 ]} />
               </Campo>
+
+              {origemSel && (
+                <div className="mt-2 flex items-center gap-2">
+                  {editandoApelido ? (
+                    <input
+                      autoFocus
+                      value={apelidoTxt}
+                      onChange={(e) => setApelidoTxt(e.target.value)}
+                      onKeyDown={async (e) => {
+                        if (e.key === 'Escape') { setEditandoApelido(false); return; }
+                        if (e.key !== 'Enter') return;
+                        try {
+                          await api.put('/rotulos', {
+                            escopo: 'backtest', chave: String(origemSel.job_id),
+                            nome: apelidoTxt,
+                          });
+                          setOrigens((ls) => ls.map((x) => (x.job_id === origemSel.job_id
+                            ? { ...x, apelido: apelidoTxt } : x)));
+                        } catch (err) {
+                          setErro(err?.message || 'Falha salvando o apelido.');
+                        } finally { setEditandoApelido(false); }
+                      }}
+                      placeholder="apelido deste job (vazio apaga)"
+                      className="flex-1 px-2 py-1 rounded text-[11px] mike-border-thin bg-transparent text-[--mike-fg]"
+                    />
+                  ) : (
+                    <button
+                      onClick={() => { setEditandoApelido(true); setApelidoTxt(origemSel.apelido || ''); }}
+                      className="px-2 py-1 rounded text-[10px] mike-border-thin text-[--mike-fg-muted] hover:text-[--mike-fg]">
+                      {origemSel.apelido ? `apelido: ${origemSel.apelido} (renomear)` : 'dar um apelido a este job'}
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {origemSel && !origemSel.carimbado && (
+                <div className="mt-2 rounded-md p-2 text-[10px] text-[--mike-fg-muted] mike-border-thin">
+                  Este job rodou <b>sem carimbo de h2h</b>: se ele tem chip, o número
+                  do garimpo pode não bater com o da esteira (o histórico muda entre
+                  as duas rodadas). Para comparar, crie o job-mãe com o h2h congelado.
+                </div>
+              )}
 
               {origens.length === 0 && !carregando && (
                 <div className="mt-2 text-[10px] text-[--mike-fg-muted]">
