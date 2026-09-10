@@ -24,7 +24,7 @@ import {
 import MikeHeader from '../shared/MikeHeader.jsx';
 import H2hSyncPanel from '../shared/H2hSyncPanel.jsx';
 import MikeDbPanel from '../shared/MikeDbPanel.jsx';
-import { ApiBacktest } from '../lib/api.js';
+import { ApiBacktest, api } from '../lib/api.js';
 
 // ============================================================
 // CONSTANTES
@@ -408,8 +408,15 @@ export default function BacktestAvulso({ onNavegar } = {}) {
   const [subindo, setSubindo] = useState(false);
   const [resumo, setResumo] = useState(null);
   const [uploadId, setUploadId] = useState(null);
-  // aba da seção 1: 'arquivo' (upload manual) | 'mikedb' (gera no servidor)
-  const [abaTicks, setAbaTicks] = useState('arquivo');
+  // aba da seção 1: 'existente' (parquet ja no servidor) | 'arquivo' (upload
+  // manual) | 'mikedb' (gera no servidor). v029: 'existente' e' o default —
+  // era preciso decorar o caminho do parquet pra criar backtest.
+  const [abaTicks, setAbaTicks] = useState('existente');
+  const [parquets, setParquets] = useState([]);
+  const [carregandoParquets, setCarregandoParquets] = useState(false);
+  const [filtroParquet, setFiltroParquet] = useState('');
+  const [editandoApelido, setEditandoApelido] = useState(null);
+  const [apelidoTxt, setApelidoTxt] = useState('');
 
   // filtros
   const [casa, setCasa] = useState('betano');
@@ -573,6 +580,44 @@ export default function BacktestAvulso({ onNavegar } = {}) {
   // Um arquivo (subido OU gerado no MikeDB) já sabe de que casa e esporte ele
   // é: os filtros passam a nascer alinhados com ele, em vez de o usuário
   // descobrir pelo aviso amarelo depois de configurar tudo.
+  const carregarParquets = useCallback(async () => {
+    setCarregandoParquets(true);
+    try {
+      const r = await api.get('/backtest/arquivos');
+      setParquets(r?.arquivos || []);
+    } catch (e) {
+      setErro(e?.message || 'Falha listando os parquets do servidor.');
+    } finally {
+      setCarregandoParquets(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (abaTicks === 'existente' && parquets.length === 0) carregarParquets();
+  }, [abaTicks, parquets.length, carregarParquets]);
+
+  const salvarApelido = useCallback(async (chave, nome) => {
+    try {
+      await api.put('/rotulos', { escopo: 'parquet', chave, nome });
+      setParquets((ls) => ls.map((p) => (p.upload_id === chave
+        ? { ...p, apelido: nome } : p)));
+    } catch (e) {
+      setErro(e?.message || 'Falha salvando o apelido.');
+    } finally {
+      setEditandoApelido(null);
+    }
+  }, []);
+
+  // escolher um parquet ja no servidor = mesmo trilho do upload: seta o id,
+  // alinha casa/esporte pelo nome do arquivo e limpa resultado velho.
+  const escolherParquet = useCallback((p) => {
+    setUploadId(p.upload_id);
+    setResumo({ arquivo: p.arquivo, ts_min: p.de, ts_max: p.ate,
+                casas: p.casa ? [p.casa] : [], esportes: [] });
+    setResultado(null); setErro(null); setArquivo(null);
+    if (p.casa && CASAS.some((o) => o.value === p.casa)) setCasa(p.casa);
+  }, []);
+
   const alinharFiltrosComArquivo = useCallback((res) => {
     if (!res) return;
     if (res.casas?.length === 1) {
@@ -879,7 +924,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                   As duas desembocam no mesmo uploadId/resumo — daqui pra
                   baixo a tela não sabe (nem precisa saber) de onde veio. */}
               <div className="flex items-center gap-1 mb-3">
-                {[['arquivo', 'Escolher arquivo'], ['mikedb', 'MikeDB']].map(([id, rotulo]) => (
+                {[['existente', 'Já no servidor'], ['arquivo', 'Escolher arquivo'], ['mikedb', 'MikeDB']].map(([id, rotulo]) => (
                   <button key={id} onClick={() => setAbaTicks(id)}
                     className="px-3 py-1.5 rounded-md text-[11px] font-bold transition"
                     style={abaTicks === id
@@ -889,6 +934,88 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                   </button>
                 ))}
               </div>
+
+              {abaTicks === 'existente' && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <input
+                      value={filtroParquet}
+                      onChange={(e) => setFiltroParquet(e.target.value)}
+                      placeholder="filtrar por apelido, casa, liga ou data"
+                      className="flex-1 px-2.5 py-1.5 rounded-md text-[11px] mike-border-thin bg-transparent text-[--mike-fg]"
+                    />
+                    <button onClick={carregarParquets}
+                      className="px-2.5 py-1.5 rounded-md text-[11px] font-bold mike-border-thin text-[--mike-fg-soft]">
+                      {carregandoParquets ? 'Lendo...' : 'Atualizar'}
+                    </button>
+                  </div>
+                  <div className="rounded-md overflow-hidden mike-border-thin"
+                       style={{ maxHeight: 260, overflowY: 'auto' }}>
+                    {parquets
+                      .filter((p) => {
+                        const q = filtroParquet.trim().toLowerCase();
+                        if (!q) return true;
+                        return `${p.apelido} ${p.casa} ${p.liga} ${p.de} ${p.ate} ${p.arquivo}`
+                          .toLowerCase().includes(q);
+                      })
+                      .map((p) => {
+                        const sel = uploadId === p.upload_id;
+                        return (
+                          <div key={p.upload_id}
+                            className="flex items-center gap-2 px-2.5 py-2 text-[11px] cursor-pointer transition"
+                            style={{
+                              backgroundColor: sel ? 'rgba(6,182,212,0.12)' : 'transparent',
+                              borderBottom: '0.5px solid rgba(255,255,255,0.05)',
+                            }}
+                            onClick={() => escolherParquet(p)}>
+                            <div className="flex-1 min-w-0">
+                              {editandoApelido === p.upload_id ? (
+                                <input
+                                  autoFocus
+                                  value={apelidoTxt}
+                                  onChange={(e) => setApelidoTxt(e.target.value)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') salvarApelido(p.upload_id, apelidoTxt);
+                                    if (e.key === 'Escape') setEditandoApelido(null);
+                                  }}
+                                  onBlur={() => salvarApelido(p.upload_id, apelidoTxt)}
+                                  placeholder="apelido (vazio apaga)"
+                                  className="w-full px-2 py-1 rounded text-[11px] mike-border-thin bg-transparent text-[--mike-fg]"
+                                />
+                              ) : (
+                                <div className="truncate">
+                                  <span className="font-bold" style={{ color: sel ? '#22d3ee' : 'var(--mike-fg)' }}>
+                                    {p.apelido || p.limpo || p.arquivo}
+                                  </span>
+                                  <span className="ml-2 text-[--mike-fg-muted]">
+                                    {p.casa || '?'}{p.liga ? ` · ${p.liga}` : ''}
+                                    {p.de ? ` · ${p.de} a ${p.ate}` : ''} · {p.mb} MB
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                            <button
+                              title="apelido"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditandoApelido(p.upload_id);
+                                setApelidoTxt(p.apelido || '');
+                              }}
+                              className="px-1.5 py-0.5 rounded text-[10px] text-[--mike-fg-muted] hover:text-[--mike-fg] mike-border-thin">
+                              renomear
+                            </button>
+                          </div>
+                        );
+                      })}
+                    {!carregandoParquets && parquets.length === 0 && (
+                      <div className="px-2.5 py-3 text-[11px] text-[--mike-fg-muted]">
+                        Nenhum parquet no servidor. Gere um na aba MikeDB ou suba um arquivo.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {abaTicks === 'mikedb' && (
                 <MikeDbPanel
@@ -905,7 +1032,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                 />
               )}
 
-              <div className={`flex flex-wrap items-center gap-2 ${abaTicks === 'mikedb' ? 'hidden' : ''}`}>
+              <div className={`flex flex-wrap items-center gap-2 ${abaTicks !== 'arquivo' ? 'hidden' : ''}`}>
                 <label className="flex items-center gap-2 px-3 py-2 rounded-md text-xs font-semibold cursor-pointer mike-border-thin text-[--mike-fg-soft] hover:text-[--mike-fg] transition">
                   <FileUp className="w-3.5 h-3.5" />
                   {arquivo ? arquivo.name : 'Escolher arquivo'}
@@ -922,7 +1049,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                   {subindo ? <><RefreshCw className="w-3.5 h-3.5 mike-spin" /> Subindo...</> : <><Upload className="w-3.5 h-3.5" /> Subir</>}
                 </button>
               </div>
-              {resumo && abaTicks !== 'mikedb' && (
+              {resumo && abaTicks === 'arquivo' && (
                 <div className="mt-3 rounded-md p-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px]" style={{ backgroundColor: 'rgba(16,185,129,0.06)', border: '0.5px solid rgba(16,185,129,0.25)' }}>
                   <span className="flex items-center gap-1 text-emerald-400 font-bold">
                     <CheckCircle2 className="w-3 h-3" /> {(resumo.linhas ?? 0).toLocaleString()} ticks
