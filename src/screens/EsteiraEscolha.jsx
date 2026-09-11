@@ -1,64 +1,83 @@
 // ============================================================
-// Esteira.jsx — a esteira de estratégias como tela do painel
+// EsteiraEscolha.jsx — a tela de escolha: do garimpo pra esteira
 //
-// VISUAL: copiado do Varredura.jsx, valor por valor — mesmos themeVars,
-// mesmo cardStyle, mesmos Campo/Input/Select com .mike-border-thin, mesma
-// SecaoTitulo, mesmo grid 3 colunas com o Resultado sticky à direita.
-// Duas telas que fazem coisas parecidas devem se parecer.
+// PORTE FIEL do prototipo_ranking.html aprovado: os mesmos 11 critérios
+// com alto/baixo/tanto-faz + peso 1-5, os 5 perfis prontos, normalização
+// min/max ignorando ≥900, nota = média ponderada, 60 visíveis, G–R fixo,
+// barras coloridas, busca, corte de mínimo de apostas, ficha no clique,
+// atalhos marcar 10/20/30. O que só o painel pode ter, por cima:
+//   · dados do GET /esteira/varreduras/:id/selecao (id, nunca caminho)
+//   · linhas que o motor NÃO reproduz ficam bloqueadas, com o motivo
+//   · os 4 alertas céticos recalculados AO VIVO conforme a marcação
+//   · o botão de verdade: POST /esteira/rodadas origem='varredura'
 //
-// ATENCAO: as variáveis --mike-* NÃO são globais — cada tela declara o
-// themeVars no wrapper. Sem isso até o MikeHeader renderiza sem cor.
-//
-// A API é só despachante: cria a rodada 'pendente' e responde. Quem roda é
-// o serviço TipMikeEsteira (fila própria: 2 slots, piso de RAM, teto global
-// de pesados). A retomada PULA itens concluídos — re-subir é barato.
+// VISUAL: mesmo dialeto das outras telas (themeVars locais, cardStyle,
+// mike-border-thin). As variáveis --mike-* NÃO são globais — cada tela
+// declara o themeVars no wrapper. NÃO REMOVER.
 //
 // 🔌 BACKEND:
-//   GET    /esteira/arquivos               planilhas + parquets da raiz
-//   POST   /esteira/rodadas                cria e enfileira
-//   GET    /esteira/rodadas                lista (contagens reais da view)
-//   GET    /esteira/rodadas/:id            detalhe + baseline + alertas
-//   GET    /esteira/rodadas/:id/itens      o placar (métricas por item)
-//   POST   /esteira/rodadas/:id/cancelar
-//   POST   /esteira/rodadas/:id/retomar    itens em erro voltam pra fila
-//   GET    /esteira/rodadas/:id/planilha   xlsx PLACAR/VARIACOES/CARTEIRA
-//   DELETE /esteira/rodadas/:id            só em status final
+//   GET  /varredura/jobs                          garimpos concluídos
+//   GET  /esteira/varreduras/:id/selecao          pack colunar + itens + alertas
+//   POST /esteira/varreduras/:id/selecao/alertas  alertas da marcação atual
+//   GET  /esteira/arquivos                        parquets pro envio
+//   POST /esteira/rodadas                         cria a rodada
 // ============================================================
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Home, ChevronRight, ListChecks, FileSpreadsheet, Database, Layers,
-  Trophy, Play, Download, X, RefreshCw, AlertCircle, AlertTriangle,
-  CheckCircle2, Clock, Hash, RotateCcw, Trash2, ShieldCheck, Settings2, Radar,
-  Copy, ArrowUp, ArrowDown, Minus, Maximize2,
+  Home, ChevronRight, ListChecks, Radar, Play, X, RefreshCw, AlertCircle,
+  AlertTriangle, CheckCircle2, ShieldQuestion, Search, SlidersHorizontal,
+  Send,
 } from 'lucide-react';
 import MikeHeader from '../shared/MikeHeader.jsx';
 import { api } from '../lib/api.js';
 import { BASE_URL, getAccessToken } from '../lib/auth.js';
 
+async function enviarParquet(file) {
+  // o MESMO endpoint do backtest avulso (500 MB, valida e resume)
+  const fd = new FormData();
+  fd.append('arquivo', file, file.name);
+  const res = await fetch(`${BASE_URL}/backtest/upload-ticks`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${getAccessToken()}` },
+    body: fd,
+  });
+  const j = await res.json().catch(() => null);
+  if (!res.ok) throw new Error((j && j.detail) || `HTTP ${res.status}`);
+  return j;   // {upload_id, arquivo, ...}
+}
+
 // ============================================================
-// CONSTANTES
+// CONSTANTES — copiadas do protótipo, valor por valor
 // ============================================================
 
-const STATUS = {
-  pendente:   { rotulo: 'Na fila',    cor: '#6b7691' },
-  preparando: { rotulo: 'Preparando', cor: '#0891b2', girando: true },
-  rodando:    { rotulo: 'Rodando',    cor: '#22d3ee', girando: true },
-  concluido:  { rotulo: 'Pronto',     cor: '#10b981' },
-  erro:       { rotulo: 'Erro',       cor: '#f43f5e' },
-  cancelado:  { rotulo: 'Cancelado',  cor: '#6b7691' },
-};
-const ATIVO = ['pendente', 'preparando', 'rodando'];
-const FINAL = ['concluido', 'erro', 'cancelado'];
+const CRITERIOS = [
+  { k: 'u_dia',    n: 'Unidades por dia',         dir: 'hi', ex: 'quanto rende por dia' },
+  { k: 'WR',       n: 'Taxa de acerto',           dir: 'hi', ex: '% de apostas certas' },
+  { k: 'ROI',      n: 'Retorno (ROI)',            dir: 'hi', ex: '% de lucro sobre o apostado' },
+  { k: 'premio',   n: 'Vantagem sobre o mercado', dir: 'hi', ex: 'quanto rende ACIMA do que o mercado paga' },
+  { k: 'DD',       n: 'Queda máxima',             dir: 'lo', ex: 'o maior tombo da banca, em unidades' },
+  { k: 'ldd',      n: 'Lucro por queda',          dir: 'hi', ex: 'cada unidade arriscada rendeu quanto' },
+  { k: 'seq_neg',  n: 'Dias ruins seguidos',      dir: 'lo', ex: 'a maior sequência de dias no vermelho' },
+  { k: 'pior_dia', n: 'Pior dia',                 dir: 'hi', ex: 'quanto perdeu no pior dia' },
+  { k: 'ap_dia',   n: 'Apostas por dia',          dir: 'hi', ex: 'o giro da estratégia' },
+  { k: 'conc3',    n: 'Concentração',             dir: 'lo', ex: 'quanto do lucro vem de só 3 jogadores' },
+  { k: 'ap',       n: 'Total de apostas',         dir: 'hi', ex: 'tamanho da amostra — pouca aposta, pouca certeza' },
+];
+// aparece só quando o garimpo tem holdout cruzado
+const CRIT_HOLDOUT = { k: 'ROI_ho', n: 'Retorno fora da amostra', dir: 'hi',
+                       ex: 'o ROI nos dias que a busca nunca viu' };
 
-const PAPEL = {
-  sentinela:  { rotulo: 'sentinela', cor: '#22d3ee' },
-  controle:   { rotulo: 'controle',  cor: '#a78bfa' },
-  estrategia: { rotulo: '',          cor: '#eaeef7' },
-  variacao:   { rotulo: '↳',         cor: '#6b7691' },
+const PERFIS = {
+  'Sono tranquilo':  { seq_neg: ['lo', 3], DD: ['lo', 3], pior_dia: ['hi', 2], u_dia: ['hi', 1] },
+  'Sniper':          { WR: ['hi', 3], ROI: ['hi', 2], DD: ['lo', 2], ldd: ['hi', 2] },
+  'Volume':          { u_dia: ['hi', 3], ap_dia: ['hi', 2], WR: ['hi', 1] },
+  'Só o que é real': { premio: ['hi', 3], conc3: ['lo', 3], ap: ['hi', 2], seq_neg: ['lo', 1] },
+  'Equilíbrio':      { u_dia: ['hi', 2], WR: ['hi', 2], DD: ['lo', 2], seq_neg: ['lo', 2], ap: ['hi', 1] },
 };
 
-const POLL_MS = 4000;
+const VIS_PASSO = 60;          // quantas linhas por página de tabela
+const DEBOUNCE_ALERTAS_MS = 700;
 
 const themeVars = {
   '--mike-bg': '#0b0f1a',
@@ -79,192 +98,28 @@ const cardStyle = {
   border: '0.5px solid rgba(60, 85, 130, 0.4)',
 };
 
+const COR = { ok: '#10b981', cy: '#22d3ee', warn: '#fbbf24', bad: '#f87171' };
+
 function numOuNull(v) {
   if (v === '' || v == null) return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
-const fmt = (n) => (n === null || n === undefined || n === ''
-  ? null : Number(n).toLocaleString('pt-BR'));
-const fmt1 = (n) => (n === null || n === undefined || n === '' || Number.isNaN(Number(n))
-  ? '–' : Number(n).toLocaleString('pt-BR', { maximumFractionDigits: 1 }));
-
-function tempoRelativo(iso) {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  const s = Math.floor((Date.now() - d.getTime()) / 1000);
-  if (s < 60) return 'agora';
-  if (s < 3600) return `há ${Math.floor(s / 60)} min`;
-  if (s < 86400) return `há ${Math.floor(s / 3600)}h`;
-  if (s < 172800) return 'ontem';
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-}
-
-function duracaoEntre(ini, fim) {
-  if (!ini || !fim) return null;
-  const s = Math.floor((new Date(fim) - new Date(ini)) / 1000);
-  if (!Number.isFinite(s) || s < 0) return null;
-  const m = Math.floor(s / 60);
-  return m >= 1 ? `${m}min ${s % 60}s` : `${s}s`;
-}
-
-// alertas da rodada podem vir como lista de strings, lista de objetos ou
-// dict — a tela não pode quebrar por formato
-function alertasLinhas(a) {
-  if (!a) return [];
-  try {
-    if (Array.isArray(a)) {
-      return a.map((x) => (typeof x === 'string'
-        ? x : (x && (x.msg || x.texto || x.alerta)) || JSON.stringify(x)));
-    }
-    if (typeof a === 'object') {
-      return Object.entries(a).map(([k, v]) => `${k}: ${
-        typeof v === 'string' ? v : JSON.stringify(v)}`);
-    }
-    return [String(a)];
-  } catch { return []; }
-}
-
-// ---- rotulo legivel a partir do snapshot._planilha (o codigo fica no hover)
-function rotuloDoItem(it) {
-  const p = it.snapshot && it.snapshot._planilha;
-  if (!p) return it.nome;
-  const lados = p.linha_min != null && Number(p.linha_min) < 0 ? 'FAV' :
-                p.linha_max != null && Number(p.linha_max) > 0 ? 'ZEB' : '';
-  const linha = (p.linha_min != null || p.linha_max != null)
-    ? `L${p.linha_min ?? ''}${p.linha_max != null ? `–${p.linha_max}` : '+'}` : '';
-  const chip = (p.chip_wr_min != null && Number(p.chip_wr_min) > 0)
-    ? `${p.chip_janela || 'chip'}≥${Math.round(Number(p.chip_wr_min) * 100)}%` : '';
-  const extras = [];
-  if (p.atropelo_min != null) extras.push(`atr≥${p.atropelo_min}`);
-  if (p.tot_env_max != null) extras.push(`env≤${p.tot_env_max}`);
-  if (p.tot_env_min != null) extras.push(`env≥${p.tot_env_min}`);
-  if (p.folga_min != null || p.folga_max != null)
-    extras.push(`folga ${p.folga_min ?? ''}~${p.folga_max ?? ''}`);
-  if (p.teto) extras.push(`teto ${fmtN(p.teto)}`);
-  const r = [lados, linha, chip, ...extras].filter(Boolean).join(' ');
-  return r || it.nome;
-}
-
-// o que a variacao mudou: o [sufixo] que o worker poe no nome
-function sufixoVariacao(nome) {
-  const m = /\[([^\]]+)\]\s*$/.exec(nome || '');
-  return m ? m[1] : nome;
-}
-
-// ---- filtros do snapshot em portugues, pra ficha ----
-const JANELAS_PT = { 'últ. 10': 'últimos 10 confrontos', 'últ. 20': 'últimos 20 confrontos',
-                     'últ. 30': 'últimos 30 confrontos', 'todas': 'todos os confrontos',
-                     'all': 'todos os confrontos', 'l10': 'últimos 10 confrontos',
-                     'l20': 'últimos 20 confrontos', 'l30': 'últimos 30 confrontos' };
-const janelaPt = (j) => JANELAS_PT[String(j ?? '').toLowerCase()] || j || 'janela';
-// numeros da planilha vem como float ("2.0") — inteiro mostra sem casa
-const fmtN = (v) => {
-  const x = Number(v);
-  return Number.isFinite(x) ? (Number.isInteger(x) ? String(x) : String(x)) : String(v);
-};
-const semCorte = (mn, mx) => (mn == null || Number(mn) <= 0) && mx == null;
-function filtrosEmPortugues(pl) {
-  if (!pl) return [];
-  const L = [];
-  const pct = (v) => `${Math.round(Number(v) * 100)}%`;
-  if (!semCorte(pl.chip_wr_min, pl.chip_wr_max)) {
-    let t = `${janelaPt(pl.chip_janela)} `;
-    if (pl.chip_wr_min != null && Number(pl.chip_wr_min) > 0) t += `≥ ${pct(pl.chip_wr_min)}`;
-    if (pl.chip_wr_max != null) t += `${Number(pl.chip_wr_min) > 0 ? ' e ' : ''}≤ ${pct(pl.chip_wr_max)}`;
-    if (pl.chip_conf != null) t += `, mínimo ${fmtN(pl.chip_conf)} confrontos`;
-    if (pl.chip_conf_max != null) t += `, máximo ${fmtN(pl.chip_conf_max)}`;
-    L.push(['Chip de winrate', t]);
-  } else if (pl.chip_conf != null) {
-    L.push(['Chip de winrate', `sem corte de % — mínimo ${fmtN(pl.chip_conf)} confrontos`]);
-  }
-  if (!semCorte(pl.chip2_wr_min, pl.chip2_wr_max)) {
-    let t = `${janelaPt(pl.chip2_janela)} `;
-    if (pl.chip2_wr_min != null && Number(pl.chip2_wr_min) > 0) t += `≥ ${pct(pl.chip2_wr_min)}`;
-    if (pl.chip2_wr_max != null) t += `${Number(pl.chip2_wr_min) > 0 ? ' e ' : ''}≤ ${pct(pl.chip2_wr_max)}`;
-    L.push(['2º chip', t]);
-  }
-  if (pl.linha_min != null || pl.linha_max != null) {
-    const fav = pl.linha_min != null && Number(pl.linha_min) < 0;
-    L.push(['Linha', `de ${pl.linha_min ?? '—'} a ${pl.linha_max ?? '—'}`
-                     + (fav ? ' (favorito)' : Number(pl.linha_min) > 0 ? ' (zebra)' : '')]);
-  }
-  if (pl.odd_min != null || pl.odd_max != null)
-    L.push(['Odd', `de ${pl.odd_min ?? '—'} a ${pl.odd_max ?? '—'}`]);
-  if (pl.atropelo_min != null || pl.atropelo_max != null)
-    L.push(['Filtro de goleada', `${pl.atropelo_min != null ? `a partir de ${pl.atropelo_min}%` : ''}`
-      + `${pl.atropelo_max != null ? `${pl.atropelo_min != null ? ' até ' : 'até '}${pl.atropelo_max}%` : ''}`]);
-  if (pl.tot_env_min != null || pl.tot_env_max != null)
-    L.push(['Soma do placar', `${pl.tot_env_min != null ? `a partir de ${pl.tot_env_min}` : ''}`
-      + `${pl.tot_env_max != null ? `${pl.tot_env_min != null ? ' até ' : 'até '}${pl.tot_env_max} pontos` : ''}`]);
-  if (pl.folga_min != null || pl.folga_max != null)
-    L.push(['Folga da linha', `de ${pl.folga_min ?? '—'} a ${pl.folga_max ?? '—'}`]);
-  if (pl.teto) L.push(['Máx. por jogo', `${fmtN(pl.teto)} aposta${Number(pl.teto) > 1 ? 's' : ''}`]);
-  if (pl.evitar_linhas_seq != null)
-    L.push(['Linhas em sequência', Number(pl.evitar_linhas_seq) ? 'evita' : 'não evita']);
-  if (pl.mercado) L.push(['Mercado', String(pl.mercado)]);
-  return L;
-}
-
-async function enviarPlanilha(file) {
-  const fd = new FormData();
-  fd.append('arquivo', file, file.name);
-  const res = await fetch(`${BASE_URL}/esteira/upload-planilha`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${getAccessToken()}` },
-    body: fd,
-  });
-  const j = await res.json().catch(() => null);
-  if (!res.ok) throw new Error((j && j.detail) || `HTTP ${res.status}`);
-  return j;   // {nome, kb}
-}
-
-async function enviarParquet(file) {
-  // o MESMO endpoint do backtest avulso (500 MB, valida e resume) — a
-  // esteira so consome o upload_id que ele devolve
-  const fd = new FormData();
-  fd.append('arquivo', file, file.name);
-  const res = await fetch(`${BASE_URL}/backtest/upload-ticks`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${getAccessToken()}` },
-    body: fd,
-  });
-  const j = await res.json().catch(() => null);
-  if (!res.ok) throw new Error((j && j.detail) || `HTTP ${res.status}`);
-  return j;   // {upload_id, arquivo, ...resumo}
-}
-
-async function baixarPlanilhaRodada(jobId) {
-  const res = await fetch(`${BASE_URL}/esteira/rodadas/${jobId}/planilha`,
-    { headers: { Authorization: `Bearer ${getAccessToken()}` } });
-  if (!res.ok) {
-    const j = await res.json().catch(() => null);
-    throw new Error((j && j.detail) || `HTTP ${res.status}`);
-  }
-  let nome = `esteira_${jobId}.xlsx`;
-  const cd = res.headers.get('Content-Disposition');
-  const m = cd && cd.match(/filename="?([^";\n]+)"?/i);
-  if (m) nome = m[1].trim();
-  const blob = await res.blob();
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = nome;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  setTimeout(() => window.URL.revokeObjectURL(url), 1000);
-}
+const fmtInt = (n) => (n == null ? '–' : Number(n).toLocaleString('pt-BR'));
 
 // ============================================================
 // COMPONENTES BASE (mesmo estilo das outras telas)
 // ============================================================
 
-function Campo({ label, children, hint }) {
+function SecaoTitulo({ icon: Icon, children }) {
   return (
-    <label className="flex flex-col gap-1">
-      <span className="text-[11px] text-[--mike-fg-soft] font-medium">{label}</span>
-      {children}
-      {hint && <span className="text-[9px] text-[--mike-fg-muted]">{hint}</span>}
-    </label>
+    <div className="flex items-center gap-2 mb-3">
+      <div className="w-1 h-4 rounded-full bg-cyan-500" />
+      <h2 className="text-sm font-bold text-[--mike-fg] flex items-center gap-1.5">
+        {Icon && <Icon className="w-3.5 h-3.5 text-cyan-400" />}
+        {children}
+      </h2>
+    </div>
   );
 }
 
@@ -285,12 +140,10 @@ function Select({ value, onChange, options }) {
   );
 }
 
-function Input({ value, onChange, placeholder, type = 'text', min }) {
+function Input({ value, onChange, placeholder, type = 'text', min, step }) {
   return (
     <input
-      type={type}
-      min={min}
-      value={value}
+      type={type} min={min} step={step} value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       className="mike-border-thin bg-transparent text-xs text-[--mike-fg] px-3 py-2 rounded-md outline-none w-full placeholder:text-[--mike-fg-muted]"
@@ -298,417 +151,283 @@ function Input({ value, onChange, placeholder, type = 'text', min }) {
   );
 }
 
-function SecaoTitulo({ icon: Icon, children }) {
-  return (
-    <div className="flex items-center gap-2 mb-3">
-      <div className="w-1 h-4 rounded-full bg-cyan-500" />
-      <h2 className="text-sm font-bold text-[--mike-fg] flex items-center gap-1.5">
-        {Icon && <Icon className="w-3.5 h-3.5 text-cyan-400" />}
-        {children}
-      </h2>
-    </div>
-  );
-}
-
-function Grupo({ icon: Icon, cor, titulo, desc, children }) {
-  return (
-    <div className="rounded-lg p-3.5" style={{
-      backgroundColor: 'rgba(13,17,27,0.5)',
-      border: '0.5px solid rgba(60,85,130,0.28)',
-    }}>
-      <div className="flex items-start gap-2.5 mb-3">
-        <div className="w-[3px] self-stretch rounded-full flex-shrink-0" style={{ backgroundColor: cor }} />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            {Icon && <Icon className="w-3.5 h-3.5 flex-shrink-0" style={{ color: cor }} />}
-            <h3 className="text-[13px] font-bold text-[--mike-fg]">{titulo}</h3>
-          </div>
-          {desc && <p className="text-[10px] text-[--mike-fg-muted] mt-1 leading-snug">{desc}</p>}
-        </div>
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function StatCard({ icon: Icon, label, valor, cor = '#eaeef7' }) {
-  return (
-    <div className="rounded-lg p-3" style={cardStyle}>
-      <div className="flex items-center gap-1.5 mb-1.5">
-        {Icon && <Icon className="w-3 h-3 flex-shrink-0" style={{ color: cor }} />}
-        <span className="text-[9px] uppercase tracking-wider text-[--mike-fg-muted] font-bold truncate">{label}</span>
-      </div>
-      <div className="text-lg font-black font-mono leading-tight truncate" style={{ color: cor }}>{valor}</div>
-    </div>
-  );
-}
-
-function Selo({ status }) {
-  const s = STATUS[status] || STATUS.pendente;
-  return (
-    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold flex-shrink-0"
-          style={{ color: s.cor, backgroundColor: `${s.cor}1a`,
-                   border: `0.5px solid ${s.cor}55` }}>
-      {s.girando
-        ? <RefreshCw className="w-2.5 h-2.5 mike-spin" />
-        : <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: s.cor }} />}
-      {s.rotulo}
-    </span>
-  );
-}
-
-// ============================================================
-// PLACAR — a tabela de itens. G–R sempre visível, do lado do resto.
-// ============================================================
-
-function agruparPlacar(itens) {
-  // sentinela e controle saem da tabela (sao regua, nao estrategia);
-  // variacoes aninham sob a mae; maes por ROI desc, zeradas no fim
-  const regua = itens.filter((x) => x.papel === 'sentinela' || x.papel === 'controle');
-  const maes = itens.filter((x) => x.papel !== 'sentinela' && x.papel !== 'controle'
-                                   && x.papel !== 'variacao');
-  const vars_ = itens.filter((x) => x.papel === 'variacao');
-  const roi = (x) => {
-    const r = x.metricas && Number(x.metricas.ROI);
-    return Number.isFinite(r) ? r : -Infinity;
-  };
-  maes.sort((a, b) => (roi(b) - roi(a)) || (a.ordem - b.ordem));
-  const porPai = {};
-  vars_.forEach((v) => {
-    (porPai[v.pai_item_id] = porPai[v.pai_item_id] || []).push(v);
-  });
-  Object.values(porPai).forEach((l) => l.sort((a, b) => roi(b) - roi(a)));
-  const orfas = vars_.filter((v) => !maes.some((m) => m.id === v.pai_item_id));
-  return { regua, grupos: maes.map((m) => ({ mae: m, variacoes: porPai[m.id] || [] })), orfas };
-}
-
-function CelRoi({ m, baseline }) {
-  const roiN = m && Number(m.ROI);
-  const cor = !Number.isFinite(roiN) ? 'var(--mike-fg-muted)'
-    : roiN > 0 ? '#10b981' : roiN < 0 ? '#f43f5e' : 'var(--mike-fg-soft)';
-  const premio = (Number.isFinite(roiN) && baseline && baseline.ROI != null)
-    ? roiN - Number(baseline.ROI) : null;
-  return (
-    <td className="px-2 py-1.5 text-right font-bold" style={{ color: cor }}
-        title={premio != null ? `${premio > 0 ? '+' : ''}${premio.toFixed(1)} pts sobre o mercado` : ''}>
-      {Number.isFinite(roiN) ? fmt1(roiN) : '–'}
-    </td>
-  );
-}
-
-function LinhaItem({ it, mae, baseline, onFicha, completo = false }) {
-  const m = it.metricas || {};
-  const emErro = it.status === 'erro';
-  const rodando = it.status === 'rodando' || it.status === 'pendente';
-  const zerada = !emErro && Number(m.apostas || 0) === 0 && it.status === 'concluido';
-  const ehVar = it.papel === 'variacao';
-  // a seta da variacao: melhorou/igualou/piorou vs a mae
-  let seta = null;
-  if (ehVar && mae && mae.metricas && Number.isFinite(Number(m.ROI))
-      && Number.isFinite(Number(mae.metricas.ROI))) {
-    const d = Number(m.ROI) - Number(mae.metricas.ROI);
-    seta = Math.abs(d) < 0.5 ? 'igual' : d > 0 ? 'sobe' : 'desce';
-  }
-  const r3 = m.roi_3d, r7 = m.roi_7d;
-  const cor37 = (v) => (v == null ? 'var(--mike-fg-muted)'
-    : v > 0 ? '#10b981' : v < 0 ? '#f87171' : 'var(--mike-fg-soft)');
-  return (
-    <tr onClick={() => onFicha && onFicha(it)}
-        title={emErro ? (it.erro || 'erro') : it.nome}
-        style={{
-          borderTop: '0.5px solid rgba(60,85,130,0.18)',
-          backgroundColor: 'transparent',
-          opacity: zerada ? 0.45 : 1,
-          cursor: 'pointer',
-        }}>
-      <td className="px-2 py-1.5 text-left max-w-0 w-full">
-        <div className="flex items-center gap-1.5 min-w-0"
-             style={{ paddingLeft: ehVar ? 16 : 0 }}>
-          {ehVar && (
-            <span className="text-[9px] font-black flex-shrink-0 text-[--mike-fg-muted]">
-              ↳ {sufixoVariacao(it.nome)}
-            </span>
-          )}
-          {!ehVar && (
-            <span className="truncate text-[--mike-fg]">{rotuloDoItem(it)}</span>
-          )}
-          {seta === 'sobe' && <ArrowUp className="w-2.5 h-2.5 text-emerald-400 flex-shrink-0" title="melhorou vs a mãe" />}
-          {seta === 'desce' && <ArrowDown className="w-2.5 h-2.5 text-rose-400 flex-shrink-0" title="piorou vs a mãe" />}
-          {seta === 'igual' && <Minus className="w-2.5 h-2.5 text-[--mike-fg-muted] flex-shrink-0" title="igual à mãe" />}
-          {emErro && <AlertTriangle className="w-2.5 h-2.5 text-rose-400 flex-shrink-0" />}
-          {rodando && <RefreshCw className="w-2.5 h-2.5 text-cyan-400 mike-spin flex-shrink-0" />}
-        </div>
-      </td>
-      <td className="px-2 py-1.5 text-right text-[--mike-fg-soft]">{fmt(m.apostas) ?? '–'}</td>
-      <td className="px-2 py-1.5 text-right font-bold whitespace-nowrap">
-        {m.greens != null
-          ? <><span style={{ color: '#10b981' }}>{m.greens}</span>
-              <span className="text-[--mike-fg-muted]">–</span>
-              <span style={{ color: '#f87171' }}>{m.reds}</span></>
-          : (m['G-R'] || '–')}
-      </td>
-      <td className="px-2 py-1.5 text-right text-[--mike-fg-soft]">{m.WR != null ? fmt1(m.WR) : '–'}</td>
-      <td className="px-2 py-1.5 text-right font-bold"
-          style={{ color: m.unidades == null ? 'var(--mike-fg-muted)'
-            : Number(m.unidades) > 0 ? '#10b981'
-            : Number(m.unidades) < 0 ? '#f43f5e' : 'var(--mike-fg-soft)' }}>
-        {m.unidades != null ? fmt1(m.unidades) : '–'}
-      </td>
-      <CelRoi m={m} baseline={baseline} />
-      {completo && (
-        <td className="px-2 py-1.5 text-right text-[--mike-fg-soft]">{m.u_dia != null ? fmt1(m.u_dia) : '–'}</td>
-      )}
-      <td className="px-2 py-1.5 text-right text-[--mike-fg-soft]">{m.DD != null ? fmt1(m.DD) : '–'}</td>
-      {completo && (
-        <td className="px-2 py-1.5 text-right whitespace-nowrap"
-            title={`G–R: ${m.GR_3d || '–'} (3d) · ${m.GR_7d || '–'} (7d)`}>
-          <span style={{ color: cor37(r3) }}>{r3 != null ? fmt1(r3) : '–'}</span>
-          <span className="text-[--mike-fg-muted]"> / </span>
-          <span style={{ color: cor37(r7) }}>{r7 != null ? fmt1(r7) : '–'}</span>
-        </td>
-      )}
-    </tr>
-  );
-}
-
-function Placar({ itens, baseline, onFicha, completo = false }) {
-  if (!itens || itens.length === 0) {
-    return (
-      <div className="text-center py-6 text-[--mike-fg-muted] text-xs">
-        Sem itens ainda — eles aparecem quando o worker monta a rodada.
-      </div>
-    );
-  }
-  const { grupos, orfas } = agruparPlacar(itens);
-  return (
-    <div className="rounded-md overflow-hidden" style={{ border: '0.5px solid rgba(60,85,130,0.28)' }}>
-      <div className={completo ? 'max-h-[70vh] overflow-y-auto' : 'max-h-[420px] overflow-y-auto'}>
-        <table className="w-full text-[10.5px] font-mono">
-          <thead className="sticky top-0 z-10" style={{ backgroundColor: '#111726' }}>
-            <tr className="text-[9px] uppercase tracking-wider text-[--mike-fg-muted]">
-              <th className="text-left  px-2 py-1.5 font-bold">Estratégia</th>
-              <th className="text-right px-2 py-1.5 font-bold">Ap</th>
-              <th className="text-right px-2 py-1.5 font-bold whitespace-nowrap">G–R</th>
-              <th className="text-right px-2 py-1.5 font-bold">WR</th>
-              <th className="text-right px-2 py-1.5 font-bold" title="unidades — o lucro total">u</th>
-              <th className="text-right px-2 py-1.5 font-bold">ROI</th>
-              {completo && (
-                <th className="text-right px-2 py-1.5 font-bold whitespace-nowrap" title="unidades por dia">u/dia</th>
-              )}
-              <th className="text-right px-2 py-1.5 font-bold">DD</th>
-              {completo && (
-                <th className="text-right px-2 py-1.5 font-bold whitespace-nowrap" title="ROI dos últimos 3 e 7 dias">3d/7d</th>
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {grupos.map(({ mae, variacoes }) => (
-              [<LinhaItem key={mae.id} it={mae} baseline={baseline} onFicha={onFicha} completo={completo} />,
-               ...variacoes.map((v) => (
-                 <LinhaItem key={v.id} it={v} mae={mae} baseline={baseline} onFicha={onFicha} completo={completo} />
-               ))]
-            ))}
-            {orfas.map((v) => (
-              <LinhaItem key={v.id} it={v} baseline={baseline} onFicha={onFicha} completo={completo} />
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
 // ============================================================
 // TELA
 // ============================================================
 
-export default function Esteira({ onNavegar } = {}) {
-  const [arquivos, setArquivos] = useState({ planilhas: [], parquets: [] });
-  const [jobs, setJobs] = useState([]);
-  const [carregando, setCarregando] = useState(true);
-  const [selecionado, setSelecionado] = useState(null);
-  const [detalhe, setDetalhe] = useState({});
-  const [itensDe, setItensDe] = useState({});
+export default function EsteiraEscolha({ onNavegar } = {}) {
+  // ---- escolha do garimpo ----
+  const [garimpos, setGarimpos] = useState([]);
+  const [vid, setVid] = useState('');
+  const [sel, setSel] = useState(null);           // resposta do GET selecao
+  const [carregandoSel, setCarregandoSel] = useState(false);
   const [erro, setErro] = useState(null);
   const [aviso, setAviso] = useState(null);
-  const [criando, setCriando] = useState(false);
-  const [fichaItem, setFichaItem] = useState(null);
-  const [enviandoPl, setEnviandoPl] = useState(false);
-  const fileRef = useRef(null);
+
+  // ---- o ranking (estado do protótipo) ----
+  const [estado, setEstado] = useState(() => {
+    const e = {};
+    CRITERIOS.forEach(c => { e[c.k] = { dir: 'off', peso: 2 }; });
+    e[CRIT_HOLDOUT.k] = { dir: 'off', peso: 2 };
+    return e;
+  });
+  const [perfilAtivo, setPerfilAtivo] = useState(null);
+  const [minAp, setMinAp] = useState('150');
+  const [busca, setBusca] = useState('');
+  const [marcadas, setMarcadas] = useState(() => new Set());
+  const [visN, setVisN] = useState(VIS_PASSO);
+  const [fichaR, setFichaR] = useState(null);
+
+  // ---- alertas ao vivo ----
+  const [alertas, setAlertas] = useState(null);   // {checks, veredito, resumo, de}
+  const debounceRef = useRef(null);
+
+  // ---- envio ----
+  const [arquivos, setArquivos] = useState({ parquets: [], uploads: [] });
   const [enviandoPq, setEnviandoPq] = useState(false);
   const pqRef = useRef(null);
-  const [placarCheio, setPlacarCheio] = useState(false);
-  const [botForm, setBotForm] = useState(null);   // {it, nome, torneios, erro, criando}
-
-  // formulário
-  const [nome, setNome] = useState('');
-  const [planilha, setPlanilha] = useState('');
-  const [fonteTipo, setFonteTipo] = useState('arquivo');   // arquivo | banco
+  const [variar, setVariar] = useState(false);
+  const [nomeRodada, setNomeRodada] = useState('');
   const [fonteArquivo, setFonteArquivo] = useState('');
   const [dias, setDias] = useState('');
-  const [casa, setCasa] = useState('');
-  const [dataInicio, setDataInicio] = useState('');
-  const [dataFim, setDataFim] = useState('');
-  const [maxZerados, setMaxZerados] = useState('');
-  const [timeoutMin, setTimeoutMin] = useState('');
+  const [enviando, setEnviando] = useState(false);
 
-  const pollRef = useRef(null);
   const montadoRef = useRef(true);
-
-  const ativos = useMemo(
-    () => jobs.filter((j) => ATIVO.includes(j.status)).length, [jobs]);
-  const d = selecionado ? detalhe[selecionado] : null;
-  const its = selecionado ? (itensDe[selecionado] || []) : [];
-  const alertas = useMemo(() => alertasLinhas(d && d.alertas), [d]);
-
   useEffect(() => {
     montadoRef.current = true;
-    return () => {
-      montadoRef.current = false;
-      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
-    };
+    return () => { montadoRef.current = false; };
   }, []);
 
-  const carregarJobs = useCallback(async () => {
-    try {
-      const l = await api.get('/esteira/rodadas', { limite: 30 });
-      if (montadoRef.current) setJobs(l || []);
-      return l || [];
-    } catch (e) {
-      if (montadoRef.current) setErro(e?.message || 'Falha ao listar rodadas.');
-      return [];
-    }
-  }, []);
-
-  const carregarDetalhe = useCallback(async (id, silencioso = false) => {
-    try {
-      const [r, li] = await Promise.all([
-        api.get(`/esteira/rodadas/${id}`),
-        api.get(`/esteira/rodadas/${id}/itens`),
-      ]);
-      if (montadoRef.current) {
-        setDetalhe((p) => ({ ...p, [id]: r }));
-        setItensDe((p) => ({ ...p, [id]: li || [] }));
-      }
-    } catch (e) {
-      if (!silencioso && montadoRef.current) setErro(e?.message || 'Falha ao abrir a rodada.');
-    }
-  }, []);
-
+  // garimpos concluídos + parquets, uma vez
   useEffect(() => {
     (async () => {
       try {
-        const a = await api.get('/esteira/arquivos');
-        if (montadoRef.current) setArquivos(a || { planilhas: [], parquets: [] });
+        const l = await api.get('/varredura/jobs', { limite: 50 });
+        if (montadoRef.current) {
+          setGarimpos((l || []).filter(j => j.status === 'concluido' && j.tem_saida));
+        }
       } catch (e) {
-        if (montadoRef.current) setErro(e?.message || 'Falha ao listar arquivos da raiz.');
+        if (montadoRef.current) setErro(e?.message || 'Falha ao listar os garimpos.');
       }
-      const l = await carregarJobs();
-      if (montadoRef.current && l.length) {
-        setSelecionado(l[0].id);
-        carregarDetalhe(l[0].id, true);
-      }
-      if (montadoRef.current) setCarregando(false);
+      try {
+        const a = await api.get('/esteira/arquivos');
+        if (montadoRef.current) setArquivos(a || { parquets: [], uploads: [] });
+      } catch { /* o envio avisa se faltar */ }
     })();
-  }, [carregarJobs, carregarDetalhe]);
+  }, []);
 
-  // polling condicional: só enquanto houver rodada ativa — para sozinho
-  useEffect(() => {
-    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
-    if (ativos > 0) {
-      pollRef.current = setInterval(async () => {
-        const l = await carregarJobs();
-        if (selecionado && l.some((j) => j.id === selecionado)) {
-          carregarDetalhe(selecionado, true);
-        }
-      }, POLL_MS);
-    }
-    return () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } };
-  }, [ativos, selecionado, carregarJobs, carregarDetalhe]);
-
-  const selecionar = useCallback((id) => {
-    setSelecionado(id);
-    if (!detalhe[id]) carregarDetalhe(id);
-  }, [detalhe, carregarDetalhe]);
-
-  const handleRodar = useCallback(async () => {
-    if (!planilha) { setErro('Escolha a planilha de estratégias.'); return; }
-    if (fonteTipo === 'arquivo' && (!fonteArquivo || fonteArquivo === '__sep')) {
-      setErro('Escolha o parquet de ticks.'); return;
-    }
-    if (fonteTipo === 'banco' && !(casa && dataInicio && dataFim)) {
-      setErro('Fonte banco exige casa, data início e data fim.'); return;
-    }
-    setCriando(true); setErro(null); setAviso(null);
+  // carregar a seleção do garimpo escolhido
+  const carregarSelecao = useCallback(async (id) => {
+    setCarregandoSel(true); setErro(null); setSel(null);
+    setMarcadas(new Set()); setAlertas(null); setVisN(VIS_PASSO); setFichaR(null);
     try {
-      const body = {
-        nome: nome.trim() || null,
-        origem: 'planilha',
-        origem_ref: planilha,
-        planilha,
-      };
-      if (fonteTipo === 'arquivo') {
-        if (String(fonteArquivo).includes('uploads_backtest')) {
-          body.upload_id = fonteArquivo;          // gerado/enviado: entra pronto
-        } else {
-          body.fonte_arquivo = fonteArquivo;
-          const nd = numOuNull(dias);
-          if (nd) body.dias = nd;
-        }
-      } else {
-        body.fonte = 'banco';
-        body.casa = casa.trim();
-        body.data_inicio = dataInicio;
-        body.data_fim = dataFim;
-      }
-      const mz = numOuNull(maxZerados);
-      if (mz !== null) body.max_zerados = mz;         // 0 desliga a trava
-      const tm = numOuNull(timeoutMin);
-      if (tm) body.timeout_min = tm;
+      const r = await api.get(`/esteira/varreduras/${id}/selecao`);
+      if (!montadoRef.current) return;
+      setSel(r);
+      setAlertas({ ...r.alertas, de: `do top-${r.alertas.top} por ${r.alertas.criterio}` });
+      setNomeRodada(`escolha do garimpo ${id}`);
+    } catch (e) {
+      if (montadoRef.current) setErro(e?.message || 'Falha ao carregar o garimpo.');
+    } finally {
+      if (montadoRef.current) setCarregandoSel(false);
+    }
+  }, []);
 
+  useEffect(() => { if (vid) carregarSelecao(vid); }, [vid, carregarSelecao]);
+
+  // ---- índices de coluna do pack (C do protótipo) ----
+  const pk = sel && sel.pack;
+  const C = useMemo(() => {
+    const m = {};
+    if (pk) pk.cols.forEach((c, i) => { m[c] = i; });
+    return m;
+  }, [pk]);
+
+  const criterios = useMemo(() => (
+    sel && sel.holdout_cruzado > 0 ? [...CRITERIOS, CRIT_HOLDOUT] : CRITERIOS
+  ), [sel]);
+
+  // min/max UMA vez por pack, ignorando ≥900 — igual ao protótipo
+  const MM = useMemo(() => {
+    const mm = {};
+    if (!pk) return mm;
+    for (const c of [...CRITERIOS, CRIT_HOLDOUT]) {
+      const i = C[c.k];
+      if (i == null) continue;
+      let a = 1e18, b = -1e18;
+      for (let r = 0; r < pk.rows.length; r++) {
+        const v = pk.rows[r][i];
+        if (v == null || v >= 900) continue;
+        if (v < a) a = v;
+        if (v > b) b = v;
+      }
+      mm[c.k] = [a, b];
+    }
+    return mm;
+  }, [pk, C]);
+
+  const norm = useCallback((k, v) => {
+    if (v == null || v >= 900) return 0;
+    const mm = MM[k];
+    if (!mm) return 0;
+    const [a, b] = mm;
+    if (b === a) return 0.5;
+    const x = (v - a) / (b - a);
+    return estado[k] && estado[k].dir === 'lo' ? 1 - x : x;
+  }, [MM, estado]);
+
+  const corDe = useCallback((k, v) => {
+    const n = norm(k, v);
+    return n > 0.66 ? COR.ok : n > 0.33 ? COR.cy : COR.warn;
+  }, [norm]);
+
+  // ---- a passada única: filtra + pontua + ordena (o pintar do protótipo) ----
+  const ativos = useMemo(
+    () => criterios.filter(c => estado[c.k] && estado[c.k].dir !== 'off'),
+    [criterios, estado]);
+
+  const lista = useMemo(() => {
+    if (!pk) return [];
+    const out = [];
+    const iAp = C.ap, iD = C.desc, iN = C.nome, iE = C.extra;
+    const q = busca.toLowerCase().trim();
+    const mAp = Number(minAp) || 0;
+    for (let r = 0; r < pk.rows.length; r++) {
+      const row = pk.rows[r];
+      if ((row[iAp] || 0) < mAp) continue;
+      if (q) {
+        const alvo = `${row[iD] || ''} ${row[iN] || ''} ${row[iE] || ''}`.toLowerCase();
+        if (!alvo.includes(q)) continue;
+      }
+      let s = 0, p = 0;
+      for (const c of ativos) {
+        const e = estado[c.k];
+        s += norm(c.k, row[C[c.k]]) * e.peso;
+        p += e.peso;
+      }
+      out.push([p ? (s / p) * 100 : 0, r]);
+    }
+    out.sort((a, b) => b[0] - a[0]);
+    return out;
+  }, [pk, C, ativos, estado, norm, busca, minAp]);
+
+  // ---- interações do protótipo ----
+  const setDir = useCallback((k, d) => {
+    setEstado(prev => ({ ...prev, [k]: { ...prev[k], dir: prev[k].dir === d ? 'off' : d } }));
+    setPerfilAtivo(null);
+  }, []);
+  const setPeso = useCallback((k, v) => {
+    setEstado(prev => ({ ...prev, [k]: { ...prev[k], peso: Number(v) } }));
+  }, []);
+  const usarPerfil = useCallback((p) => {
+    setEstado(() => {
+      const e = {};
+      [...CRITERIOS, CRIT_HOLDOUT].forEach(c => { e[c.k] = { dir: 'off', peso: 2 }; });
+      Object.entries(PERFIS[p]).forEach(([k, [d, w]]) => { e[k] = { dir: d, peso: w }; });
+      return e;
+    });
+    setPerfilAtivo(p);
+  }, []);
+
+  const irrep = (sel && sel.irreproduziveis) || {};
+  const bloqueada = useCallback((r) => irrep[String(r)] != null, [irrep]);
+
+  const marcar = useCallback((r, on) => {
+    setMarcadas(prev => {
+      const s = new Set(prev);
+      if (on) s.add(r); else s.delete(r);
+      return s;
+    });
+  }, []);
+
+  const marcarTop = useCallback((n) => {
+    if (!n) { setMarcadas(new Set()); return; }
+    const s = new Set();
+    for (const [, r] of lista) {
+      if (bloqueada(r)) continue;      // o motor não reproduz — pula
+      s.add(r);
+      if (s.size >= n) break;
+    }
+    setMarcadas(s);
+  }, [lista, bloqueada]);
+
+  // ---- alertas ao vivo (debounce) ----
+  useEffect(() => {
+    if (!sel || !vid) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (marcadas.size === 0) {
+      setAlertas(sel.alertas
+        ? { ...sel.alertas, de: `do top-${sel.alertas.top} por ${sel.alertas.criterio}` }
+        : null);
+      return;
+    }
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const r = await api.post(`/esteira/varreduras/${vid}/selecao/alertas`,
+                                 { indices: [...marcadas] });
+        if (montadoRef.current) {
+          setAlertas({ ...r, de: `das suas ${marcadas.size} marcadas` });
+        }
+      } catch { /* alerta indisponível não trava a escolha */ }
+    }, DEBOUNCE_ALERTAS_MS);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [marcadas, sel, vid]);
+
+  // ---- o envio: marcadas -> itens[] -> POST /esteira/rodadas ----
+  const handleEnviar = useCallback(async () => {
+    if (marcadas.size === 0) { setErro('Marque ao menos uma estratégia.'); return; }
+    if (!fonteArquivo || fonteArquivo === '__sep') {
+      setErro('Escolha o parquet de ticks pra rodada.'); return;
+    }
+    setEnviando(true); setErro(null); setAviso(null);
+    try {
+      const ip = sel.itens_pack;
+      const itens = [];
+      for (const r of marcadas) {
+        const row = ip.rows[r];
+        if (!row) continue;            // bloqueada não deveria estar marcada
+        const d = {};
+        ip.cols.forEach((c, i) => { if (row[i] != null) d[c] = row[i]; });
+        if (variar) d.variar = 1;      // liga as vizinhas + hill-climb no worker
+        itens.push(d);
+      }
+      const body = {
+        nome: nomeRodada.trim() || `escolha do garimpo ${vid}`,
+        origem: 'varredura',
+        origem_ref: String(vid),
+        itens,
+      };
+      if (String(fonteArquivo).includes('uploads_backtest')) {
+        body.upload_id = fonteArquivo;
+      } else {
+        body.fonte_arquivo = fonteArquivo;
+        const nd = numOuNull(dias);
+        if (nd) body.dias = nd;
+      }
       const r = await api.post('/esteira/rodadas', body);
       if (!montadoRef.current) return;
-      setAviso(r.na_frente > 0
-        ? `Rodada #${r.id} criada — ${r.na_frente} na frente na fila.`
-        : `Rodada #${r.id} criada e entrando na fila.`);
-      const l = await carregarJobs();
-      if (l.length) { setSelecionado(l[0].id); carregarDetalhe(l[0].id, true); }
+      setAviso(`Rodada #${r.id} criada com ${itens.length} estratégias — `
+               + (r.na_frente > 0 ? `${r.na_frente} na frente na fila.` : 'entrando na fila.'));
     } catch (e) {
       if (montadoRef.current) setErro(e?.message || 'Falha ao criar a rodada.');
     } finally {
-      if (montadoRef.current) setCriando(false);
+      if (montadoRef.current) setEnviando(false);
     }
-  }, [nome, planilha, fonteTipo, fonteArquivo, dias, casa, dataInicio, dataFim,
-      maxZerados, timeoutMin, carregarJobs, carregarDetalhe]);
+  }, [marcadas, sel, vid, nomeRodada, fonteArquivo, dias, variar]);
 
-  const handleAcao = useCallback(async (id, qual) => {
-    setErro(null);
-    try {
-      await api.post(`/esteira/rodadas/${id}/${qual}`, {});
-      await carregarJobs();
-      carregarDetalhe(id, true);
-    } catch (e) { setErro(e?.message || 'Falha na ação.'); }
-  }, [carregarJobs, carregarDetalhe]);
+  // ---- render ----
+  const vis = lista.slice(0, visN);
+  const nIrrepVis = useMemo(
+    () => lista.reduce((n, [, r]) => n + (bloqueada(r) ? 1 : 0), 0),
+    [lista, bloqueada]);
+  const fichaD = fichaR != null && pk ? pk.rows[fichaR] : null;
 
-  const handleExcluir = useCallback(async (id) => {
-    if (!window.confirm(`Excluir a rodada #${id}? Itens e planilha vão junto; `
-                        + 'os backtests ficam.')) return;
-    setErro(null);
-    try {
-      await api.delete(`/esteira/rodadas/${id}`);
-      setSelecionado(null);
-      await carregarJobs();
-    } catch (e) { setErro(e?.message || 'Falha ao excluir.'); }
-  }, [carregarJobs]);
-
-  const handleDownload = useCallback(async (id) => {
-    setErro(null);
-    try { await baixarPlanilhaRodada(id); }
-    catch (e) { setErro(e?.message || 'Falha ao baixar.'); }
-  }, []);
-
-  const podeRetomar = d && FINAL.includes(d.status)
-    && (d.status !== 'concluido' || (d.itens_erro || 0) > 0);
+  const corVeredito = alertas && (
+    alertas.veredito === 'confiavel' ? COR.ok
+      : alertas.veredito === 'atencao' ? COR.warn : COR.bad);
+  const rotVeredito = alertas && (
+    alertas.veredito === 'confiavel' ? 'CONFIÁVEL'
+      : alertas.veredito === 'atencao' ? 'ATENÇÃO' : 'NÃO USE');
 
   return (
     <div className="min-h-screen pb-12" style={{
@@ -723,157 +442,349 @@ export default function Esteira({ onNavegar } = {}) {
         .mike-border-thin:focus { border-color: rgba(16, 185, 129, 0.7) !important; outline: none; }
         @keyframes mike-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .mike-spin { animation: mike-spin 0.8s linear infinite; }
+        .esc-seg button { border: 0; background: transparent; color: var(--mike-fg-muted);
+          font-size: 9.5px; padding: 3px 7px; border-radius: 4px; cursor: pointer; font-weight: 700; }
+        .esc-seg button.on    { background: rgba(6,182,212,.2);  color: #22d3ee; }
+        .esc-seg button.on.hi { background: rgba(16,185,129,.2); color: #10b981; }
+        .esc-seg button.on.lo { background: rgba(251,191,36,.2); color: #fbbf24; }
+        .esc-bar { position: relative; display: block; min-width: 64px; height: 15px;
+          background: rgba(0,0,0,.3); border-radius: 4px; overflow: hidden; }
+        .esc-bar i { position: absolute; inset: 0 auto 0 0; border-radius: 4px; opacity: .28; }
+        .esc-bar b { position: absolute; inset: 0; display: flex; align-items: center;
+          justify-content: flex-end; padding-right: 5px; font-size: 10px; font-weight: 800; }
+        .esc-row:hover { background: rgba(28, 35, 54, .6); cursor: pointer; }
       `}</style>
 
       <MikeHeader telaAtiva="esteira" onNavegar={onNavegar} />
 
-      <main className="max-w-screen-xl mx-auto px-4 lg:px-8 py-6">
+      <main className="max-w-screen-2xl mx-auto px-4 lg:px-8 py-6">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-xs text-[--mike-fg-muted] mb-4">
           <button onClick={() => onNavegar?.('today')} className="hover:text-[--mike-fg]">
             <Home className="w-3 h-3" />
           </button>
           <ChevronRight className="w-3 h-3" />
-          <span className="text-[--mike-fg] font-semibold flex items-center gap-1">
-            <ListChecks className="w-3 h-3" />
-            Esteira
-          </span>
+          <button onClick={() => onNavegar?.('esteira')} className="hover:text-[--mike-fg] flex items-center gap-1">
+            <ListChecks className="w-3 h-3" /> Esteira
+          </button>
+          <ChevronRight className="w-3 h-3" />
+          <span className="text-[--mike-fg] font-semibold">Escolher do garimpo</span>
         </div>
 
-        {/* Título */}
-        <div className="mb-5 flex flex-wrap items-end gap-3">
-          <div className="flex-1 min-w-[240px]">
+        {/* Título + escolha do garimpo */}
+        <div className="mb-4 flex flex-wrap items-end gap-3">
+          <div className="flex-1 min-w-[260px]">
             <h1 className="text-xl font-black text-[--mike-fg] flex items-center gap-2">
-              <ListChecks className="w-5 h-5 text-cyan-400" />
-              Esteira
+              <Radar className="w-5 h-5 text-cyan-400" />
+              Escolher estratégias para testar
             </h1>
             <p className="text-[11px] text-[--mike-fg-muted] mt-0.5">
-              Roda a planilha de estratégias no motor real — com sentinela,
-              variações e o placar de cada uma.
+              {sel
+                ? `Garimpo #${sel.varredura.id} · ${fmtInt(sel.total)} estratégias · você decide o que importa`
+                : 'Escolha um garimpo concluído — a lista carrega inteira e o ranking é seu.'}
             </p>
           </div>
-          <button onClick={() => onNavegar?.('esteira_escolha')}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-md text-[12px] font-bold transition"
-            style={{ border: '0.5px solid rgba(6,182,212,0.5)', color: '#22d3ee',
-                     backgroundColor: 'rgba(6,182,212,0.08)' }}>
-            <Radar className="w-3.5 h-3.5" /> Escolher do garimpo
-          </button>
+          <div className="w-full sm:w-[340px]">
+            <Select value={vid} onChange={setVid} options={[
+              { value: '', label: 'Escolha o garimpo…' },
+              ...garimpos.map(g => ({
+                value: String(g.id),
+                label: `#${g.id} · ${g.nome}${g.tem_holdout ? ' · com holdout' : ''}`,
+              })),
+            ]} />
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+        {erro && (
+          <div className="rounded-lg p-3 flex items-start gap-2 mb-3"
+               style={{ backgroundColor: 'rgba(244,63,94,0.08)', border: '0.5px solid rgba(244,63,94,0.35)' }}>
+            <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+            <span className="text-xs text-rose-300 flex-1">{erro}</span>
+            <button onClick={() => setErro(null)} className="text-rose-400/60 hover:text-rose-300">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+        {aviso && (
+          <div className="rounded-lg p-3 flex items-start gap-2 mb-3"
+               style={{ backgroundColor: 'rgba(16,185,129,0.08)', border: '0.5px solid rgba(16,185,129,0.3)' }}>
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+            <span className="text-xs text-emerald-300 flex-1">{aviso}</span>
+            <button onClick={() => onNavegar?.('esteira')}
+              className="text-[11px] font-bold text-emerald-300 underline underline-offset-2 flex-shrink-0">
+              ver na Esteira
+            </button>
+            <button onClick={() => setAviso(null)} className="text-emerald-400/60 hover:text-emerald-300">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
 
-          {/* ESQUERDA */}
-          <div className="lg:col-span-2 space-y-4">
+        {carregandoSel && (
+          <div className="flex items-center justify-center py-16 gap-2 text-[--mike-fg-muted] text-xs">
+            <RefreshCw className="w-4 h-4 mike-spin" />
+            Carregando o garimpo inteiro (são milhares de configs — uns segundos)...
+          </div>
+        )}
 
-            {/* 1. ESTRATÉGIAS */}
-            <section className="rounded-lg p-4" style={cardStyle}>
-              <SecaoTitulo icon={FileSpreadsheet}>1. Estratégias</SecaoTitulo>
-              <p className="text-[11px] text-[--mike-fg-muted] mb-3 -mt-1">
-                A planilha na raiz do servidor (formato estrategias.xlsx).
-                A sentinela entra sozinha; <b>variar=1</b> gera as variações.
-              </p>
+        {!sel && !carregandoSel && (
+          <div className="text-center py-16 text-[--mike-fg-muted] text-xs">
+            Nenhum garimpo carregado ainda.
+          </div>
+        )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Campo label="Planilha de estratégias">
-                  <Select value={planilha} onChange={setPlanilha} options={[
-                    { value: '', label: 'Escolha a planilha…' },
-                    ...arquivos.planilhas.map((p) => ({
-                      value: p.nome, label: `${p.nome} · ${p.mb} MB`,
-                    })),
-                  ]} />
-                </Campo>
-                <Campo label="Nome da rodada (opcional)">
-                  <Input value={nome} onChange={setNome} placeholder="ex: battle 15d, chips novos" />
-                </Campo>
-              </div>
-              <div className="mt-2.5 flex items-center gap-2">
-                <input ref={fileRef} type="file" accept=".xlsx" className="hidden"
-                  onChange={async (e) => {
-                    const f = e.target.files && e.target.files[0];
-                    e.target.value = '';
-                    if (!f) return;
-                    setEnviandoPl(true); setErro(null);
-                    try {
-                      const r = await enviarPlanilha(f);
-                      const a = await api.get('/esteira/arquivos');
-                      if (montadoRef.current) {
-                        setArquivos(a || { planilhas: [], parquets: [] });
-                        setPlanilha(r.nome);
-                        setAviso(`Planilha ${r.nome} enviada (${r.kb} KB) e já selecionada.`);
-                      }
-                    } catch (err) {
-                      if (montadoRef.current) setErro(err?.message || 'Falha no envio da planilha.');
-                    } finally {
-                      if (montadoRef.current) setEnviandoPl(false);
-                    }
-                  }} />
-                <button onClick={() => fileRef.current && fileRef.current.click()}
-                  disabled={enviandoPl}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-semibold mike-border-thin text-[--mike-fg-soft] hover:text-[--mike-fg] transition disabled:opacity-50">
-                  {enviandoPl
-                    ? <><RefreshCw className="w-3 h-3 mike-spin" /> Enviando...</>
-                    : <><FileSpreadsheet className="w-3 h-3" /> Enviar planilha do PC</>}
-                </button>
-                <button onClick={() => onNavegar?.('esteira_escolha')}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-semibold mike-border-thin text-[--mike-fg-soft] hover:text-[--mike-fg] transition">
-                  <Radar className="w-3 h-3" /> ou escolher do garimpo
-                </button>
-              </div>
-              {arquivos.planilhas.length === 0 && !carregando && (
-                <div className="mt-2 text-[10px] text-[--mike-fg-muted]">
-                  Nenhum .xlsx na raiz — envia pelo botão acima que ele já entra no dropdown.
+        {sel && !carregandoSel && (
+          <div className="grid grid-cols-1 lg:grid-cols-[290px_1fr] gap-4 items-start">
+
+            {/* ===================== ESQUERDA: critérios ===================== */}
+            <div className="space-y-4">
+              <section className="rounded-lg p-4" style={cardStyle}>
+                <SecaoTitulo icon={SlidersHorizontal}>Comece por um perfil</SecaoTitulo>
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  {Object.keys(PERFIS).map(p => (
+                    <button key={p} onClick={() => usarPerfil(p)}
+                      className="px-2.5 py-1.5 rounded-md text-[10.5px] font-semibold transition"
+                      style={p === perfilAtivo
+                        ? { border: '0.5px solid rgba(6,182,212,0.6)', color: '#22d3ee', backgroundColor: 'rgba(6,182,212,0.08)' }
+                        : { border: '0.5px solid rgba(60,85,130,0.28)', color: 'var(--mike-fg-soft)', backgroundColor: 'rgba(13,17,27,0.5)' }}>
+                      {p}
+                    </button>
+                  ))}
                 </div>
+                <label className="flex items-center gap-2 text-[11px] text-[--mike-fg-soft]">
+                  mínimo de apostas
+                  <span className="w-24">
+                    <Input type="number" step="50" value={minAp} onChange={setMinAp} />
+                  </span>
+                </label>
+
+                <div className="mt-4 mb-1">
+                  <SecaoTitulo>Ou ajuste você mesmo</SecaoTitulo>
+                </div>
+                <p className="text-[10px] text-[--mike-fg-muted] mb-2 -mt-2 leading-snug">
+                  Para cada coisa: quer <b>alto</b>, <b>baixo</b> ou <b>tanto faz</b> — e o quanto pesa.
+                </p>
+
+                <div className="space-y-1.5">
+                  {criterios.map(c => {
+                    const e = estado[c.k];
+                    return (
+                      <div key={c.k} className="rounded-md p-2"
+                           style={{ backgroundColor: 'rgba(13,17,27,0.5)', border: '0.5px solid rgba(60,85,130,0.25)' }}>
+                        <div className="flex items-center gap-2">
+                          <span className="flex-1 text-[11px] font-semibold text-[--mike-fg]">{c.n}</span>
+                          <span className="esc-seg flex gap-0.5 rounded-md p-0.5" style={{ background: 'rgba(0,0,0,.3)' }}>
+                            <button className={e.dir === 'hi' ? 'on hi' : ''} onClick={() => setDir(c.k, 'hi')}>alto</button>
+                            <button className={e.dir === 'lo' ? 'on lo' : ''} onClick={() => setDir(c.k, 'lo')}>baixo</button>
+                            <button className={e.dir === 'off' ? 'on' : ''} onClick={() => setDir(c.k, 'off')}>tanto faz</button>
+                          </span>
+                        </div>
+                        {e.dir !== 'off' && (
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <input type="range" min="1" max="5" value={e.peso}
+                                   onChange={(ev) => setPeso(c.k, ev.target.value)}
+                                   className="flex-1 h-[3px]" style={{ accentColor: '#22d3ee' }} />
+                            <span className="text-[9.5px] text-[--mike-fg-muted] w-11 text-right">
+                              {['pouco', '', 'médio', '', 'muito'][e.peso - 1] || `peso ${e.peso}`}
+                            </span>
+                          </div>
+                        )}
+                        <div className="text-[9.5px] text-[--mike-fg-muted] mt-1 leading-snug">{c.ex}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            </div>
+
+            {/* ===================== DIREITA: alertas + tabela + envio ===================== */}
+            <div className="space-y-4 min-w-0">
+
+              {/* alertas céticos */}
+              {alertas && (
+                <section className="rounded-lg p-3.5" style={cardStyle}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <ShieldQuestion className="w-4 h-4 flex-shrink-0" style={{ color: corVeredito }} />
+                    <span className="text-[12px] font-black" style={{ color: corVeredito }}>{rotVeredito}</span>
+                    <span className="text-[11px] text-[--mike-fg-soft] flex-1 truncate">
+                      {alertas.resumo} <span className="text-[--mike-fg-muted]">({alertas.de})</span>
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {(alertas.checks || []).map((c, i) => (
+                      <div key={i} className="rounded-md px-2.5 py-1.5 flex items-start gap-2"
+                           title={(c.detalhe || '') + (c.o_que_fazer ? `\n\nFAZER: ${c.o_que_fazer}` : '')}
+                           style={{ backgroundColor: c.ok ? 'rgba(16,185,129,0.05)' : 'rgba(244,63,94,0.06)',
+                                    border: `0.5px solid ${c.ok ? 'rgba(16,185,129,0.25)' : 'rgba(244,63,94,0.3)'}` }}>
+                        {c.ok
+                          ? <CheckCircle2 className="w-3 h-3 text-emerald-400 flex-shrink-0 mt-0.5" />
+                          : <AlertTriangle className="w-3 h-3 text-rose-400 flex-shrink-0 mt-0.5" />}
+                        <span className="text-[10.5px] text-[--mike-fg-soft] min-w-0">
+                          {c.pergunta} <b style={{ color: c.ok ? COR.ok : COR.bad }}>{c.valor}</b>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </section>
               )}
-              <button onClick={() => onNavegar?.('escolher')}
-                className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md text-[11px] font-bold mike-border-thin text-cyan-300 hover:bg-cyan-500/10 transition">
-                <ListChecks className="w-3.5 h-3.5" />
-                Ou escolher direto de um garimpo (com alertas céticos)
-              </button>
-            </section>
 
-            {/* 2. FONTE DOS TICKS */}
-            <section className="rounded-lg p-4" style={cardStyle}>
-              <SecaoTitulo icon={Database}>2. Fonte dos ticks</SecaoTitulo>
+              {/* tabela */}
+              <section className="rounded-lg p-4" style={cardStyle}>
+                <div className="flex flex-wrap items-center gap-2.5 mb-2">
+                  <div className="relative flex-1 min-w-[200px]">
+                    <Search className="w-3.5 h-3.5 text-[--mike-fg-muted] absolute left-2.5 top-1/2 -translate-y-1/2" />
+                    <input value={busca} onChange={(e) => setBusca(e.target.value)}
+                      placeholder="filtrar por config (ex: atr, tot_env, L1.5)"
+                      className="mike-border-thin bg-transparent text-xs text-[--mike-fg] pl-8 pr-3 py-2 rounded-md outline-none w-full placeholder:text-[--mike-fg-muted]" />
+                  </div>
+                  <span className="text-[11px] text-[--mike-fg-muted]">
+                    {fmtInt(lista.length)} de {fmtInt(sel.total)} atendem os cortes
+                    {nIrrepVis > 0 && <> · <span className="text-amber-400/90">{fmtInt(nIrrepVis)} bloqueadas</span></>}
+                  </span>
+                </div>
 
-              <div className="flex items-center gap-1 mb-3">
-                {[{ v: 'arquivo', l: 'Arquivo do servidor' },
-                  { v: 'banco', l: 'Banco (casa + período)' }].map((t) => (
-                  <button key={t.v} onClick={() => setFonteTipo(t.v)}
-                    className="px-3 py-1.5 rounded-md text-[11px] font-bold transition"
-                    style={fonteTipo === t.v
-                      ? { backgroundColor: 'rgba(6,182,212,0.15)', color: '#22d3ee', border: '0.5px solid rgba(6,182,212,0.4)' }
-                      : { color: 'var(--mike-fg-muted)', border: '0.5px solid rgba(255,255,255,0.07)' }}>
-                    {t.l}
+                <div className="text-[10.5px] text-[--mike-fg-muted] mb-2">
+                  {ativos.length === 0
+                    ? 'Escolha ao menos uma coisa que importa — ou clique num perfil.'
+                    : <>Ordenado por <b className="text-[--mike-fg-soft]">
+                        {ativos.map(c => `${c.n.toLowerCase()} ${estado[c.k].dir === 'hi' ? 'alto' : 'baixo'}`).join(', ')}
+                      </b>. Mostrando {Math.min(visN, lista.length)} de {fmtInt(lista.length)}. Clique na linha pra ver a ficha.</>}
+                </div>
+
+                <div className="rounded-md overflow-auto max-h-[62vh]"
+                     style={{ border: '0.5px solid rgba(60,85,130,0.28)' }}>
+                  <table className="w-full text-[10.5px] font-mono" style={{ borderCollapse: 'collapse' }}>
+                    <thead className="sticky top-0 z-10" style={{ backgroundColor: '#111726' }}>
+                      <tr className="text-[9px] uppercase tracking-wider text-[--mike-fg-muted]">
+                        <th className="px-2 py-1.5" />
+                        <th className="text-left px-1 py-1.5 font-bold">#</th>
+                        <th className="text-left px-2 py-1.5 font-bold">Estratégia</th>
+                        <th className="text-right px-2 py-1.5 font-bold">Nota</th>
+                        <th className="text-right px-2 py-1.5 font-bold">G–R</th>
+                        {ativos.map(c => (
+                          <th key={c.k} className="text-right px-2 py-1.5 font-bold whitespace-nowrap">{c.n}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {vis.map(([sc, r], i) => {
+                        const d = pk.rows[r];
+                        const blq = bloqueada(r);
+                        const on = marcadas.has(r);
+                        return (
+                          <tr key={r} className="esc-row"
+                              onClick={() => setFichaR(r)}
+                              style={{
+                                borderTop: '0.5px solid rgba(60,85,130,0.18)',
+                                backgroundColor: on ? 'rgba(16,185,129,0.07)'
+                                  : i < 5 ? 'rgba(6,182,212,0.04)' : 'transparent',
+                                opacity: blq ? 0.45 : 1,
+                              }}>
+                            <td className="px-2 py-1.5" onClick={(e) => e.stopPropagation()}>
+                              <input type="checkbox" checked={on} disabled={blq}
+                                title={blq ? irrep[String(r)] : ''}
+                                onChange={(e) => marcar(r, e.target.checked)}
+                                style={{ accentColor: '#10b981', cursor: blq ? 'not-allowed' : 'pointer' }} />
+                            </td>
+                            <td className="px-1 py-1.5 text-left font-black text-[--mike-fg-muted]">{i + 1}</td>
+                            <td className="px-2 py-1.5 text-left whitespace-nowrap">
+                              <span className="text-[8.5px] font-black px-1 py-0.5 rounded mr-1.5"
+                                    style={d[C.lado]
+                                      ? { color: '#22d3ee', backgroundColor: 'rgba(6,182,212,0.12)' }
+                                      : { color: '#a78bfa', backgroundColor: 'rgba(167,139,250,0.12)' }}>
+                                {d[C.lado] ? 'FAV' : 'ZEB'}
+                              </span>
+                              <span className="text-[--mike-fg]">
+                                {d[C.desc] || d[C.nome] || d[C.extra] || '?'}
+                                {d[C.teto] ? <span className="text-[--mike-fg-muted]"> · teto {d[C.teto]}</span> : null}
+                              </span>
+                              {blq && <AlertTriangle className="w-2.5 h-2.5 text-amber-400 inline ml-1.5" title={irrep[String(r)]} />}
+                            </td>
+                            <td className="px-2 py-1.5 text-right font-black text-[--mike-fg]">{sc.toFixed(0)}</td>
+                            <td className="px-2 py-1.5 text-right whitespace-nowrap">
+                              <b style={{ color: COR.ok }}>{d[C.G]}</b>
+                              <span className="text-[--mike-fg-muted]">–</span>
+                              <b style={{ color: COR.bad }}>{d[C.R]}</b>
+                            </td>
+                            {ativos.map(c => {
+                              const v = d[C[c.k]];
+                              const p = Math.round(norm(c.k, v) * 100);
+                              const t = (v == null || v >= 900) ? '—'
+                                : Math.abs(v) >= 100 ? Number(v).toFixed(0) : Number(v).toFixed(1);
+                              return (
+                                <td key={c.k} className="px-2 py-1">
+                                  <span className="esc-bar">
+                                    <i style={{ width: `${p}%`, background: corDe(c.k, v) }} />
+                                    <b style={{ color: 'var(--mike-fg)' }}>{t}</b>
+                                  </span>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {lista.length > visN && (
+                  <button onClick={() => setVisN(v => v + 200)}
+                    className="mt-2 text-[11px] font-semibold text-[--mike-fg-soft] hover:text-[--mike-fg] mike-border-thin rounded-md px-3 py-1.5 transition">
+                    mostrar mais 200 (de {fmtInt(lista.length)})
                   </button>
-                ))}
-              </div>
+                )}
 
-              {fonteTipo === 'arquivo' ? (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="sm:col-span-2">
-                    <Campo label="Parquet de ticks"
-                           hint="A base é preparada 1x e reaproveitada por hash — repetir a rodada não paga o preparo de novo.">
-                      <Select value={fonteArquivo} onChange={setFonteArquivo} options={[
-                        { value: '', label: 'Escolha o parquet…' },
-                        ...arquivos.parquets.map((p) => ({
-                          value: p.nome, label: `${p.nome} · ${p.mb} MB`,
-                        })),
-                        ...((arquivos.uploads || []).length ? [
-                          { value: '__sep', label: '— gerados no servidor (backtest / MikeDB / enviados) —' },
-                        ] : []),
-                        // v030: apelido (quando tem) + casa/liga/periodo, pra
-                        // nao precisar decorar o nome do parquet
-                        ...(arquivos.uploads || []).map((p) => {
-                          const onde = [p.casa, p.liga].filter(Boolean).join(' ');
-                          const per = p.de ? ` · ${p.de.slice(5)}→${p.ate?.slice(5) || '?'}` : '';
-                          return {
-                            value: p.upload_id,
-                            label: `☁ ${p.apelido || onde || p.nome}${p.apelido && onde ? ' (' + onde + ')' : ''}${per} · ${p.mb} MB`,
-                          };
-                        }),
-                      ]} />
-                    </Campo>
-                    <div className="mt-1.5">
+                {/* atalhos + contagem */}
+                <div className="flex flex-wrap items-center gap-2 mt-3">
+                  <span className="text-[11px] text-[--mike-fg-soft] font-semibold">
+                    {marcadas.size} marcadas
+                    {marcadas.size > 0 && pk && (() => {
+                      let fav = 0;
+                      marcadas.forEach((r) => { if (pk.rows[r] && pk.rows[r][C.lado]) fav += 1; });
+                      return <span className="text-[--mike-fg-muted] font-normal">
+                        {' '}({fav} fav · {marcadas.size - fav} zeb)
+                      </span>;
+                    })()}
+                    {' '}· ~{Math.round(marcadas.size * (variar ? 6 : 1) * 1.2)} min
+                  </span>
+                  <span className="flex-1" />
+                  <span className="text-[10.5px] text-[--mike-fg-muted]">marcar as primeiras:</span>
+                  {[10, 20, 30, 50].map(n => (
+                    <button key={n} onClick={() => marcarTop(n)}
+                      className="mike-border-thin rounded-md px-2.5 py-1 text-[11px] font-bold text-[--mike-fg-soft] hover:text-[--mike-fg] transition">
+                      {n}
+                    </button>
+                  ))}
+                  <button onClick={() => marcarTop(0)}
+                    className="mike-border-thin rounded-md px-2.5 py-1 text-[11px] font-bold text-[--mike-fg-muted] hover:text-rose-300 transition">
+                    limpar
+                  </button>
+                </div>
+              </section>
+
+              {/* envio */}
+              <section className="rounded-lg p-4" style={cardStyle}>
+                <SecaoTitulo icon={Send}>Mandar pra esteira</SecaoTitulo>
+                <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_110px] gap-3">
+                  <label className="flex flex-col gap-1">
+                    <span className="text-[11px] text-[--mike-fg-soft] font-medium">Nome da rodada</span>
+                    <Input value={nomeRodada} onChange={setNomeRodada} placeholder={`escolha do garimpo ${vid}`} />
+                  </label>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[11px] text-[--mike-fg-soft] font-medium">Parquet de ticks</span>
+                    <Select value={fonteArquivo} onChange={setFonteArquivo} options={[
+                      { value: '', label: 'Escolha o parquet…' },
+                      ...(arquivos.parquets || []).map(p => ({
+                        value: p.nome, label: `${p.nome} · ${p.mb} MB`,
+                      })),
+                      ...((arquivos.uploads || []).length ? [
+                        { value: '__sep', label: '— gerados no servidor (backtest / MikeDB / enviados) —' },
+                      ] : []),
+                      ...(arquivos.uploads || []).map(p => ({
+                        value: p.upload_id, label: `☁ ${p.nome} · ${p.mb} MB`,
+                      })),
+                    ]} />
+                    <div>
                       <input ref={pqRef} type="file" accept=".parquet" className="hidden"
                         onChange={async (e) => {
                           const f = e.target.files && e.target.files[0];
@@ -884,7 +795,7 @@ export default function Esteira({ onNavegar } = {}) {
                             const r = await enviarParquet(f);
                             const a2 = await api.get('/esteira/arquivos');
                             if (montadoRef.current) {
-                              setArquivos(a2 || { planilhas: [], parquets: [], uploads: [] });
+                              setArquivos(a2 || { parquets: [], uploads: [] });
                               setFonteArquivo(r.upload_id);
                               setAviso(`Parquet ${r.arquivo} enviado e já selecionado.`);
                             }
@@ -896,651 +807,111 @@ export default function Esteira({ onNavegar } = {}) {
                         }} />
                       <button onClick={() => pqRef.current && pqRef.current.click()}
                         disabled={enviandoPq}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-semibold mike-border-thin text-[--mike-fg-soft] hover:text-[--mike-fg] transition disabled:opacity-50">
+                        className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-semibold mike-border-thin text-[--mike-fg-soft] hover:text-[--mike-fg] transition disabled:opacity-50">
                         {enviandoPq
                           ? <><RefreshCw className="w-3 h-3 mike-spin" /> Enviando (pode demorar)...</>
-                          : <><Database className="w-3 h-3" /> Enviar parquet do PC</>}
+                          : <>Enviar parquet do PC</>}
                       </button>
                     </div>
                   </div>
                   {!String(fonteArquivo).includes('uploads_backtest') ? (
-                    <Campo label="Últimos N dias" hint="vazio = o arquivo inteiro">
+                    <label className="flex flex-col gap-1">
+                      <span className="text-[11px] text-[--mike-fg-soft] font-medium">Últimos N dias</span>
                       <Input type="number" min="1" value={dias} onChange={setDias} placeholder="tudo" />
-                    </Campo>
+                    </label>
                   ) : (
                     <div className="text-[10px] text-[--mike-fg-muted] self-end pb-2">
-                      Arquivo enviado entra inteiro.
+                      Enviado entra inteiro.
                     </div>
                   )}
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <Campo label="Casa">
-                    <Input value={casa} onChange={setCasa} placeholder="ex: superbet" />
-                  </Campo>
-                  <Campo label="Data início">
-                    <Input type="date" value={dataInicio} onChange={setDataInicio} />
-                  </Campo>
-                  <Campo label="Data fim">
-                    <Input type="date" value={dataFim} onChange={setDataFim} />
-                  </Campo>
+
+                <label className="mt-3 flex items-start gap-2 cursor-pointer select-none">
+                  <input type="checkbox" checked={variar}
+                         onChange={(e) => setVariar(e.target.checked)}
+                         style={{ accentColor: '#22d3ee', marginTop: 2 }} />
+                  <span className="text-[11px] text-[--mike-fg-soft] leading-snug">
+                    <b>Testar variações das marcadas</b> — cada uma ganha vizinhas
+                    de largada (chip ±5, linha ±1 passo, teto ±2, folga ±1) e, se
+                    uma vizinha render mais que a mãe, o hill-climb anda mais um
+                    passo sozinho na mesma direção.
+                    <span className="text-[--mike-fg-muted]"> Rodada fica ~3-9×
+                    maior; a sentinela e o cache da base seguem valendo.</span>
+                  </span>
+                </label>
+                <button onClick={handleEnviar}
+                  disabled={enviando || marcadas.size === 0 || !fonteArquivo}
+                  className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-sm font-bold transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ backgroundColor: (enviando || marcadas.size === 0 || !fonteArquivo) ? 'rgba(16,185,129,0.2)' : '#10b981',
+                           color: (enviando || marcadas.size === 0 || !fonteArquivo) ? '#6b7691' : '#0b0f1a',
+                           boxShadow: (enviando || marcadas.size === 0 || !fonteArquivo) ? 'none' : '0 4px 12px rgba(16,185,129,0.3)' }}>
+                  {enviando ? <><RefreshCw className="w-4 h-4 mike-spin" /> Criando rodada...</>
+                            : <><Play className="w-4 h-4" /> Testar as {marcadas.size || ''} marcadas
+                                {variar ? ' + variações' : ''} na esteira</>}
+                </button>
+                <div className="text-[9px] text-[--mike-fg-muted] mt-1.5 text-center">
+                  Cada marcada vira um backtest no motor real — com sentinela e variações.
+                  A rodada aparece na aba Esteira.
                 </div>
-              )}
-
-              <div className="mt-3">
-                <Grupo icon={Settings2} cor="#fbbf24" titulo="Opções"
-                       desc="A trava de zerados para a rodada quando estratégias seguidas dão 0 aposta — zerado é config×arquivo (faixa que não existe), não defeito da base.">
-                  <div className="grid grid-cols-2 gap-3">
-                    <Campo label="Trava de zerados" hint="vazio = 3 seguidas · 0 desliga">
-                      <Input type="number" min="0" value={maxZerados} onChange={setMaxZerados} placeholder="3" />
-                    </Campo>
-                    <Campo label="Timeout por item (min)" hint="vazio = 45">
-                      <Input type="number" min="1" value={timeoutMin} onChange={setTimeoutMin} placeholder="45" />
-                    </Campo>
-                  </div>
-                </Grupo>
-              </div>
-
-              <button
-                onClick={handleRodar}
-                disabled={!planilha || criando}
-                className="w-full mt-4 flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-sm font-bold transition disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ backgroundColor: (!planilha || criando) ? 'rgba(16,185,129,0.2)' : '#10b981',
-                         color: (!planilha || criando) ? '#6b7691' : '#0b0f1a',
-                         boxShadow: (!planilha || criando) ? 'none' : '0 4px 12px rgba(16,185,129,0.3)' }}
-              >
-                {criando ? <><RefreshCw className="w-4 h-4 mike-spin" /> Criando...</>
-                         : <><Play className="w-4 h-4" /> Rodar esteira</>}
-              </button>
-              <div className="text-[9px] text-[--mike-fg-muted] mt-1.5 text-center">
-                Roda na fila própria (2 slots, piso de RAM) — pode fechar a página.
-                A retomada pula o que já concluiu.
-              </div>
-            </section>
-
-            {/* LISTA */}
-            <section className="rounded-lg p-4" style={cardStyle}>
-              <SecaoTitulo icon={Layers}>Rodadas</SecaoTitulo>
-              <p className="text-[11px] text-[--mike-fg-muted] mb-3 -mt-1">
-                {ativos > 0
-                  ? `${ativos} em andamento — a lista se atualiza sozinha.`
-                  : 'Clique numa rodada para ver o placar ao lado.'}
-              </p>
-
-              {carregando && (
-                <div className="flex items-center justify-center py-8 gap-2 text-[--mike-fg-muted] text-xs">
-                  <RefreshCw className="w-4 h-4 mike-spin" /> Carregando...
-                </div>
-              )}
-
-              {!carregando && jobs.length === 0 && (
-                <div className="text-center py-8 text-[--mike-fg-muted] text-xs">
-                  Nenhuma rodada ainda. Escolha a planilha e a fonte acima.
-                </div>
-              )}
-
-              <div className="space-y-1.5">
-                {jobs.map((j) => {
-                  const s = STATUS[j.status] || STATUS.pendente;
-                  const on = selecionado === j.id;
-                  const tot = j.itens_total_real || j.total_itens || 0;
-                  const ok = j.itens_concluidos_real ?? j.itens_prontos ?? 0;
-                  const pct = tot > 0 ? Math.round((ok / tot) * 100) : 0;
-                  return (
-                    <button key={j.id} onClick={() => selecionar(j.id)}
-                      className="w-full text-left rounded-md px-3 py-2.5 transition"
-                      style={on
-                        ? { backgroundColor: 'rgba(6,182,212,0.10)', border: '0.5px solid rgba(6,182,212,0.4)' }
-                        : { backgroundColor: 'rgba(13,17,27,0.5)', border: '0.5px solid rgba(60,85,130,0.28)' }}>
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-[11px] font-black font-mono flex-shrink-0 w-7"
-                              style={{ color: s.cor }}>#{j.id}</span>
-                        <span className="text-[12px] font-bold text-[--mike-fg] flex-1 truncate">{j.nome}</span>
-                        {j.suspeita && (
-                          <span title="o H2H mudou durante a rodada — números não comparáveis com re-run"
-                                className="text-[9px] font-black px-1.5 py-0.5 rounded flex-shrink-0"
-                                style={{ color: '#fbbf24', backgroundColor: 'rgba(251,191,36,0.12)',
-                                         border: '0.5px solid rgba(251,191,36,0.4)' }}>
-                            suspeita
-                          </span>
-                        )}
-                        {tot > 0 && (
-                          <span className="text-[10px] font-mono text-[--mike-fg-muted] hidden sm:inline">
-                            {ok}/{tot}
-                          </span>
-                        )}
-                        <Selo status={j.status} />
-                        <span className="text-[10px] text-[--mike-fg-muted] w-14 text-right flex-shrink-0">
-                          {tempoRelativo(j.criado_em)}
-                        </span>
-                      </div>
-                      {ATIVO.includes(j.status) && (
-                        <div className="mt-2 pl-[38px]">
-                          <div className="h-1.5 rounded-full overflow-hidden"
-                               style={{ backgroundColor: 'rgba(60,85,130,0.25)' }}>
-                            <div className="h-full transition-all duration-500"
-                                 style={{ width: `${Math.max(2, pct)}%`, backgroundColor: '#10b981' }} />
-                          </div>
-                          <div className="flex items-center justify-between gap-2 mt-1">
-                            <span className="text-[10px] text-[--mike-fg-muted] font-mono truncate">
-                              {j.progresso_msg || 'na fila...'}
-                            </span>
-                            <span className="text-[10px] font-mono text-emerald-400 flex-shrink-0">
-                              {ok}/{tot || '?'}
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
-          </div>
-
-          {/* DIREITA: placar (sticky) */}
-          <div className="lg:col-span-1">
-            <div className="lg:sticky lg:top-16 space-y-4">
-
-              {erro && (
-                <div className="rounded-lg p-3 flex items-start gap-2"
-                     style={{ backgroundColor: 'rgba(244,63,94,0.08)', border: '0.5px solid rgba(244,63,94,0.35)' }}>
-                  <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
-                  <span className="text-xs text-rose-300 flex-1">{erro}</span>
-                  <button onClick={() => setErro(null)} className="text-rose-400/60 hover:text-rose-300">
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )}
-
-              {aviso && (
-                <div className="rounded-lg p-3 flex items-start gap-2"
-                     style={{ backgroundColor: 'rgba(16,185,129,0.08)', border: '0.5px solid rgba(16,185,129,0.3)' }}>
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
-                  <span className="text-xs text-emerald-300 flex-1">{aviso}</span>
-                  <button onClick={() => setAviso(null)} className="text-emerald-400/60 hover:text-emerald-300">
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )}
-
-              <section className="rounded-lg p-4" style={cardStyle}>
-                <div className="flex items-center justify-between">
-                  <SecaoTitulo icon={Trophy}>Placar</SecaoTitulo>
-                  {d && its.length > 0 && (
-                    <button onClick={() => setPlacarCheio(true)}
-                      title="abrir o placar completo (todas as colunas)"
-                      className="mb-3 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10.5px] font-bold mike-border-thin text-[--mike-fg-soft] hover:text-[--mike-fg] transition">
-                      <Maximize2 className="w-3 h-3" /> expandir
-                    </button>
-                  )}
-                </div>
-
-                {!d && (
-                  <div className="text-center py-10 text-[--mike-fg-muted] text-xs">
-                    Escolha uma rodada na lista pra ver o placar aqui.
-                  </div>
-                )}
-
-                {d && (
-                  <>
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="text-[12px] font-black font-mono text-[--mike-fg]">#{d.id}</span>
-                      <span className="text-[12px] font-bold text-[--mike-fg] flex-1 truncate">{d.nome}</span>
-                      <Selo status={d.status} />
-                    </div>
-
-                    {d.status === 'erro' && d.erro && (
-                      <div className="mb-3 rounded-md p-2.5 flex items-start gap-2"
-                           style={{ backgroundColor: 'rgba(244,63,94,0.08)', border: '0.5px solid rgba(244,63,94,0.3)' }}>
-                        <AlertTriangle className="w-3.5 h-3.5 text-rose-400 flex-shrink-0 mt-0.5" />
-                        <span className="text-[11px] text-rose-300">{d.erro}</span>
-                      </div>
-                    )}
-
-                    {ATIVO.includes(d.status) && d.progresso_msg && (
-                      <div className="mb-3 text-[11px] font-mono text-[--mike-fg-muted]">
-                        {d.progresso_msg}
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-2 mb-3">
-                      <StatCard icon={Hash} label="Itens"
-                                valor={`${d.itens_concluidos_real ?? 0}/${d.itens_total_real ?? 0}`}
-                                cor="#0891b2" />
-                      <StatCard icon={Clock} label="Duração"
-                                valor={duracaoEntre(d.iniciado_em, d.finalizado_em) || '–'} />
-                    </div>
-
-                    {/* sentinela + suspeita */}
-                    <div className="space-y-2 mb-3">
-                      {d.sentinela_ok != null && (
-                        <div className="rounded-md p-2.5 flex items-start gap-2"
-                             style={d.sentinela_ok
-                               ? { backgroundColor: 'rgba(16,185,129,0.06)', border: '0.5px solid rgba(16,185,129,0.25)' }
-                               : { backgroundColor: 'rgba(244,63,94,0.08)', border: '0.5px solid rgba(244,63,94,0.3)' }}>
-                          <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0 mt-0.5"
-                                       style={{ color: d.sentinela_ok ? '#10b981' : '#f43f5e' }} />
-                          <span className="text-[11px] text-[--mike-fg-soft]">
-                            <b>Sentinela</b>{' '}
-                            {d.sentinela_ok ? 'passou' : 'reprovou'}
-                            {d.baseline && d.baseline.ROI != null && (
-                              <> · mercado inteiro: {fmt(d.baseline.apostas)} ap,
-                                ROI {fmt1(d.baseline.ROI)}% — é isso que as
-                                estratégias precisam bater</>
-                            )}
-                          </span>
-                        </div>
-                      )}
-                      {d.suspeita && (
-                        <div className="rounded-md p-2.5 flex items-start gap-2"
-                             style={{ backgroundColor: 'rgba(251,191,36,0.08)', border: '0.5px solid rgba(251,191,36,0.3)' }}>
-                          <AlertTriangle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-0.5" />
-                          <span className="text-[11px] text-amber-300">
-                            <b>Suspeita</b> · {d.suspeita_motivo || 'o H2H mudou durante a rodada'}
-                          </span>
-                        </div>
-                      )}
-                      {alertas.map((a, i) => (
-                        <div key={i} className="rounded-md p-2 flex items-start gap-2"
-                             style={{ backgroundColor: 'rgba(251,191,36,0.05)', border: '0.5px solid rgba(251,191,36,0.2)' }}>
-                          <AlertTriangle className="w-3 h-3 text-amber-400/80 flex-shrink-0 mt-0.5" />
-                          <span className="text-[10px] text-[--mike-fg-soft]">{a}</span>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* O PLACAR — G–R sempre visível */}
-                    <Placar itens={its} baseline={d.baseline}
-                            onFicha={(it) => setFichaItem(it)} />
-                    <div className="text-[9px] text-[--mike-fg-muted] mt-1.5">
-                      Ordenado por ROI, variações aninhadas na mãe, zeradas no
-                      fim. Clique na linha pra ficha; em <b>expandir</b>, todas
-                      as colunas (u/dia, 3d/7d). O hover do ROI mostra a
-                      vantagem sobre o mercado.
-                    </div>
-
-                    <div className="mt-3 space-y-2">
-                      {ATIVO.includes(d.status) && (
-                        <button onClick={() => handleAcao(d.id, 'cancelar')}
-                          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md text-xs font-semibold transition"
-                          style={{ border: '0.5px solid rgba(239,68,68,0.4)', color: '#fca5a5' }}>
-                          <X className="w-3.5 h-3.5" /> Cancelar rodada
-                        </button>
-                      )}
-                      {podeRetomar && (
-                        <button onClick={() => handleAcao(d.id, 'retomar')}
-                          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md text-[12px] font-bold transition"
-                          style={{ backgroundColor: '#fbbf24', color: '#0b0f1a' }}>
-                          <RotateCcw className="w-3.5 h-3.5" /> Retomar
-                          {(d.itens_erro || 0) > 0 && ` (${d.itens_erro} em erro)`}
-                        </button>
-                      )}
-                      {d.tem_planilha && (
-                        <button onClick={() => handleDownload(d.id)}
-                          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md text-[12px] font-bold mike-border-thin text-[--mike-accent] hover:bg-[--mike-accent]/10 transition">
-                          <Download className="w-3.5 h-3.5" /> Baixar placar (.xlsx)
-                        </button>
-                      )}
-                      {FINAL.includes(d.status) && (
-                        <button onClick={() => handleExcluir(d.id)}
-                          className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-[11px] font-semibold mike-border-thin text-[--mike-fg-muted] hover:text-rose-300 transition">
-                          <Trash2 className="w-3 h-3" /> Excluir rodada
-                        </button>
-                      )}
-                    </div>
-                  </>
-                )}
               </section>
             </div>
           </div>
-
-        </div>
+        )}
       </main>
 
-      {/* placar completo em tela cheia */}
-      {placarCheio && d && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center p-4 lg:p-8"
-             style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
-             onClick={() => setPlacarCheio(false)}>
-          <div className="rounded-lg p-4 w-full max-w-6xl max-h-[92vh] overflow-hidden flex flex-col"
-               style={{ backgroundColor: '#0f1420', border: '0.5px solid rgba(60,85,130,0.5)' }}
+      {/* ficha da estratégia */}
+      {fichaD && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+             style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}
+             onClick={() => setFichaR(null)}>
+          <div className="rounded-lg p-4 w-full max-w-sm"
+               style={{ backgroundColor: '#141a28', border: '0.5px solid rgba(60,85,130,0.5)' }}
                onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center gap-2 mb-2">
-              <Trophy className="w-4 h-4 text-cyan-400" />
-              <span className="text-[13px] font-black text-[--mike-fg] flex-1 truncate">
-                Placar — #{d.id} {d.nome}
-              </span>
-              <button onClick={() => setPlacarCheio(false)}
-                      className="text-[--mike-fg-muted] hover:text-[--mike-fg]">
+            <div className="flex items-center gap-2 mb-3">
+              <h3 className="text-[13px] font-black text-[--mike-fg] flex-1">
+                {fichaD[C.lado] ? 'FAVORITO' : 'ZEBRA'} · {fichaD[C.desc] || fichaD[C.nome] || '?'}
+                {fichaD[C.teto] ? ` · teto ${fichaD[C.teto]}` : ''}
+              </h3>
+              <button onClick={() => setFichaR(null)} className="text-[--mike-fg-muted] hover:text-[--mike-fg]">
                 <X className="w-4 h-4" />
               </button>
             </div>
-            {d.sentinela_ok != null && d.baseline && d.baseline.ROI != null && (
-              <div className="mb-2 text-[11px] text-[--mike-fg-soft]">
-                <ShieldCheck className="w-3.5 h-3.5 inline mr-1"
-                             style={{ color: d.sentinela_ok ? '#10b981' : '#f43f5e' }} />
-                Mercado inteiro: {fmt(d.baseline.apostas)} ap · ROI {fmt1(d.baseline.ROI)}%
-                — é isso que as estratégias precisam bater.
+            {bloqueada(fichaR) && (
+              <div className="mb-2.5 rounded-md p-2 text-[10.5px] text-amber-300"
+                   style={{ backgroundColor: 'rgba(251,191,36,0.08)', border: '0.5px solid rgba(251,191,36,0.3)' }}>
+                {irrep[String(fichaR)]}
               </div>
             )}
-            <div className="flex-1 min-h-0 overflow-auto">
-              <Placar itens={its} baseline={d.baseline} completo
-                      onFicha={(it) => setFichaItem(it)} />
-            </div>
-            <div className="text-[9px] text-[--mike-fg-muted] mt-2">
-              u/dia e 3d/7d só existem em rodadas rodadas com o worker novo —
-              nas antigas aparecem como "–". Clique na linha pra ficha.
+            <div className="space-y-1 text-[11px]">
+              {[
+                ['greens – reds', <><b style={{ color: COR.ok }}>{fichaD[C.G]}</b> – <b style={{ color: COR.bad }}>{fichaD[C.R]}</b></>],
+                ['apostas', fmtInt(fichaD[C.ap])],
+                ['taxa de acerto', fichaD[C.WR] != null ? `${fichaD[C.WR]}%` : '—'],
+                ['unidades', fichaD[C.u]],
+                ['retorno (ROI)', fichaD[C.ROI] != null ? `${fichaD[C.ROI]}%` : '—'],
+                ['vantagem sobre o mercado', fichaD[C.premio] != null ? `${Number(fichaD[C.premio]).toFixed(1)} pontos` : '—'],
+                ['fora da amostra (holdout)', fichaD[C.ROI_ho] != null ? `${fichaD[C.ROI_ho]}% em ${fmtInt(fichaD[C.ap_ho])} ap` : '—'],
+                ['por dia', `${fichaD[C.ap_dia] ?? '—'} apostas · ${fichaD[C.u_dia] ?? '—'}u`],
+                ['queda máxima', fichaD[C.DD] != null ? `${fichaD[C.DD]}u` : '—'],
+                ['lucro por queda', fichaD[C.ldd] ?? '—'],
+                ['dias', `${fichaD[C.dias_pos] ?? '—'} bons / ${fichaD[C.dias_neg] ?? '—'} ruins`],
+                ['dias ruins seguidos', fichaD[C.seq_neg] ?? '—'],
+                ['pior dia', fichaD[C.pior_dia] != null ? `${fichaD[C.pior_dia]}u` : '—'],
+                ['1ª metade → 2ª', `${fichaD[C.m1] ?? '—'}% → ${fichaD[C.m2] ?? '—'}%`],
+                ['concentração (top 3)', (fichaD[C.conc3] == null || fichaD[C.conc3] >= 200) ? '—' : `${fichaD[C.conc3]}%`],
+                ['jogadores envolvidos', fichaD[C.n_alvos] ?? '—'],
+                ['corte extra', fichaD[C.extra] || 'nenhum'],
+              ].map(([a, b], i) => (
+                <div key={i} className="flex items-center justify-between gap-3 py-0.5"
+                     style={{ borderBottom: '0.5px solid rgba(60,85,130,0.15)' }}>
+                  <span className="text-[--mike-fg-muted]">{a}</span>
+                  <span className="text-[--mike-fg] font-semibold text-right">{b}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
       )}
-
-      {/* ficha do item: metricas completas + filtros em portugues */}
-      {fichaItem && (() => {
-        const it = fichaItem;
-        const m = it.metricas || {};
-        const pl = it.snapshot && it.snapshot._planilha;
-        const filtros = filtrosEmPortugues(pl);
-        const premio = (m.ROI != null && d && d.baseline && d.baseline.ROI != null)
-          ? Number(m.ROI) - Number(d.baseline.ROI) : null;
-        const Lin = ({ a, b, hint }) => (
-          <div className="flex items-center justify-between gap-3 py-0.5"
-               title={hint || ''}
-               style={{ borderBottom: '0.5px solid rgba(60,85,130,0.15)' }}>
-            <span className="text-[--mike-fg-muted]">{a}</span>
-            <span className="text-[--mike-fg] font-semibold text-right">{b}</span>
-          </div>
-        );
-        return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-               style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}
-               onClick={() => setFichaItem(null)}>
-            <div className="rounded-lg p-4 w-full max-w-md max-h-[85vh] overflow-y-auto"
-                 style={{ backgroundColor: '#141a28', border: '0.5px solid rgba(60,85,130,0.5)' }}
-                 onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-start gap-2 mb-3">
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-[13px] font-black text-[--mike-fg]">
-                    {rotuloDoItem(it)}
-                  </h3>
-                  <div className="text-[10px] text-[--mike-fg-muted] font-mono truncate">
-                    {it.nome}{it.papel !== 'estrategia' ? ` · ${it.papel}` : ''}
-                  </div>
-                </div>
-                <button onClick={() => setFichaItem(null)}
-                        className="text-[--mike-fg-muted] hover:text-[--mike-fg] flex-shrink-0">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {it.erro && (
-                <div className="mb-2.5 rounded-md p-2 text-[10.5px] text-rose-300"
-                     style={{ backgroundColor: 'rgba(244,63,94,0.08)', border: '0.5px solid rgba(244,63,94,0.3)' }}>
-                  {it.erro}
-                </div>
-              )}
-
-              <div className="space-y-1 text-[11px] mb-3">
-                <Lin a="greens – reds" b={<span>
-                  <b style={{ color: '#10b981' }}>{m.greens ?? '—'}</b>
-                  <span className="text-[--mike-fg-muted]"> – </span>
-                  <b style={{ color: '#f87171' }}>{m.reds ?? '—'}</b></span>} />
-                <Lin a="apostas · taxa de acerto" b={`${fmt(m.apostas) ?? '—'} · ${m.WR ?? '—'}%`} />
-                <Lin a="unidades · retorno (ROI)" b={`${m.unidades ?? '—'}u · ${m.ROI ?? '—'}%`} />
-                {premio != null && (
-                  <Lin a="vantagem sobre o mercado"
-                       b={`${premio > 0 ? '+' : ''}${premio.toFixed(1)} pontos`}
-                       hint="ROI da estratégia menos o ROI do mercado inteiro (a sentinela)" />
-                )}
-                <Lin a="por dia" b={`${m.ap_dia ?? '—'} apostas · ${m.u_dia ?? '—'}u`} />
-                <Lin a="dias" b={`${m.dias_pos ?? '—'} bons / ${m.dias_neg ?? '—'} ruins de ${m.dias ?? '—'}`} />
-                <Lin a="dias ruins seguidos" b={m.seq_neg ?? '—'}
-                     hint="a maior sequência de dias no vermelho" />
-                <Lin a="pior dia" b={m.pior_dia != null ? `${m.pior_dia}u` : '—'} />
-                <Lin a="queda máxima · lucro por queda" b={`${m.DD ?? '—'}u · ${m.lucro_dd ?? '—'}`}
-                     hint="o maior tombo da banca; e quanto cada unidade arriscada rendeu" />
-                <Lin a="1ª metade → 2ª" b={`${m.roi_m1 ?? '—'}% → ${m.roi_m2 ?? '—'}%`}
-                     hint="estabilidade dentro do próprio período" />
-                <Lin a="últimos 3 dias" b={`${m.GR_3d || '—'} · ROI ${m.roi_3d ?? '—'}%`} />
-                <Lin a="últimos 7 dias" b={`${m.GR_7d || '—'} · ROI ${m.roi_7d ?? '—'}%`} />
-                <Lin a="quanto esfriou no fim" b={m.queda_ponta != null ? `${m.queda_ponta} pts` : '—'}
-                     hint="ROI recente menos o da 2ª metade — negativo forte = morrendo" />
-                <Lin a="treino → cego" b={m.roi_cego != null
-                       ? `${m.roi_treino ?? '—'}% → ${m.roi_cego}% (${m.ap_cego} ap)` : '—'}
-                     hint="os últimos ~30% das apostas, que a leitura do resto nunca viu" />
-                <Lin a="força do sinal (z)" b={m.z_jogo ?? '—'}
-                     hint="lucro médio por jogo dividido pela variação — acima de 2 é sinal firme" />
-                <Lin a="concentração (top 3 duplas)" b={m.top3_par_pct != null ? `${m.top3_par_pct}%` : '—'}
-                     hint="quanto do lucro vem de só 3 confrontos" />
-                <Lin a="jogos · período" b={`${m.jogos ?? '—'} · ${m.de ?? ''} a ${m.ate ?? ''}`} />
-                <Lin a="ainda está de pé?" b={m.vivo === 1 ? 'sim' : m.vivo === 0 ? 'não' : '—'}
-                     hint="a régua do worker: janelas recentes sem prejuízo" />
-              </div>
-
-              {filtros.length > 0 && (
-                <>
-                  <div className="text-[10px] uppercase tracking-wider font-bold text-[--mike-fg-muted] mb-1.5">
-                    Filtros desta estratégia
-                  </div>
-                  <div className="space-y-1 text-[11px] mb-3">
-                    {filtros.map(([a2, b2], i2) => <Lin key={i2} a={a2} b={b2} />)}
-                  </div>
-                </>
-              )}
-
-              <div className="flex items-center gap-2">
-                {it.status === 'concluido' && it.snapshot
-                 && it.papel !== 'sentinela' && it.papel !== 'controle' && (() => {
-                  const trava = null;   // atropelo e tot_env já rodam no executor
-                  return (
-                    <button
-                      disabled={!!trava}
-                      title={trava || 'vira bot de verdade, com os filtros exatos que rodaram'}
-                      onClick={async () => {
-                        const snapB = it.snapshot || {};
-                        setBotForm({ it, nome: rotuloDoItem(it).slice(0, 100),
-                                     torneios: '', sel: [], manual: false,
-                                     ligas: null, erro: null, criando: false });
-                        try {
-                          const lg = await api.get('/esteira/ligas', {
-                            casa: snapB.casa || '', esporte: snapB.esporte || '' });
-                          setBotForm((p) => (p ? { ...p, ligas: lg,
-                            manual: !((lg.vivas || []).length || (lg.todas || []).length) } : p));
-                        } catch {
-                          setBotForm((p) => (p ? { ...p, ligas: { vivas: [], todas: [] },
-                                                   manual: true } : p));
-                        }
-                      }}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-bold transition disabled:opacity-40 disabled:cursor-not-allowed"
-                      style={{ backgroundColor: trava ? 'rgba(16,185,129,0.12)' : '#10b981',
-                               color: trava ? '#6b7691' : '#0b0f1a' }}>
-                      <Play className="w-3 h-3" /> Criar bot
-                    </button>
-                  );
-                })()}
-                {it.backtest_job_id && (
-                  <button
-                    onClick={() => {
-                      navigator.clipboard && navigator.clipboard.writeText(String(it.backtest_job_id));
-                      setAviso(`id do backtest ${it.backtest_job_id} copiado.`);
-                    }}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-semibold mike-border-thin text-[--mike-fg-soft] hover:text-[--mike-fg] transition">
-                    <Copy className="w-3 h-3" /> backtest #{it.backtest_job_id}
-                  </button>
-                )}
-                <span className="flex-1" />
-                {it.snapshot && (
-                  <details className="text-[10px] text-[--mike-fg-muted]">
-                    <summary className="cursor-pointer hover:text-[--mike-fg-soft]">ver o JSON cru</summary>
-                    <pre className="mt-2 p-2 rounded-md max-w-[360px] max-h-48 overflow-auto text-[9px]"
-                         style={{ backgroundColor: 'rgba(0,0,0,0.35)' }}>
-                      {JSON.stringify(it.snapshot, null, 2)}
-                    </pre>
-                  </details>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* dialogo: criar bot a partir do item */}
-      {botForm && (() => {
-        const it = botForm.it;
-        const m = it.metricas || {};
-        const snap = it.snapshot || {};
-        const torneiosEscolhidos = botForm.manual
-          ? botForm.torneios.split(',').map((t) => t.trim()).filter(Boolean)
-          : (botForm.sel || []);
-        const podeCriar = torneiosEscolhidos.length > 0 && !botForm.criando;
-        const criar = async () => {
-          setBotForm((p) => ({ ...p, criando: true, erro: null }));
-          try {
-            const r = await api.post(`/esteira/itens/${it.id}/criar-bot`, {
-              nome: botForm.nome.trim() || undefined,
-              torneios: torneiosEscolhidos,
-            });
-            setBotForm(null);
-            setFichaItem(null);
-            setAviso(`Bot #${r.bot_id} criado PAUSADO (${r.casa}) — confere os
-              filtros e ativa na tela de Bots.`);
-          } catch (e) {
-            setBotForm((p) => ({ ...p, criando: false,
-                                 erro: e?.message || 'falha ao criar o bot' }));
-          }
-        };
-        return (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4"
-               style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
-               onClick={() => setBotForm(null)}>
-            <div className="rounded-lg p-4 w-full max-w-sm"
-                 style={{ backgroundColor: '#141a28', border: '0.5px solid rgba(60,85,130,0.5)' }}
-                 onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center gap-2 mb-3">
-                <Play className="w-4 h-4 text-emerald-400" />
-                <h3 className="text-[13px] font-black text-[--mike-fg] flex-1">Criar bot</h3>
-                <button onClick={() => setBotForm(null)}
-                        className="text-[--mike-fg-muted] hover:text-[--mike-fg]">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="space-y-3">
-                <label className="flex flex-col gap-1">
-                  <span className="text-[11px] text-[--mike-fg-soft] font-medium">Nome do bot</span>
-                  <Input value={botForm.nome}
-                         onChange={(v) => setBotForm((p) => ({ ...p, nome: v }))} />
-                </label>
-                <div className="flex flex-col gap-1">
-                  <span className="text-[11px] text-[--mike-fg-soft] font-medium">
-                    Ligas (onde o bot apita)
-                  </span>
-                  {!botForm.manual ? (
-                    <>
-                      {botForm.ligas === null ? (
-                        <div className="flex items-center gap-2 text-[11px] text-[--mike-fg-muted] py-2">
-                          <RefreshCw className="w-3 h-3 mike-spin" /> carregando as ligas...
-                        </div>
-                      ) : (
-                        <Select value=""
-                          onChange={(v) => {
-                            if (!v || v === '__sep') return;
-                            setBotForm((p) => (p && !p.sel.includes(v)
-                              ? { ...p, sel: [...p.sel, v] } : p));
-                          }}
-                          options={(() => {
-                            const vivas = (botForm.ligas.vivas || [])
-                              .filter((x) => !botForm.sel.includes(x));
-                            const resto = (botForm.ligas.todas || [])
-                              .filter((x) => !botForm.sel.includes(x)
-                                             && !(botForm.ligas.vivas || []).includes(x));
-                            return [
-                              { value: '', label: 'adicionar liga…' },
-                              ...vivas.map((x) => ({ value: x, label: `● ${x}` })),
-                              ...(vivas.length && resto.length
-                                ? [{ value: '__sep', label: '— demais ligas do mapa —' }] : []),
-                              ...resto.map((x) => ({ value: x, label: x })),
-                            ];
-                          })()} />
-                      )}
-                      {botForm.sel.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-1">
-                          {botForm.sel.map((t) => (
-                            <span key={t}
-                              className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10.5px] font-semibold"
-                              style={{ backgroundColor: 'rgba(6,182,212,0.1)',
-                                       border: '0.5px solid rgba(6,182,212,0.4)', color: '#22d3ee' }}>
-                              {t}
-                              <button onClick={() => setBotForm((p) => (p
-                                  ? { ...p, sel: p.sel.filter((x) => x !== t) } : p))}
-                                className="hover:text-white"><X className="w-3 h-3" /></button>
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      <span className="text-[9px] text-[--mike-fg-muted] leading-snug">
-                        ● = com jogo recente. O backtest rodou a liga inteira; o bot
-                        precisa saber onde apitar.{' '}
-                        <button onClick={() => setBotForm((p) => (p ? { ...p, manual: true } : p))}
-                          className="underline underline-offset-2 hover:text-[--mike-fg-soft]">
-                          digitar manualmente
-                        </button>
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <Input value={botForm.torneios} placeholder="ex: H2H GG League - 4x5"
-                             onChange={(v) => setBotForm((p) => ({ ...p, torneios: v }))} />
-                      <span className="text-[9px] text-[--mike-fg-muted] leading-snug">
-                        O nome TRADUZIDO, vários por vírgula — código (B-EBASK...)
-                        deixa o bot mudo; o backend recusa.{' '}
-                        {(botForm.ligas && ((botForm.ligas.vivas || []).length
-                          || (botForm.ligas.todas || []).length)) ? (
-                          <button onClick={() => setBotForm((p) => (p ? { ...p, manual: false } : p))}
-                            className="underline underline-offset-2 hover:text-[--mike-fg-soft]">
-                            voltar pra lista
-                          </button>
-                        ) : null}
-                      </span>
-                    </>
-                  )}
-                </div>
-
-                <div className="rounded-md p-2.5 text-[10.5px] text-[--mike-fg-soft]"
-                     style={{ backgroundColor: 'rgba(13,17,27,0.6)', border: '0.5px solid rgba(60,85,130,0.28)' }}>
-                  Casa <b>{snap.casa || '—'}</b> · mercado <b>{snap.mercado || '—'}</b>.
-                  {m['G-R'] && (
-                    <> Esta estratégia fez <b>{m['G-R']}</b> · ROI <b>{m.ROI}%</b>
-                    {m.de ? <> de {String(m.de).slice(0, 10)} a {String(m.ate).slice(0, 10)}</> : null}.
-                    <b> Isso é passado.</b></>
-                  )}
-                </div>
-
-                {botForm.erro && (
-                  <div className="rounded-md p-2 text-[10.5px] text-rose-300"
-                       style={{ backgroundColor: 'rgba(244,63,94,0.08)', border: '0.5px solid rgba(244,63,94,0.3)' }}>
-                    {botForm.erro}
-                  </div>
-                )}
-
-                <button onClick={criar} disabled={!podeCriar}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-sm font-bold transition disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{ backgroundColor: podeCriar ? '#10b981' : 'rgba(16,185,129,0.2)',
-                           color: podeCriar ? '#0b0f1a' : '#6b7691' }}>
-                  {botForm.criando
-                    ? <><RefreshCw className="w-4 h-4 mike-spin" /> Criando...</>
-                    : <><Play className="w-4 h-4" /> Criar bot (nasce pausado)</>}
-                </button>
-                <div className="text-[9px] text-[--mike-fg-muted] text-center -mt-1">
-                  Filtros exatos do backtest, com a origem gravada. Você confere
-                  e ativa na tela de Bots.
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
     </div>
   );
 }

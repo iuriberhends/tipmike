@@ -861,9 +861,16 @@ export default function Esteira({ onNavegar } = {}) {
                         ...((arquivos.uploads || []).length ? [
                           { value: '__sep', label: '— gerados no servidor (backtest / MikeDB / enviados) —' },
                         ] : []),
-                        ...(arquivos.uploads || []).map((p) => ({
-                          value: p.upload_id, label: `☁ ${p.nome} · ${p.mb} MB`,
-                        })),
+                        // v030: apelido (quando tem) + casa/liga/periodo, pra
+                        // nao precisar decorar o nome do parquet
+                        ...(arquivos.uploads || []).map((p) => {
+                          const onde = [p.casa, p.liga].filter(Boolean).join(' ');
+                          const per = p.de ? ` · ${p.de.slice(5)}→${p.ate?.slice(5) || '?'}` : '';
+                          return {
+                            value: p.upload_id,
+                            label: `☁ ${p.apelido || onde || p.nome}${p.apelido && onde ? ' (' + onde + ')' : ''}${per} · ${p.mb} MB`,
+                          };
+                        }),
                       ]} />
                     </Campo>
                     <div className="mt-1.5">
