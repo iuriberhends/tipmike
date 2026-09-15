@@ -470,7 +470,9 @@ export default function Varredura({ onNavegar } = {}) {
                         .toLowerCase().includes(q);
                     })
                     .slice()
-                    .sort((a, b) => (b.escancarado - a.escancarado) || (b.job_id - a.job_id))
+                    .sort((a, b) => ((b.candidatos ? 2 : b.escancarado ? 1 : 0)
+                                     - (a.candidatos ? 2 : a.escancarado ? 1 : 0))
+                                    || (b.job_id - a.job_id))
                     .map((o) => {
                       const periodo = o.de ? ` · ${o.de.slice(5)}→${o.ate?.slice(5) || '?'}` : '';
                       const onde = [o.casa, o.liga].filter(Boolean).join(' ');
@@ -481,7 +483,7 @@ export default function Varredura({ onNavegar } = {}) {
                           + `${onde ? ' · ' + onde : ''}${periodo}`
                           + ` · ${o.mercado || 'mercado?'}${lado}`
                           + ` · ${fmt(o.apostas)} ap`
-                          + `${o.escancarado ? ' · ESCANCARADO' : ' · filtrado'}`
+                          + `${o.candidatos ? ' · CANDIDATOS' : (o.escancarado ? ' · ESCANCARADO' : ' · filtrado')}`
                           + `${o.carimbado ? ' · h2h fixo' : ''}`,
                       };
                     }),
