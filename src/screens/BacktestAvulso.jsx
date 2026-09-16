@@ -412,6 +412,15 @@ export default function BacktestAvulso({ onNavegar } = {}) {
   // manual) | 'mikedb' (gera no servidor). v029: 'existente' e' o default —
   // era preciso decorar o caminho do parquet pra criar backtest.
   const [abaTicks, setAbaTicks] = useState('existente');
+  // v34: JOB-MAE PRA GARIMPO — um botao que cria o backtest escancarado do
+  // jeito que o garimpo precisa (candidatos + h2h carimbado + 7 janelas) e
+  // ja deixa a varredura engatada pra soltar quando ele concluir.
+  const [jmLado, setJmLado] = useState('under');
+  const [jmGarimpo, setJmGarimpo] = useState(true);
+  const [jmMin, setJmMin] = useState(150);
+  const [jmNome, setJmNome] = useState('');
+  const [jmCriando, setJmCriando] = useState(false);
+  const [jmResultado, setJmResultado] = useState(null);
   const [parquets, setParquets] = useState([]);
   const [carregandoParquets, setCarregandoParquets] = useState(false);
   const [filtroParquet, setFiltroParquet] = useState('');
@@ -617,6 +626,22 @@ export default function BacktestAvulso({ onNavegar } = {}) {
     setResultado(null); setErro(null); setArquivo(null);
     if (p.casa && CASAS.some((o) => o.value === p.casa)) setCasa(p.casa);
   }, []);
+
+  const criarJobMae = useCallback(async () => {
+    if (!uploadId) { setErro('Escolha um parquet na aba "Já no servidor" primeiro.'); return; }
+    setJmCriando(true); setJmResultado(null); setErro(null);
+    try {
+      const ehOU = mercado.startsWith('over_under');
+      const r = await api.post('/backtest/job-mae', {
+        upload_id: uploadId, mercado, lado: ehOU ? jmLado : 'ambos',
+        casa, esporte, garimpo_auto: jmGarimpo, garimpo_modo: 'completo',
+        garimpo_min_apostas: Number(jmMin) || 150, nome: jmNome || null,
+      });
+      setJmResultado(r);
+    } catch (e) {
+      setErro(e?.message || 'Falha criando o job-mãe.');
+    } finally { setJmCriando(false); }
+  }, [uploadId, mercado, jmLado, casa, esporte, jmGarimpo, jmMin, jmNome]);
 
   const alinharFiltrosComArquivo = useCallback((res) => {
     if (!res) return;
@@ -1011,6 +1036,53 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                     {!carregandoParquets && parquets.length === 0 && (
                       <div className="px-2.5 py-3 text-[11px] text-[--mike-fg-muted]">
                         Nenhum parquet no servidor. Gere um na aba MikeDB ou suba um arquivo.
+                      </div>
+                    )}
+                  </div>
+
+                  {/* v34: JOB-MAE PRA GARIMPO */}
+                  <div className="mt-3 rounded-md p-3 mike-border-thin" style={{ backgroundColor: 'rgba(6,182,212,0.06)' }}>
+                    <div className="text-[11px] font-bold mb-1">Job-mãe pra garimpo</div>
+                    <div className="text-[10px] text-[--mike-fg-muted] mb-2">
+                      Cria o backtest escancarado do jeito que a varredura precisa — chip 0-100,
+                      sem linha/odd, teto 50, <b>candidatos por tick</b> (parquet), 7 janelas anotadas
+                      e <b>h2h carimbado</b> — e já deixa o garimpo engatado. Usa o parquet
+                      selecionado acima e o mercado da seção 2.
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {mercado.startsWith('over_under') && (
+                        <select value={jmLado} onChange={(e) => setJmLado(e.target.value)}
+                          className="px-2 py-1 rounded text-[11px] mike-border-thin bg-transparent text-[--mike-fg]">
+                          <option value="under">Under</option>
+                          <option value="over">Over</option>
+                        </select>
+                      )}
+                      <label className="flex items-center gap-1 text-[11px]">
+                        <input type="checkbox" checked={jmGarimpo} onChange={(e) => setJmGarimpo(e.target.checked)} />
+                        engatar garimpo (completo)
+                      </label>
+                      {jmGarimpo && (
+                        <label className="flex items-center gap-1 text-[11px]">
+                          mín. apostas
+                          <input type="number" value={jmMin} min={30} onChange={(e) => setJmMin(e.target.value)}
+                            className="w-16 px-1.5 py-0.5 rounded text-[11px] mike-border-thin bg-transparent text-[--mike-fg]" />
+                        </label>
+                      )}
+                      <input value={jmNome} onChange={(e) => setJmNome(e.target.value)}
+                        placeholder="apelido (opcional)"
+                        className="flex-1 min-w-[140px] px-2 py-1 rounded text-[11px] mike-border-thin bg-transparent text-[--mike-fg]" />
+                      <button onClick={criarJobMae} disabled={jmCriando || !uploadId}
+                        className="px-3 py-1.5 rounded-md text-[11px] font-bold mike-border-thin"
+                        style={{ backgroundColor: uploadId ? 'rgba(6,182,212,0.2)' : 'transparent', color: '#22d3ee' }}>
+                        {jmCriando ? 'Criando…' : 'Criar job-mãe'}
+                      </button>
+                    </div>
+                    {jmResultado && (
+                      <div className="mt-2 text-[11px]">
+                        Job-mãe <b>#{jmResultado.job_id}</b> criado ({jmResultado.mercado} · {jmResultado.lado} · candidatos · h2h carimbado).
+                        {jmResultado.varredura_id
+                          ? <> Garimpo <b>#{jmResultado.varredura_id}</b> engatado — solta sozinho quando o job concluir.</>
+                          : jmResultado.garimpo_erro ? <> Garimpo não engatado: {jmResultado.garimpo_erro}</> : null}
                       </div>
                     )}
                   </div>
