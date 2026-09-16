@@ -46,6 +46,8 @@ const MODOS = [
 
 const STATUS = {
   pendente:   { rotulo: 'Na fila',    cor: '#6b7691' },
+  // v34: garimpo engatado num job-mae — solta sozinho quando ele concluir
+  aguardando_origem: { rotulo: 'Esperando job-mãe', cor: '#a78bfa', girando: true },
   planejando: { rotulo: 'Preparando', cor: '#0891b2', girando: true },
   planejado:  { rotulo: 'Aguardando', cor: '#fbbf24' },
   rodando:    { rotulo: 'Garimpando', cor: '#22d3ee', girando: true },
@@ -53,7 +55,7 @@ const STATUS = {
   erro:       { rotulo: 'Erro',       cor: '#f43f5e' },
   cancelado:  { rotulo: 'Cancelado',  cor: '#6b7691' },
 };
-const ATIVO = ['pendente', 'planejando', 'rodando'];
+const ATIVO = ['pendente', 'planejando', 'rodando', 'aguardando_origem'];
 
 const POLL_MS = 4000;
 

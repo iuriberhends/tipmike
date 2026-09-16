@@ -421,6 +421,8 @@ export default function BacktestAvulso({ onNavegar } = {}) {
   const [jmNome, setJmNome] = useState('');
   const [jmCriando, setJmCriando] = useState(false);
   const [jmResultado, setJmResultado] = useState(null);
+  const [jmStatus, setJmStatus] = useState(null);   // {job, garimpo} atualizados por polling
+  const jmPollRef = useRef(null);
   const [parquets, setParquets] = useState([]);
   const [carregandoParquets, setCarregandoParquets] = useState(false);
   const [filtroParquet, setFiltroParquet] = useState('');
@@ -638,10 +640,28 @@ export default function BacktestAvulso({ onNavegar } = {}) {
         garimpo_min_apostas: Number(jmMin) || 150, nome: jmNome || null,
       });
       setJmResultado(r);
+      setJmStatus(null);
+      if (jmPollRef.current) clearInterval(jmPollRef.current);
+      // acompanha o job-mae (e o garimpo engatado) ate' concluir
+      jmPollRef.current = setInterval(async () => {
+        try {
+          const job = await ApiBacktest.get(r.job_id, false);
+          let garimpo = null;
+          if (r.varredura_id) {
+            try { garimpo = await api.get(`/varredura/jobs/${r.varredura_id}`); } catch (_) { garimpo = null; }
+          }
+          setJmStatus({ job, garimpo });
+          const jobFim = ['concluido', 'erro', 'cancelado'].includes(job?.status);
+          const garFim = !r.varredura_id || ['concluido', 'erro', 'cancelado'].includes(garimpo?.status);
+          if (jobFim && garFim) { clearInterval(jmPollRef.current); jmPollRef.current = null; }
+        } catch (_) { /* tenta de novo no proximo tick */ }
+      }, 5000);
     } catch (e) {
       setErro(e?.message || 'Falha criando o job-mãe.');
     } finally { setJmCriando(false); }
   }, [uploadId, mercado, jmLado, casa, esporte, jmGarimpo, jmMin, jmNome]);
+
+  useEffect(() => () => { if (jmPollRef.current) clearInterval(jmPollRef.current); }, []);
 
   const alinharFiltrosComArquivo = useCallback((res) => {
     if (!res) return;
@@ -1078,11 +1098,41 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                       </button>
                     </div>
                     {jmResultado && (
-                      <div className="mt-2 text-[11px]">
-                        Job-mãe <b>#{jmResultado.job_id}</b> criado ({jmResultado.mercado} · {jmResultado.lado} · candidatos · h2h carimbado).
-                        {jmResultado.varredura_id
-                          ? <> Garimpo <b>#{jmResultado.varredura_id}</b> engatado — solta sozinho quando o job concluir.</>
-                          : jmResultado.garimpo_erro ? <> Garimpo não engatado: {jmResultado.garimpo_erro}</> : null}
+                      <div className="mt-2 text-[11px] space-y-1">
+                        <div>
+                          Job-mãe <b>#{jmResultado.job_id}</b> ({jmResultado.mercado} · {jmResultado.lado} · candidatos · h2h carimbado)
+                          {' — '}
+                          {(() => {
+                            const j = jmStatus?.job;
+                            if (!j) return <span className="text-[--mike-fg-muted]">criando…</span>;
+                            if (j.status === 'concluido') return <span style={{ color: '#10b981' }}>✔ concluído</span>;
+                            if (j.status === 'erro') return <span style={{ color: '#f43f5e' }}>erro: {String(j.erro || '').slice(0, 120)}</span>;
+                            if (j.status === 'cancelado') return <span className="text-[--mike-fg-muted]">cancelado</span>;
+                            return <span style={{ color: '#22d3ee' }}>rodando {j.progresso ?? 0}%{j.progresso_msg ? ` · ${String(j.progresso_msg).slice(0, 70)}` : ''}</span>;
+                          })()}
+                        </div>
+                        {jmResultado.varredura_id ? (
+                          <div>
+                            Garimpo <b>#{jmResultado.varredura_id}</b>
+                            {' — '}
+                            {(() => {
+                              const g = jmStatus?.garimpo;
+                              const st = g?.status || 'aguardando_origem';
+                              const mapa = {
+                                aguardando_origem: ['esperando o job-mãe concluir', '#a78bfa'],
+                                pendente: ['na fila', '#6b7691'], planejando: ['preparando', '#0891b2'],
+                                planejado: ['aguardando confirmação', '#fbbf24'], rodando: ['garimpando', '#22d3ee'],
+                                concluido: ['✔ pronto — veja na tela da Varredura', '#10b981'],
+                                erro: [`erro: ${String(g?.erro || '').slice(0, 100)}`, '#f43f5e'],
+                                cancelado: ['cancelado', '#6b7691'],
+                              };
+                              const [txt, cor] = mapa[st] || [st, '#6b7691'];
+                              return <span style={{ color: cor }}>{txt}{g?.progresso_msg && st === 'rodando' ? ` · ${String(g.progresso_msg).slice(0, 60)}` : ''}</span>;
+                            })()}
+                          </div>
+                        ) : jmResultado.garimpo_erro ? (
+                          <div>Garimpo não engatado: {jmResultado.garimpo_erro}</div>
+                        ) : null}
                       </div>
                     )}
                   </div>
