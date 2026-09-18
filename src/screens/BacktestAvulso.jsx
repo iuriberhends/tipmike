@@ -35,6 +35,7 @@ const CASAS = [
   { value: 'superbet', label: 'Superbet' },
   { value: 'bet365', label: 'Bet365' },
   { value: 'estrelabet', label: 'Estrelabet' },
+  { value: 'kto', label: 'KTO' },
   { value: 'meridianbet', label: 'Meridianbet' },
 ];
 const ESPORTES = [
@@ -59,6 +60,10 @@ const MERCADOS = [
   { value: 'ah_ht', label: 'HC Asiático HT (1º tempo)' },
   { value: 'ml_ft', label: 'Money Line FT (vencedor)' },
   { value: 'ml_ht', label: 'Money Line HT (1º tempo)' },
+  // v34: total por TIME/JOGADOR — superbet/kto PLAYER_TOTAL; betano 84/85
+  // (gols), 1902/1926 (pontos) e 1912/1916 (pontos do 1º tempo)
+  { value: 'over_under_ft_player', label: 'Total por time/jogador FT' },
+  { value: 'over_under_ht_player', label: 'Total por time/jogador HT (1º tempo)' },
 ];
 const LADOS = [
   { value: 'ambos', label: 'Ambos' },
