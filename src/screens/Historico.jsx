@@ -1,5 +1,6 @@
 // ============================================================
 // Historico.jsx — Modal de Histórico do Bot (v3 - API REAL)
+// v40: botao 'Planilha completa (.xlsx)' -> GET /bots/:id/export.xlsx (formato TipManager)
 //
 // USO:
 //   <ModalHistorico botId={5} aberto={true} onClose={() => ...} />
@@ -10,7 +11,7 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   X, TrendingUp, DollarSign, Percent, Send,
-  Download, Maximize2, Minimize2, Info, History,
+  Download, FileSpreadsheet, Maximize2, Minimize2, Info, History,
   ChevronUp, ChevronDown, RefreshCw, AlertCircle,
 } from 'lucide-react';
 import { ApiBots } from '../lib/api';
@@ -410,6 +411,26 @@ export function ModalHistorico({ botId, aberto = true, onClose = () => {} }) {
 
   const { bot, resultadosDiarios, tips, totais, dias, loading, error } = useBotHistorico(botId, periodoSelecionado);
 
+  // v40: planilha completa no formato TipManager (7 abas), gerada no backend
+  const [baixandoXlsx, setBaixandoXlsx] = useState(false);
+  const [erroXlsx, setErroXlsx] = useState(null);
+  const baixarPlanilhaCompleta = async () => {
+    if (!bot || baixandoXlsx) return;
+    setBaixandoXlsx(true);
+    setErroXlsx(null);
+    try {
+      const slug = String(bot.nome || 'bot')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+      await ApiBots.downloadXlsx(botId, { modo: 'simulado', periodo: periodoSelecionado },
+        `Bot_${botId}_-_${slug || 'bot'}.xlsx`);
+    } catch (e) {
+      setErroXlsx(e?.message || 'Falha ao gerar a planilha');
+    } finally {
+      setBaixandoXlsx(false);
+    }
+  };
+
   const acumulado = useMemo(() => {
     let lucroAcum = 0, stakeAcum = 0;
     return resultadosDiarios.map((r) => {
@@ -504,6 +525,7 @@ export function ModalHistorico({ botId, aberto = true, onClose = () => {} }) {
           <div className="px-6 lg:px-8 py-5">
 
             <div className="flex items-start justify-between gap-4 mb-3">
+              <div className="flex items-center gap-2 flex-wrap">
               <button
                 onClick={baixarPlanilha}
                 disabled={loading || !bot}
@@ -513,6 +535,18 @@ export function ModalHistorico({ botId, aberto = true, onClose = () => {} }) {
                 <Download className="w-3.5 h-3.5" />
                 Baixar planilha
               </button>
+              <button
+                onClick={baixarPlanilhaCompleta}
+                disabled={loading || !bot || baixandoXlsx}
+                title="Planilha completa no formato TipManager: Tips Enviadas, Torneios, Grades, Confrontos, Jogadores, Prob. Hist., Horários"
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded text-[12px] font-semibold uppercase tracking-wider text-emerald-300 hover:bg-emerald-500/10 hover:text-emerald-200 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ border: '0.5px solid rgba(16, 185, 129, 0.45)' }}
+              >
+                {baixandoXlsx ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <FileSpreadsheet className="w-3.5 h-3.5" />}
+                {baixandoXlsx ? 'Gerando...' : 'Planilha completa (.xlsx)'}
+              </button>
+              {erroXlsx && <span className="text-[11px] text-rose-400 self-center">{erroXlsx}</span>}
+              </div>
 
               <div className="flex items-center gap-1">
                 <button onClick={() => setFullscreen(!fullscreen)} className="p-2 rounded text-slate-500 hover:text-white hover:bg-slate-800/50 transition" title={fullscreen ? 'Sair de tela cheia' : 'Tela cheia'}>

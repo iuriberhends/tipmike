@@ -4,6 +4,7 @@
  * v2: ApiStats expandida com 8 endpoints novos pra tela Stats.jsx
  * v3: ApiBots ganha exportCsv (URL builder) + downloadCsv (fetch+blob+download)
  * v4: ApiBacktest ganha createAvulso (backtest standalone, sem bot)
+ * v40: ApiBots ganha exportXlsxUrl + downloadXlsx (planilha TipManager, 7 abas)
  * v6: AUTH (Fase 2) — todo fetch sai com Authorization: Bearer <access>.
  *     Em 401, tenta UM refresh (single-flight em lib/auth.js) e repete a
  *     chamada uma única vez. Refresh morto → logout global via evento.
@@ -199,6 +200,21 @@ export const ApiBots = {
     };
     const url = ApiBots.exportCsvUrl(id, merged);
     return _downloadBlob(url, filenameFallback || `bot_${id}_apostas.csv`);
+  },
+  // ----------------------------------------------------------
+  // v40: Export .xlsx no formato da planilha TipManager (7 abas)
+  // GET /bots/:id/export.xlsx?modo=simulado&periodo=30d
+  // ----------------------------------------------------------
+  exportXlsxUrl: (id, params = {}) => {
+    const qs = new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v !== null && v !== undefined && v !== '')
+    ).toString();
+    return `${BASE_URL}/bots/${id}/export.xlsx${qs ? `?${qs}` : ''}`;
+  },
+  downloadXlsx: async (id, params = {}, filenameFallback) => {
+    const merged = { modo: 'simulado', periodo: 'todas', ...params };
+    const url = ApiBots.exportXlsxUrl(id, merged);
+    return _downloadBlob(url, filenameFallback || `bot_${id}_tipmanager.xlsx`);
   },
 };
 export const ApiApostas = {
