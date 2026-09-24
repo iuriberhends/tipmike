@@ -30,7 +30,10 @@ const R_AH_GOLS          = { vals: Array.from({length: 42}, (_, i) => -10.5 + i)
 const R_EH_GOLS          = { vals: Array.from({length: 42}, (_, i) => -10.5 + i) };
 const R_AH_PONTOS        = { vals: Array.from({length: 42}, (_, i) => -10.5 + i) };
 const R_JOGADOR_GOLS     = { vals: [0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5] };
-const R_JOGADOR_PONTOS   = { min: 9.5,   max: 39.5,  step: 5.0  };
+// v37: faixa real do total por time no e-basket (Mixed/H2H: 40-70 no FT;
+// 1ºT ~15-40). A antiga (9,5-39,5 passo 5) nao alcancava nenhuma linha real.
+const R_JOGADOR_PONTOS    = { min: 19.5,  max: 89.5,  step: 1.0  };
+const R_JOGADOR_PONTOS_HT = { min: 9.5,   max: 49.5,  step: 1.0  };
 
 const ESPORTES_BASKET = ['nba2k'];
 const isBasket = (e) => ESPORTES_BASKET.includes(e);
@@ -44,7 +47,7 @@ export function getConfigMercado(mercadoValue, esporte = 'fifa') {
     over_under_ht:               { inner: ['Over','Under'],                                          range: b ? R_OU_PONTOS_HT : R_OU_GOLS_HT,  descricao: b ? 'Total de pontos no 1ºT.' : 'Total de gols no 1ºT.' },
     over_under_ft_ht_0x0:        { inner: ['Over','Under'],                                          range: R_OU_GOLS,                           descricao: 'Total de gols — somente quando intervalo termina 0x0.' },
     over_under_ft_player:        { inner: ['Over','Under'],                                          range: b ? R_JOGADOR_PONTOS : R_JOGADOR_GOLS, descricao: b ? 'Pontos marcados pelo jogador alvo.' : 'Gols marcados pelo jogador alvo.' },
-    over_under_ht_player:        { inner: ['Over','Under'],                                          range: b ? R_JOGADOR_PONTOS : R_JOGADOR_GOLS, descricao: b ? 'Pontos do jogador alvo no 1ºT.' : 'Gols do jogador alvo no 1ºT.' },
+    over_under_ht_player:        { inner: ['Over','Under'],                                          range: b ? R_JOGADOR_PONTOS_HT : R_JOGADOR_GOLS, descricao: b ? 'Pontos do jogador alvo no 1ºT.' : 'Gols do jogador alvo no 1ºT.' },
     over_under_ft_player_against:{ inner: ['Over','Under'],                                          range: R_JOGADOR_GOLS,                      descricao: 'Total de gols sofridos pelo jogador alvo.' },
     clean_sheet_ft_player:       { inner: ['Sim','Não'],                                             range: null,                               descricao: 'O jogador alvo não sofre nenhum gol na partida.' },
     ah_ft:                       { inner: null,                                                     range: b ? R_AH_PONTOS : R_AH_GOLS,         descricao: b ? 'Handicap asiático de pontos. Sem 0 (empate = void).' : 'Handicap asiático. Sem 0 (empate = void).' },

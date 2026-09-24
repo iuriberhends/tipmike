@@ -66,6 +66,8 @@ const MERCADOS_POR_ESPORTE = {
     { value: 'over_under_ft',      label: 'Partida - Pontos' },
     { value: 'over_under_ht',      label: 'Total de Pontos - 1˚T' },
     { value: 'over_under_ft_player', label: 'Total de Pontos - Jogador' },
+    // v37: Betano tem o 1º tempo por time (1912/1916); o motor ja liquidava
+    { value: 'over_under_ht_player', label: 'Total de Pontos - Jogador 1˚T' },
     { value: 'ah_ft',              label: 'Handicap Asiático' },
     { value: 'ah_ht',              label: 'Handicap Asiático - 1˚T' },
   ],
@@ -2280,7 +2282,10 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
   const torneiosDisp = (torneiosReais.length > 0)
     ? torneiosReais.map(t => t.nome_pai)
     : (TORNEIOS_POR_ESPORTE[esporte] || []);
-  const mercadosDisp = MERCADOS_POR_ESPORTE[esporte] || [];
+  // v37: a Estrelabet NAO coleta total por time/jogador — bot criado la'
+  // nasceria mudo. Some da lista so' nessa casa.
+  const mercadosDisp = (MERCADOS_POR_ESPORTE[esporte] || []).filter(
+    (m) => !(casa === 'estrelabet' && String(m.value).endsWith('_player')));
   const capacidades = CAPACIDADES[esporte] || CAPACIDADES.fifa;
   const cenariosDisp = capacidades.cenariosFull ? CENARIOS_FULL : CENARIOS_REDUZIDO;
   const filtrosLiveDisp = capacidades.filtrosLive;
@@ -2304,6 +2309,13 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     }
 
   }, [esporte]); // eslint-disable-line
+
+  // v37: trocou pra uma casa sem o mercado escolhido -> volta pro primeiro
+  useEffect(() => {
+    if (mercadosDisp.length > 0 && !mercadosDisp.find((m) => m.value === mercado)) {
+      setMercado(mercadosDisp[0].value);
+    }
+  }, [casa]); // eslint-disable-line
 
   const radioWR = [
     { value: 'all', label: 'Todas' },

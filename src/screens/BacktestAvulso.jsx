@@ -438,6 +438,13 @@ export default function BacktestAvulso({ onNavegar } = {}) {
   const [casa, setCasa] = useState('betano');
   const [esporte, setEsporte] = useState('fifa');
   const [mercado, setMercado] = useState('over_under_ft');
+  // v37: Estrelabet nao coleta total por time/jogador — some da lista la'
+  const mercadosAvulso = useMemo(
+    () => MERCADOS.filter((m) => !(casa === 'estrelabet' && String(m.value).endsWith('_player'))),
+    [casa]);
+  useEffect(() => {
+    if (!mercadosAvulso.find((m) => m.value === mercado)) setMercado(mercadosAvulso[0]?.value || 'over_under_ft');
+  }, [casa]); // eslint-disable-line
   // v23: err so existe em total seco (over/under) — controla card e payload
   const ehOU = mercado === 'over_under_ft' || mercado === 'over_under_ht';
   const [lado, setLado] = useState('ambos');
@@ -1230,7 +1237,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <Campo label="Casa"><Select value={casa} onChange={setCasa} options={CASAS} /></Campo>
                     <Campo label="Esporte"><Select value={esporte} onChange={setEsporte} options={ESPORTES} /></Campo>
-                    <Campo label="Mercado"><Select value={mercado} onChange={setMercado} options={MERCADOS} /></Campo>
+                    <Campo label="Mercado"><Select value={mercado} onChange={setMercado} options={mercadosAvulso} /></Campo>
                     {!ehHc && (
                       <Campo label="Lado"><Select value={lado} onChange={setLado} options={LADOS} /></Campo>
                     )}

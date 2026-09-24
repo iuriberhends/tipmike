@@ -58,8 +58,9 @@ const MERCADOS_LABEL = {
   ah_ht:                'HC Asiático 1T',
   eh_ft:                'HC Europeu',
   eh_ht:                'HC Europeu 1T',
-  over_under_ft_player: 'Over Jogador',
-  over_under_ht_player: 'Over Jog. 1T',
+  // v37: o mercado e' o TOTAL do time/jogador (Over OU Under)
+  over_under_ft_player: 'Total Jogador',
+  over_under_ht_player: 'Total Jog. 1T',
   ml_ft:                'Resultado Final',
   ml_ht:                'Resultado 1T',
   btts_ft:              'Ambos Marcam',
