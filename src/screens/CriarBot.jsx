@@ -40,8 +40,9 @@ const TORNEIOS_POR_ESPORTE = {
     'FC 26 Rivals',
   ],
   nba2k:   ['H2H GG League', 'Adriatic NextGen', 'Battle (NBA2K)', 'Live NBA'],
-  ehockey: ['NHL eSports', 'IIHF eSports', 'KHL eSports'],
-  etennis: ['ATP eSports', 'WTA eSports', 'Grand Slam eSports', 'Masters eSports'],
+  // v38: nomes REAIS da Superbet (fallback se o catalogo da API vier vazio)
+  ehockey: ['EAL - NHL', 'NHL Esports', 'NHL Esports League', 'Mixed Conference', 'National Teams 3x4'],
+  etennis: ['Tênis Esports'],
 };
 
 // MERCADOS POR ESPORTE - cada esporte tem mercados diferentes
@@ -72,17 +73,17 @@ const MERCADOS_POR_ESPORTE = {
     { value: 'ah_ht',              label: 'Handicap Asiático - 1˚T' },
   ],
 
+  // v38: so' o que a Superbet oferece E o motor liquida. Hockey nao tem
+  // "Ambos Marcam" na casa; tenis so' tem placar em SETS (sem games), entao
+  // HC/Total de games e vencedor de set nao fecham — ficou o Vencedor.
   ehockey: [
-    { value: 'ml_ft',         label: 'Resultado Final' },
-    { value: 'ah_ft',         label: 'HC Asiático' },
-    { value: 'over_under_ft', label: 'Over/Under (Gols)' },
-    { value: 'btts_ft',       label: 'Ambos Marcam' },
+    { value: 'ml_ft',                label: 'Resultado Final (1X2)' },
+    { value: 'ah_ft',                label: 'Handicap' },
+    { value: 'over_under_ft',        label: 'Total de Gols' },
+    { value: 'over_under_ft_player', label: 'Total de Gols - Time' },
   ],
   etennis: [
     { value: 'ml_ft',          label: 'Vencedor da Partida' },
-    { value: 'ah_ft',          label: 'HC Asiático (Games)' },
-    { value: 'over_under_ft',  label: 'Total de Games' },
-    { value: 'ml_ht',          label: 'Vencedor do Set' },
   ],
 };
 // CAPACIDADES POR ESPORTE - controla o que mostrar/esconder
@@ -132,7 +133,7 @@ const CAPACIDADES = {
   etennis: {
     label: 'e-Tênis',
     filtrosLive: {
-      placares: { tipo: 'text', label: 'Placar (Games)' },
+      placares: { tipo: 'text', label: 'Placar (Sets)' },
     },
     cenariosFull: false,
     temQuartos: false,

@@ -29,7 +29,8 @@ const R_OU_PONTOS_HT     = { min: 34.5,  max: 124.5, step: 5.0  };
 const R_AH_GOLS          = { vals: Array.from({length: 42}, (_, i) => -10.5 + i) };
 const R_EH_GOLS          = { vals: Array.from({length: 42}, (_, i) => -10.5 + i) };
 const R_AH_PONTOS        = { vals: Array.from({length: 42}, (_, i) => -10.5 + i) };
-const R_JOGADOR_GOLS     = { vals: [0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5] };
+// v38: e-hockey vai ate 7,5 no total por time
+const R_JOGADOR_GOLS     = { vals: [0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5] };
 // v37: faixa real do total por time no e-basket (Mixed/H2H: 40-70 no FT;
 // 1ºT ~15-40). A antiga (9,5-39,5 passo 5) nao alcancava nenhuma linha real.
 const R_JOGADOR_PONTOS    = { min: 19.5,  max: 89.5,  step: 1.0  };
@@ -40,8 +41,10 @@ const isBasket = (e) => ESPORTES_BASKET.includes(e);
 
 export function getConfigMercado(mercadoValue, esporte = 'fifa') {
   const b = isBasket(esporte);
+  // v38: tenis nao tem empate — vencedor so' Casa/Fora (igual basquete)
+  const semEmpate = b || esporte === 'etennis';
   const configs = {
-    ml_ft:                       { inner: b ? ['Casa','Fora'] : ['Casa','Empate','Fora'],            range: null,                               descricao: b ? 'Vencedor da partida (sem empate).' : 'Resultado final.' },
+    ml_ft:                       { inner: semEmpate ? ['Casa','Fora'] : ['Casa','Empate','Fora'],    range: null,                               descricao: semEmpate ? 'Vencedor da partida (sem empate).' : 'Resultado final.' },
     ml_ht:                       { inner: b ? ['Casa','Fora'] : ['Casa','Empate','Fora'],            range: null,                               descricao: b ? 'Vencedor do 1ºT (Q1+Q2).' : 'Resultado no intervalo (1ºT).' },
     over_under_ft:               { inner: ['Over','Under'],                                          range: b ? R_OU_PONTOS_FT : R_OU_GOLS,     descricao: b ? 'Total de pontos na partida (4 quartos).' : 'Total de gols na partida.' },
     over_under_ht:               { inner: ['Over','Under'],                                          range: b ? R_OU_PONTOS_HT : R_OU_GOLS_HT,  descricao: b ? 'Total de pontos no 1ºT.' : 'Total de gols no 1ºT.' },
