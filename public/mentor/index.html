@@ -1,280 +1,726 @@
 <!doctype html>
-<html lang="pt-BR">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Mike Mentor</title>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Mike Mentor</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#0b0f1a;--bg2:#111827;--card:#151b2b;--card2:#1a2234;--border:#232c40;--fg:#e5e7eb;--soft:#c7cdd8;--muted:#8b93a5;
---acc:#10b981;--acc400:#34d399;--acc2:#0891b2;--cyan400:#22d3ee;--amber:#f59e0b;--amber400:#fbbf24;--red:#ef4444;--red400:#f87171;
---mono:"JetBrains Mono",ui-monospace,monospace;--sans:Inter,system-ui,sans-serif;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
-body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
-a{color:var(--cyan400)}button{font-family:inherit}
-.topo{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;display:flex;align-items:center;gap:14px;padding:10px 18px;background:rgba(11,15,26,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
-.logo{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-weight:800;letter-spacing:.06em}
-.logo i{display:inline-grid;place-items:center;width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#04110c;font-style:normal}
-.abas{display:flex;gap:2px;margin-left:8px}.abas button{background:none;border:0;color:var(--muted);font-weight:600;padding:8px 12px;border-radius:9px;cursor:pointer;font-size:14px}
-.abas button.on{color:var(--acc400);background:rgba(16,185,129,.1)}
-.espaco{flex:1}.relogio{font-family:var(--mono);font-weight:700;color:var(--soft);background:var(--card);border:1px solid var(--border);padding:6px 12px;border-radius:999px;font-size:13px;display:flex;gap:8px;align-items:center}
-.relogio.on{color:var(--acc400);border-color:rgba(16,185,129,.4)}.relogio .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}.relogio.on .dot{background:var(--acc);animation:pulse 1.4s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-.xp{font-family:var(--mono);font-size:12px;color:var(--amber400);font-weight:700;display:flex;gap:10px;align-items:center}
-main{max-width:1140px;margin:0 auto;padding:18px 18px 90px}
-.painel{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:14px}
-.painel h3{margin:0 0 10px;font-size:15px;display:flex;align-items:center;gap:8px}
-.rot{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--acc400);font-weight:700}
-h1{font-size:1.5rem;margin:.2rem 0 .4rem}h2{font-size:1.15rem;margin:.4rem 0 .6rem}
-.muted{color:var(--muted)}.small{font-size:13px}.soft{color:var(--soft)}
-.btn{display:inline-flex;align-items:center;gap:8px;border:0;border-radius:10px;padding:10px 16px;font-weight:700;cursor:pointer;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#03120c;font-size:14px;box-shadow:0 0 0 1px rgba(16,185,129,.35),0 8px 24px rgba(16,185,129,.15)}
-.btn.sec{background:var(--card2);color:var(--soft);box-shadow:0 0 0 1px var(--border)}.btn.warn{background:var(--amber);color:#1a1200;box-shadow:none}.btn:disabled{opacity:.5;cursor:not-allowed}
-.grade{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
-.kpi{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}.kpi div{background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:12px}
-.kpi b{font-family:var(--mono);font-size:1.4rem;display:block;color:var(--fg)}.kpi span{font-size:12px;color:var(--muted)}
-.lista{list-style:none;margin:0;padding:0}.lista li{display:flex;gap:12px;align-items:center;padding:9px 0;border-bottom:1px dashed var(--border)}.lista li:last-child{border:0}
-.chip{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:2px 9px;border:1px solid var(--border);color:var(--soft);background:var(--card2)}
-.chip.S{border-color:rgba(245,158,11,.5);color:var(--amber400)}.chip.A{border-color:rgba(16,185,129,.5);color:var(--acc400)}.chip.B{color:var(--cyan400);border-color:rgba(34,211,238,.4)}.chip.ok{border-color:rgba(16,185,129,.5);color:var(--acc400)}.chip.red{border-color:rgba(239,68,68,.5);color:var(--red400)}
-.medidor{height:8px;border-radius:999px;background:var(--bg2);overflow:hidden}.medidor i{display:block;height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2))}
-.qcard{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;max-width:860px;margin:0 auto}
-.qmeta{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:8px;font-size:12px;color:var(--muted)}
-.enun{white-space:pre-wrap;font-size:15.5px;line-height:1.6;margin:0 0 14px}
-.alts{display:grid;gap:8px}.alt{display:flex;gap:12px;align-items:flex-start;text-align:left;background:var(--card2);border:1px solid var(--border);color:var(--fg);border-radius:10px;padding:11px 12px;cursor:pointer;font-size:14.5px;line-height:1.45}
-.alt b{font-family:var(--mono);color:var(--muted);min-width:20px}.alt[aria-pressed=true]{border-color:var(--cyan400);background:rgba(34,211,238,.08)}
-.alt.certa{border-color:var(--acc);background:rgba(16,185,129,.12)}.alt.errada{border-color:var(--red);background:rgba(239,68,68,.1)}
-.conf{display:flex;gap:8px;margin-top:12px}.conf button{flex:1;border:1px solid var(--border);background:var(--card2);color:var(--soft);border-radius:9px;padding:9px;font-weight:700;cursor:pointer}.conf button.on{border-color:var(--acc);color:var(--acc400)}
-.resol{margin-top:12px;background:rgba(34,211,238,.06);border:1px solid rgba(34,211,238,.25);border-radius:10px;padding:12px;font-size:14px;white-space:pre-wrap}
-.trilha{display:flex;gap:6px;margin:10px 0 16px}.trilha span{flex:1;height:6px;border-radius:999px;background:var(--bg2)}.trilha span.ok{background:var(--acc)}.trilha span.at{background:var(--cyan400)}
-.anel{width:110px;height:110px}.anel text{font-family:var(--mono);font-weight:800;fill:var(--fg)}
-.acoes{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
-.atalhos{margin-top:10px;font-size:11px;color:var(--muted)}kbd{font-family:var(--mono);border:1px solid var(--border);border-radius:4px;padding:0 5px;background:var(--bg2)}
-.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--card2);border:1px solid rgba(16,185,129,.5);color:var(--fg);padding:10px 16px;border-radius:12px;font-weight:600;z-index:50;box-shadow:0 10px 30px rgba(0,0,0,.4)}
-.login{max-width:380px;margin:80px auto}.login input{width:100%;background:var(--bg2);border:1px solid var(--border);color:var(--fg);border-radius:10px;padding:11px 12px;margin:6px 0 12px;font-size:15px}
+/* ===== tokens: os mesmos do site da TipMike ===== */
+:root{
+  --bg:#0b0f1a; --bg2:#070a13; --card:#141a28; --card2:#1a2030; --hover:#1d2434; --border:#222a3d;
+  --line:rgba(60,85,130,.4);
+  --fg:#eaeef7; --soft:#a8b3c9; --muted:#6b7691;
+  --acc:#10b981; --acc2:#0891b2; --acc400:#34d399; --cyan400:#22d3ee;
+  --amber:#f59e0b; --amber400:#fbbf24; --red:#ef4444; --red400:#f87171; --violet400:#a78bfa;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:dark;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+html{scroll-padding-top:calc(64px + env(safe-area-inset-top,0px));-webkit-text-size-adjust:100%;height:100%}
+*,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--fg);font:400 15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px;border-radius:6px}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:rgba(16,185,129,.3);border-radius:4px;border:2px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background:rgba(16,185,129,.6);background-clip:padding-box;border:2px solid transparent}
+*{scrollbar-width:thin;scrollbar-color:rgba(16,185,129,.3) transparent}
+.ic{width:16px;height:16px;flex:none;display:inline-block;vertical-align:-3px}
+.ic svg{width:100%;height:100%;display:block}
+.muted{color:var(--muted)} .soft{color:var(--soft)} .small{font-size:.8125rem}
+.rotulo{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+h1,h2,h3{margin:0;letter-spacing:-.01em}
+h2{font-size:1.25rem;font-weight:800}
+h3{font-size:1rem;font-weight:700}
+p{margin:.35rem 0}
+
+/* ===== efeitos da TipMike ===== */
+@keyframes mike-live-pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(16,185,129,.7)}50%{opacity:.85;box-shadow:0 0 0 5px rgba(16,185,129,0)}}
+@keyframes mike-shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+@keyframes entra{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes toast-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.pulse{animation:mike-live-pulse 1.4s ease-out infinite}
+.ponto-live{width:7px;height:7px;border-radius:50%;background:var(--acc400);animation:mike-live-pulse 1.4s ease-out infinite}
+
+/* ===== cabeçalho ===== */
+.topo{position:sticky;top:0;z-index:30;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);background:rgba(11,15,26,.8);border-bottom:.5px solid var(--line);padding-top:env(safe-area-inset-top,0px)}
+.topo-in{max-width:1280px;margin:0 auto;height:56px;padding:0 clamp(12px,3vw,32px);display:flex;align-items:center;gap:16px}
+.marca{display:flex;align-items:center;gap:8px;border:0;background:none;padding:0;cursor:pointer}
+.logo{width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,var(--acc),var(--acc2));display:grid;place-items:center;box-shadow:0 4px 10px rgba(16,185,129,.3);font-weight:900;color:var(--bg);font-size:15px}
+.marca b{font-family:var(--mono);font-weight:800;letter-spacing:-.02em;font-size:15px}
+.abas{display:flex;align-items:center;gap:4px;margin-left:12px}
+.aba{position:relative;display:flex;align-items:center;gap:6px;border:0;background:none;padding:6px 12px;border-radius:7px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;transition:color .15s,background .15s}
+.aba .ic{width:14px;height:14px}
+.aba:hover{color:var(--fg)}
+.aba[aria-selected="true"]{color:var(--acc)}
+.aba[aria-selected="true"]::after{content:"";position:absolute;left:8px;right:8px;bottom:-11px;height:2px;border-radius:2px;background:var(--acc)}
+.espaco{flex:1}
+.crono{display:flex;align-items:center;gap:8px;border:1px solid var(--border);background:var(--card);border-radius:999px;padding:4px 12px 4px 8px;font-size:12px;cursor:pointer;color:var(--soft);transition:border-color .15s}
+.crono:hover{border-color:rgba(16,185,129,.5)}
+.crono .ponto{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.crono.on .ponto{background:var(--acc400)}
+.crono b{font-family:var(--mono);font-weight:700;color:var(--fg);font-size:12.5px}
+.usuario{display:flex;align-items:center;gap:8px;padding-left:12px;border-left:.5px solid var(--line)}
+.avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--acc),var(--acc2));display:grid;place-items:center;font-weight:900;color:var(--bg);font-size:12px}
+.usuario span{display:flex;flex-direction:column;line-height:1.15}
+.usuario span b{font-size:11px}
+.usuario span i{font-style:normal;font-size:9.5px;color:var(--muted)}
+
+main{max-width:1280px;margin:0 auto;padding:28px clamp(12px,3vw,32px) 64px}
+section[role="tabpanel"]{animation:entra .25s ease-out}
+.aviso{display:flex;gap:10px;align-items:flex-start;font-size:12.5px;color:var(--soft);background:rgba(245,158,11,.08);border:.5px solid rgba(245,158,11,.35);border-radius:10px;padding:10px 12px;margin:0 0 22px;max-width:760px}
+.aviso .ic{color:var(--amber400);margin-top:1px}
+.cab{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:16px}
+.cab p{margin:.2rem 0 0}
+.bloco-texto{max-width:70ch}
+
+/* ===== peças básicas ===== */
+.card,.painel,.kpi,.qcard,.semana,.assunto,.materia,.progresso{background:var(--card);border:1px solid var(--border);border-radius:12px}
+.painel{padding:16px 18px}
+.painel-cab{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.painel-cab h3{display:flex;align-items:center;gap:8px}
+.grade2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-top:16px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:8px;padding:10px 16px;font-weight:700;font-size:14px;cursor:pointer;background:var(--acc);color:var(--bg);box-shadow:0 4px 12px rgba(16,185,129,.3);transition:filter .15s,transform .05s;text-decoration:none}
+.btn:hover{filter:brightness(1.08)} .btn:active{transform:translateY(1px)}
+.btn[disabled]{opacity:.45;cursor:not-allowed;box-shadow:none}
+.btn.sec{background:var(--card);color:var(--soft);border:1px solid var(--border);box-shadow:none}
+.btn.sec:hover{border-color:var(--acc);color:var(--acc);filter:none}
+.btn .ic{width:16px;height:16px}
+.icone-tile{width:36px;height:36px;border-radius:9px;display:grid;place-items:center;flex:none;border:1px solid}
+.icone-tile .ic{width:17px;height:17px}
+.t-em{background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.3);color:var(--acc400)}
+.t-cy{background:rgba(8,145,178,.15);border-color:rgba(34,211,238,.3);color:var(--cyan400)}
+.t-am{background:rgba(245,158,11,.15);border-color:rgba(245,158,11,.3);color:var(--amber400)}
+.t-re{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:var(--red400)}
+.t-vi{background:rgba(139,92,246,.15);border-color:rgba(139,92,246,.3);color:var(--violet400)}
+.t-mu{background:var(--card2);border-color:var(--border);color:var(--muted)}
+.seletor,.periodo{display:inline-flex;flex-wrap:wrap;gap:6px}
+.seletor button,.periodo button{border:1px solid var(--border);background:var(--card);color:var(--muted);border-radius:999px;padding:5px 13px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap}
+.seletor button:hover,.periodo button:hover{color:var(--fg);background:var(--hover)}
+.seletor button[aria-pressed="true"],.periodo button[aria-pressed="true"]{background:rgba(16,185,129,.15);color:var(--acc400);border-color:rgba(16,185,129,.45);box-shadow:0 4px 14px rgba(16,185,129,.18)}
+.filtros{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;border-radius:999px;padding:2px 8px;border:1px solid var(--border);color:var(--muted);white-space:nowrap}
+.chip.base{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.35);color:var(--amber400)}
+.chip.completo{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.35);color:var(--acc400)}
+.chip.expresso{background:rgba(8,145,178,.12);border-color:rgba(34,211,238,.35);color:var(--cyan400)}
+.chip.propria{background:rgba(139,92,246,.12);border-color:rgba(139,92,246,.35);color:var(--violet400)}
+.medidor{height:6px;border-radius:3px;background:var(--bg2);overflow:hidden;margin-top:8px}
+.medidor i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,var(--acc),var(--acc2));transition:width .4s ease}
+.medidor.brass i{background:linear-gradient(90deg,var(--amber),var(--amber400))}
+.vazio-box{border:1px dashed var(--border);border-radius:10px;padding:26px 16px;text-align:center;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:6px}
+.vazio-box .icone-tile{margin-bottom:4px}
+.legenda{display:flex;flex-wrap:wrap;gap:14px;font-size:11.5px;color:var(--muted);margin-top:8px}
+.legenda i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:0}
+.grafico{width:100%;height:auto;display:block}
+.grafico text{fill:var(--muted);font:600 12px system-ui,sans-serif}
+
+/* ===== início ===== */
+.agora{position:relative;overflow:hidden;border-radius:16px;padding:22px 22px 20px;margin-bottom:16px;
+  background:radial-gradient(600px 220px at 0% 0%,rgba(16,185,129,.12),transparent 70%) ,linear-gradient(var(--card),var(--card)) padding-box,linear-gradient(135deg,rgba(16,185,129,.55),rgba(8,145,178,.45) 60%,rgba(34,42,61,1)) border-box;
+  border:1px solid transparent}
+.agora .rot{font-size:10px;text-transform:uppercase;letter-spacing:.1em;font-weight:700;color:var(--acc400);display:flex;align-items:center;gap:8px}
+.agora h1{font-size:clamp(1.6rem,3.6vw,2.3rem);font-weight:900;line-height:1.1;margin:.3rem 0 .15rem}
+.agora .mat{color:var(--soft);font-size:14px}
+.trilha{list-style:none;margin:18px 0 0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.trilha li{position:relative;display:flex;gap:10px;align-items:flex-start;padding:10px;border-radius:10px;background:rgba(7,10,19,.45);border:1px solid var(--border);transition:border-color .2s,background .2s}
+.trilha li b{display:block;font-size:13px;font-weight:700}
+.trilha li span{font-size:11.5px;color:var(--muted);line-height:1.35}
+.trilha li.atual{border-color:rgba(34,211,238,.5);background:rgba(8,145,178,.1);box-shadow:0 0 0 3px rgba(34,211,238,.08)}
+.trilha li.feito{opacity:.7}
+.trilha li.feito b{color:var(--acc400)}
+.acoes{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;align-items:center}
+.agora.vazio{background:var(--card);border:1px solid var(--border)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.kpi{padding:12px 14px;display:flex;gap:12px;align-items:center}
+.kpi>div:last-child{flex:1;min-width:0}
+.kpi .val{font-size:1.4rem;font-weight:900;line-height:1.15}
+.kpi .val small{font-size:.8rem;font-weight:600;color:var(--muted);margin-left:3px}
+.kpi .sub{font-size:11px;color:var(--muted)}
+.hoje-lista{list-style:none;margin:0;padding:0}
+.hoje-lista li{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px dashed var(--border)}
+.hoje-lista li:last-child{border-bottom:0}
+.hoje-lista b{font-size:14px;display:block}
+.hoje-lista .icone-tile{width:30px;height:30px;border-radius:8px}
+.hoje-lista .icone-tile .ic{width:15px;height:15px}
+.exemplo{font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:8px;margin-top:14px;cursor:pointer}
+.exemplo input{accent-color:var(--acc)}
+.barras-mat{display:flex;flex-direction:column;gap:12px}
+.barras-mat .l{display:flex;justify-content:space-between;font-size:13px;gap:10px}
+.barras-mat .l span{color:var(--muted)}
+.foco .kpis,.foco .grade2,.foco .exemplo,.foco #hoje{display:none}
+
+/* ===== sessão / questões ===== */
+#sessao{animation:entra .2s ease-out}
+.qcard{padding:18px 20px;max-width:820px}
+.qcard.sess{max-width:none}
+.qmeta{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.pontos{display:flex;gap:6px;align-items:center}
+.pontos i{width:10px;height:10px;border-radius:50%;border:1.5px solid var(--border);display:block}
+.pontos i.ok{background:var(--acc);border-color:var(--acc)}
+.pontos i.x{background:var(--red);border-color:var(--red)}
+.pontos i.at{border-color:var(--cyan400);box-shadow:0 0 0 3px rgba(34,211,238,.18)}
+.fonte-q{font-size:11.5px;color:var(--muted);margin:0 0 6px}
+.enun{font-size:15.5px;line-height:1.6;margin:0 0 14px;max-width:75ch}
+.alts{display:flex;flex-direction:column;gap:8px}
+.alt{display:grid;grid-template-columns:28px 1fr;gap:12px;align-items:start;text-align:left;border:1px solid var(--border);background:var(--card2);border-radius:10px;padding:10px 12px;cursor:pointer;transition:border-color .15s,background .15s}
+.alt:hover{border-color:rgba(16,185,129,.4);background:var(--hover)}
+.alt b{font-family:var(--mono);font-size:12px;width:28px;height:28px;border-radius:7px;display:grid;place-items:center;background:var(--bg2);border:1px solid var(--border);color:var(--soft)}
+.alt span{padding-top:3px;font-size:14.5px}
+.alt[aria-pressed="true"]{border-color:rgba(34,211,238,.6);background:rgba(8,145,178,.1)}
+.alt[aria-pressed="true"] b{border-color:var(--cyan400);color:var(--cyan400)}
+.alt.certa{border-color:rgba(16,185,129,.6);background:rgba(16,185,129,.1)}
+.alt.certa b{background:var(--acc);border-color:var(--acc);color:var(--bg)}
+.alt.errada{border-color:rgba(239,68,68,.55);background:rgba(239,68,68,.1)}
+.alt.errada b{background:var(--red);border-color:var(--red);color:#fff}
+.conf{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.conf button{border:1px solid;border-radius:999px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;background:none;display:inline-flex;gap:6px;align-items:center;transition:background .15s}
+.conf button[data-c="certeza"]{color:var(--acc400);border-color:rgba(16,185,129,.45)}
+.conf button[data-c="certeza"]:hover{background:rgba(16,185,129,.12)}
+.conf button[data-c="duvida"]{color:var(--amber400);border-color:rgba(245,158,11,.45)}
+.conf button[data-c="duvida"]:hover{background:rgba(245,158,11,.12)}
+.conf button[data-c="chute"]{color:var(--red400);border-color:rgba(239,68,68,.45)}
+.conf button[data-c="chute"]:hover{background:rgba(239,68,68,.12)}
+.conf kbd,.atalhos kbd{font-family:var(--mono);font-size:10px;border:1px solid var(--border);border-radius:4px;padding:0 4px;color:var(--muted);background:var(--bg2)}
+.resultado{margin-top:16px;border-top:1px solid var(--border);padding-top:14px;animation:entra .2s ease-out}
+.veredito{font-weight:900;font-size:1.15rem;display:inline-flex;align-items:center;gap:6px}
+.veredito.ok{color:var(--acc400)} .veredito.x{color:var(--red400)}
+.resolucao{margin-top:10px;background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--cyan400);border-radius:10px;padding:12px 14px}
+.res-cab{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;color:var(--cyan400);margin-bottom:6px}
+.res-txt{font-size:14px;line-height:1.6;color:var(--soft);max-width:78ch}
+.res-txt.curto{max-height:9.5em;overflow:hidden;-webkit-mask-image:linear-gradient(#000 70%,transparent);mask-image:linear-gradient(#000 70%,transparent)}
+.ler-mais{border:0;background:none;color:var(--cyan400);font-size:12.5px;font-weight:700;padding:6px 0 0;cursor:pointer}
+.destino{margin-top:10px;display:flex;gap:10px;align-items:flex-start;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13.5px;color:var(--soft)}
+.destino .ic{color:var(--amber400);margin-top:2px}
+.atalhos{font-size:11px;color:var(--muted);margin-top:12px;display:flex;gap:10px;flex-wrap:wrap}
+.player{aspect-ratio:16/9;width:100%;border-radius:12px;background:radial-gradient(circle at 50% 40%,rgba(8,145,178,.18),transparent 60%),var(--bg2);border:1px solid var(--border);display:grid;place-items:center;text-align:center;padding:20px;color:var(--soft)}
+.player-in{max-width:48ch}
+.player-in .icone-tile{width:56px;height:56px;border-radius:50%;margin:0 auto 10px}
+.player-in .icone-tile .ic{width:24px;height:24px}
+.nota-final{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.anel{width:86px;height:86px;flex:none}
+.anel text{font:900 22px system-ui;fill:var(--fg)}
+.placar{display:flex;gap:26px;margin:0 0 14px;flex-wrap:wrap}
+.placar div{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.placar b{display:block;font-size:1.6rem;color:var(--fg);line-height:1.1;font-weight:900;text-transform:none;letter-spacing:0}
+
+/* ===== planejamento ===== */
+.semanas{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px}
+.semana{position:relative;padding:14px 16px 14px 18px;display:flex;flex-direction:column;align-items:flex-start;gap:8px;overflow:hidden;transition:border-color .15s,background .15s}
+.semana::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--border)}
+.semana.atual{border-color:rgba(16,185,129,.4);box-shadow:0 0 0 1px rgba(16,185,129,.12),0 8px 24px rgba(16,185,129,.08)}
+.semana.atual::before{background:linear-gradient(var(--acc),var(--acc2))}
+.semana.trancada .n,.semana.trancada .t{color:var(--soft)}
+.semana .n{font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;color:var(--muted)}
+.semana.atual .n{color:var(--acc400)}
+.semana .t{font-size:14.5px;font-weight:700;line-height:1.35;max-width:52ch}
+.semana .d{font-size:12px;color:var(--muted)}
+.semana .medidor{width:100%}
+.estado{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;border-radius:8px;padding:6px 12px;border:1px solid var(--border);background:var(--card2);color:var(--muted)}
+.estado.abrir{background:var(--acc);border-color:var(--acc);color:var(--bg);cursor:pointer;box-shadow:0 4px 12px rgba(16,185,129,.25)}
+.estado .ic{width:13px;height:13px}
+.voltar{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--card);border-radius:8px;padding:7px 12px;cursor:pointer;font-weight:700;font-size:13px;color:var(--soft);transition:border-color .15s,color .15s}
+.voltar:hover{border-color:var(--acc);color:var(--acc)}
+.sem-cab{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:16px}
+.sem-cab h2{margin:0}
+.sem-cab .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.progresso{padding:14px 16px}
+.progresso .topo2{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.progresso .pct{font-weight:900;font-size:1.5rem}
+.progresso .pct small{font-size:.8rem;color:var(--muted);font-weight:600}
+.materia{margin-bottom:12px;overflow:hidden}
+.materia>button{width:100%;display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;align-items:center;border:0;background:none;padding:12px 16px;cursor:pointer;text-align:left}
+.materia>button:hover{background:var(--hover)}
+.materia>button .muted{font-size:12px}
+.cont{font-family:var(--mono);font-weight:700;font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:999px;padding:1px 9px;color:var(--soft)}
+.materia .corpo{border-top:1px solid var(--border);padding:4px 16px 12px}
+.ass-plan{border-bottom:1px dashed var(--border);padding:14px 0}
+.ass-plan:last-child{border-bottom:0}
+.ass-plan .topo3{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ass-plan .topo3 b{font-size:14.5px}
+.caminhos{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.caminho{display:flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:5px 12px;font-size:12px;cursor:pointer;background:var(--card2);color:var(--soft);transition:border-color .15s}
+.caminho:has(input:checked){border-color:rgba(16,185,129,.5);background:rgba(16,185,129,.1);color:var(--fg)}
+.caminho input{accent-color:var(--acc);margin:0}
+.caminho.rec::after{content:"recomendado";font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--amber400);margin-left:2px}
+.passos{list-style:none;margin:2px 0 0;padding:0}
+.passos li{display:grid;grid-template-columns:auto auto 1fr;gap:10px;align-items:start;padding:5px 0;font-size:13.5px}
+.passos li .pn{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--muted);min-width:3.4rem;padding-top:2px}
+.passos li input{width:17px;height:17px;accent-color:var(--acc);margin-top:2px;cursor:pointer}
+.passos li.feito span:last-child{color:var(--muted);text-decoration:line-through}
+.passos .auto{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--cyan400);margin-left:6px}
+.revs{list-style:none;margin:0;padding:0}
+.revs li{display:grid;grid-template-columns:auto 5.6rem 3.2rem 1fr auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px dashed var(--border);font-size:13.5px}
+.revs li:last-child{border-bottom:0}
+.revs b{font-family:var(--mono);font-size:12px;color:var(--cyan400)}
+.revs input{width:17px;height:17px;accent-color:var(--acc)}
+.pend-mat{font-size:12.5px;color:var(--muted);border:1px dashed var(--border);border-radius:12px;padding:12px 14px;display:flex;gap:10px;align-items:flex-start}
+
+/* ===== edital ===== */
+.modulo{margin:20px 0 6px}
+.modulo h3{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
+.assunto{margin-bottom:6px;transition:border-color .15s}
+.assunto:hover{border-color:#2c3650}
+.assunto .linha{display:grid;grid-template-columns:auto auto 1fr auto;gap:12px;align-items:center;padding:10px 14px}
+.assunto.fora{opacity:.55}
+.check{width:18px;height:18px;accent-color:var(--acc);cursor:pointer}
+.tier{font-family:var(--mono);font-weight:800;width:28px;height:28px;border-radius:7px;display:grid;place-items:center;font-size:12px;border:1px solid}
+.tS{background:rgba(245,158,11,.15);border-color:rgba(245,158,11,.4);color:var(--amber400)}
+.tA{background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.4);color:var(--acc400)}
+.tB{background:rgba(8,145,178,.15);border-color:rgba(34,211,238,.4);color:var(--cyan400)}
+.tC{background:var(--card2);border-color:var(--border);color:var(--muted)}
+.tN{background:none;border-style:dashed;border-color:var(--border);color:var(--muted)}
+.tBase{background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.55);color:var(--amber400)}
+.tBase .ic{width:14px;height:14px}
+.nome{font-weight:700;font-size:14px;line-height:1.3}
+.nome .chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
+.num{text-align:right;font-size:12px;color:var(--muted);white-space:nowrap}
+.num b{font-weight:800;color:var(--fg);font-size:13px}
+.abrir{border:0;background:none;cursor:pointer;padding:2px 4px;border-radius:6px;color:var(--muted);vertical-align:middle}
+.abrir:hover{color:var(--acc)}
+.abrir .ic{width:15px;height:15px}
+.aulas{list-style:none;margin:0;padding:0 14px 10px 86px;font-size:12.5px;color:var(--soft)}
+.aulas li{padding:3px 0;display:flex;gap:6px;align-items:center}
+.aulas li .ic{width:13px;height:13px;color:var(--muted)}
+.rodape-edital{position:sticky;bottom:0;margin-top:14px;padding:12px 0 calc(12px + env(safe-area-inset-bottom,0px));background:linear-gradient(to top,var(--bg) 70%,transparent);display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+
+/* ===== questões: filtro ===== */
+.q-rodape{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}
+.q-mat{border:1px solid var(--border);border-radius:10px;margin-top:8px;background:var(--card2)}
+.q-mat.pend{padding:10px 12px;border-style:dashed;background:none;font-size:13px}
+.q-mat-cab{display:flex;align-items:center;gap:10px;padding:9px 12px;flex-wrap:wrap}
+.q-mat-cab label{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px}
+.q-mat-cab .abrir{margin-left:auto}
+.q-mat input{width:17px;height:17px;accent-color:var(--acc)}
+.q-mat-corpo{border-top:1px solid var(--border);padding:4px 12px 10px}
+.q-grupo{font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;color:var(--muted);margin:10px 0 4px}
+.q-ass{display:flex;align-items:center;gap:9px;padding:6px 6px;cursor:pointer;border-radius:7px;font-size:13.5px;transition:background .12s}
+.q-ass:hover{background:var(--hover)}
+.q-ass:not(.est) span:first-of-type{color:var(--soft)}
+.q-ass.est span:first-of-type{font-weight:700}
+
+/* ===== plano geral ===== */
+.linhas-orc{display:flex;flex-direction:column;gap:14px;max-width:860px}
+.orc .topo4{display:flex;justify-content:space-between;gap:10px;font-weight:700;font-size:13.5px;margin-bottom:6px;flex-wrap:wrap}
+.orc .topo4 span{font-weight:500;color:var(--muted);font-size:12px}
+.orc .trilho{height:10px;border-radius:5px;background:var(--bg2);border:1px solid var(--border);overflow:hidden;display:flex}
+.orc .base{background:var(--amber)} .orc .resto{background:linear-gradient(90deg,var(--acc),var(--acc2))}
+.orc.pend{opacity:.6}
+.orc.pend .trilho{background-image:linear-gradient(90deg,rgba(60,85,130,.1) 0%,rgba(60,85,130,.3) 50%,rgba(60,85,130,.1) 100%);background-size:200% 100%;animation:mike-shimmer 2.4s infinite linear}
+.painel ul{margin:6px 0 0;padding-left:18px;color:var(--soft);font-size:13.5px}
+.painel li{margin:5px 0}
+.cal{list-style:none;margin:12px 0 0;padding:0;border-left:2px solid var(--border)}
+.cal li{position:relative;padding:6px 0 6px 16px;font-size:13.5px}
+.cal li::before{content:"";position:absolute;left:-6px;top:12px;width:10px;height:10px;border-radius:50%;background:var(--cyan400);box-shadow:0 0 0 3px rgba(34,211,238,.15)}
+.cal li.fechou::before{background:var(--acc);box-shadow:0 0 0 3px rgba(16,185,129,.15)}
+.cal b{font-family:var(--mono);font-size:12px;margin-right:8px;color:var(--fg)}
+.cal .atr{color:var(--red400);font-size:12px}
+
+/* ===== simulados ===== */
+.sim-hero{display:grid;grid-template-columns:1fr auto;gap:18px;align-items:center}
+.sim-hero .data{font-family:var(--mono);font-weight:800;font-size:2.4rem;line-height:1;color:var(--fg)}
+.regras{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.dist{width:100%;border-collapse:collapse;font-size:13.5px}
+.dist td{padding:6px 0;border-bottom:1px dashed var(--border)}
+.dist td:last-child{text-align:right;font-family:var(--mono);font-weight:700}
+.dist tr.bloco td{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border);padding-top:12px}
+.cal-sim{list-style:none;margin:0;padding:0}
+.cal-sim li{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px dashed var(--border)}
+.cal-sim li:last-child{border-bottom:0}
+.cal-sim .icone-tile{width:32px;height:32px;border-radius:8px}
+.hist li{grid-template-columns:auto 1fr auto}
+.nota-mini{font-family:var(--mono);font-weight:800;font-size:15px}
+.sim-barra{position:sticky;top:57px;z-index:20;display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:rgba(11,15,26,.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:14px}
+.sim-barra .relogio-sim{font-family:var(--mono);font-weight:800;font-size:1.25rem;color:var(--amber400)}
+.sim-grade{display:grid;grid-template-columns:1fr 250px;gap:16px;align-items:start}
+.folha{position:sticky;top:130px}
+.folha-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.folha-grid button{font-family:var(--mono);font-size:12px;font-weight:700;border:1px solid var(--border);background:var(--card2);color:var(--muted);border-radius:7px;padding:7px 0;cursor:pointer;position:relative}
+.folha-grid button.resp{background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.45);color:var(--acc400)}
+.folha-grid button.marc::after{content:"";position:absolute;top:3px;right:3px;width:6px;height:6px;border-radius:50%;background:var(--amber400)}
+.folha-grid button.at{box-shadow:0 0 0 2px var(--cyan400);color:var(--fg)}
+.btn-flag{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--card);color:var(--soft);border-radius:8px;padding:6px 11px;font-size:12.5px;font-weight:700;cursor:pointer}
+.btn-flag.on{border-color:rgba(245,158,11,.55);color:var(--amber400);background:rgba(245,158,11,.1)}
+.res-mat{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+@media (max-width:860px){.sim-grade{grid-template-columns:1fr}.folha{position:static}.sim-hero{grid-template-columns:1fr}.sim-barra{top:0}}
+
+/* ===== toast ===== */
+.toast{position:fixed;right:20px;bottom:20px;z-index:50;display:flex;gap:10px;align-items:center;background:var(--card2);border:1px solid rgba(16,185,129,.45);border-radius:10px;padding:10px 14px;box-shadow:0 10px 30px rgba(0,0,0,.45);font-size:13.5px;font-weight:600;animation:toast-in .2s ease-out}
+.toast .ic{color:var(--acc400)}
+
+/* ===== celular ===== */
+@media (max-width:860px){
+  .topo{backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(11,15,26,.97)}
+  .abas{position:fixed;left:0;right:0;bottom:0;z-index:40;margin:0;justify-content:space-around;gap:0;background:rgba(11,15,26,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:.5px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px))}
+  .aba{flex-direction:column;gap:3px;font-size:10px;padding:5px 2px;flex:1;white-space:nowrap;min-width:0}
+  .aba .ic{width:19px;height:19px}
+  .aba[aria-selected="true"]::after{top:-7px;bottom:auto;left:28%;right:28%}
+  .usuario span{display:none}
+  main{padding-bottom:96px}
+  .trilha{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .aulas{padding-left:14px}
+  .rodape-edital{bottom:62px;padding:8px 0}
+  .rodape-edital .muted{display:none}
+  .rodape-edital .btn{width:100%}
+  .assunto .linha{grid-template-columns:auto auto 1fr}
+  .assunto .num{grid-column:3;text-align:left}
+  .revs li{grid-template-columns:auto 4.6rem 2.8rem 1fr}
+  .revs li .muted{display:none}
+  .toast{left:12px;right:12px;bottom:76px}
+  .atalhos{display:none}
+}
+@media (max-width:520px){.usuario{display:none}.crono{padding:4px 10px 4px 8px}
+  .trilha li{flex-direction:column;gap:6px;padding:9px}
+  .trilha .icone-tile{width:30px;height:30px}
+  .agora{padding:18px 16px}
+  .qcard{padding:14px}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* v2: complementos */
+.campo{width:100%;background:var(--bg2);border:1px solid var(--border);color:var(--fg);border-radius:10px;padding:11px 12px;margin:6px 0 12px;font-size:15px}
 .err{color:var(--red400);font-size:13px}
-table{width:100%;border-collapse:collapse;font-size:13.5px}td,th{padding:7px 6px;border-bottom:1px dashed var(--border);text-align:left}th{color:var(--muted);font-weight:600;font-size:12px}td.n{font-family:var(--mono);text-align:right}
-details{border:1px solid var(--border);border-radius:10px;padding:8px 12px;margin:6px 0;background:var(--card2)}summary{cursor:pointer;font-weight:600}
-.folha{display:grid;grid-template-columns:repeat(10,1fr);gap:5px}.folha button{font-family:var(--mono);font-size:12px;font-weight:700;border:1px solid var(--border);background:var(--card2);color:var(--muted);border-radius:6px;padding:6px 0;cursor:pointer}.folha button.resp{color:var(--acc400);border-color:rgba(16,185,129,.45)}.folha button.at{box-shadow:0 0 0 2px var(--cyan400)}
-.mobile-nav{display:none}
-@media (max-width:820px){.abas{display:none}.mobile-nav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:40;background:rgba(11,15,26,.95);border-top:1px solid var(--border);padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px))}.mobile-nav button{flex:1;background:none;border:0;color:var(--muted);font-size:10.5px;font-weight:700;padding:6px 0;cursor:pointer}.mobile-nav button.on{color:var(--acc400)}.folha{grid-template-columns:repeat(5,1fr)}}
-</style>
-</head>
+.bloco-detalhe{border:1px solid var(--border);border-radius:10px;padding:8px 12px;margin:10px 0;background:var(--card2)}.bloco-detalhe summary{cursor:pointer;font-weight:600;display:flex;gap:8px;align-items:center}
+.bloco-detalhe .res-txt{max-height:none;margin-top:8px}
+.usuario .avatar{color:var(--amber400)}
+</style></head>
 <body>
-<header class="topo">
-  <div class="logo"><i>M</i>MIKE MENTOR</div>
-  <nav class="abas" id="abas"></nav>
+<header class="topo"><div class="topo-in">
+  <button class="marca" id="marca" title="Início"><span class="logo">M</span><b>MIKE MENTOR</b></button>
+  <nav class="abas" role="tablist" aria-label="Seções">
+    <button class="aba" role="tab" aria-selected="true" aria-controls="p-inicio" id="t-inicio" data-i="home">Início</button>
+    <button class="aba" role="tab" aria-selected="false" aria-controls="p-plano" id="t-plano" data-i="calendar-days">Planejamento</button>
+    <button class="aba" role="tab" aria-selected="false" aria-controls="p-edital" id="t-edital" data-i="list-checks">Edital</button>
+    <button class="aba" role="tab" aria-selected="false" aria-controls="p-questoes" id="t-questoes" data-i="circle-help">Questões</button>
+    <button class="aba" role="tab" aria-selected="false" aria-controls="p-sim" id="t-sim" data-i="clipboard-check">Simulados</button>
+    <button class="aba" role="tab" aria-selected="false" aria-controls="p-geral" id="t-geral" data-i="bar-chart-3">Plano geral</button>
+  </nav>
   <div class="espaco"></div>
-  <div class="xp" id="xp"></div>
-  <div class="relogio" id="relogio"><span class="dot"></span><span id="relogio-txt">hoje 0 min</span></div>
-</header>
-<main id="main"></main>
-<nav class="mobile-nav" id="mnav"></nav>
-<script>
-// ------------------------------------------------------------- API
-const API = localStorage.getItem('mm_api') || location.origin;
-// dentro do site do TipMike o login já existe: reaproveita o token dele (chave tipmike_access)
-let TOKEN = sessionStorage.getItem('mm_token') || localStorage.getItem('mm_token') || localStorage.getItem('tipmike_access') || '';
-async function api(path, opts={}){
-  const r = await fetch(API + path, {...opts, headers:{'Content-Type':'application/json', ...(TOKEN?{'Authorization':'Bearer '+TOKEN}:{}), ...(opts.headers||{})}});
-  if(r.status===401){ TOKEN=''; sessionStorage.removeItem('mm_token'); localStorage.removeItem('mm_token'); if(localStorage.getItem('tipmike_access')){ location.href='/login'; } render('login'); throw new Error('login'); }
-  const t = await r.text(); let j; try{ j = t?JSON.parse(t):null }catch{ j={detail:t} }
-  if(!r.ok){ toast((j&&j.detail)||('erro '+r.status)); throw new Error(j&&j.detail||r.status); }
+  <button class="crono" id="crono" title="Cronômetro do estudo"><span class="ponto" id="crono-ponto"></span><span id="crono-txt">hoje</span><b id="crono-val">0 min</b></button>
+  <div class="usuario" id="usuario"><span class="avatar">M</span><span><b>Mentor</b><i>Soldado PMBA</i></span></div>
+</div></header>
+<div id="login" hidden><div class="painel" style="max-width:400px;margin:60px auto"><div class="rotulo" style="color:var(--acc400)">Mike Mentor</div><h2>Entrar</h2>
+  <label class="small muted">E-mail</label><input class="campo" id="l-email" type="email" autocomplete="username"><label class="small muted">Senha</label><input class="campo" id="l-senha" type="password" autocomplete="current-password">
+  <label class="small muted">Endereço da API (só se o painel não estiver no mesmo endereço)</label><input class="campo" id="l-api" placeholder="https://api.tipmike.com.br">
+  <label class="small muted"><input type="checkbox" id="l-lembrar"> continuar conectado</label><div class="acoes"><button class="btn" id="l-ok">Entrar</button></div><p class="err" id="l-err"></p></div></div>
+<main hidden>
+  <section role="tabpanel" id="p-inicio" aria-labelledby="t-inicio">
+    <div id="agora"></div><div id="sessao"></div>
+    <div class="card painel" id="hoje" style="margin-bottom:16px"></div>
+    <div class="kpis" id="kpis"></div>
+    <div class="grade2">
+      <div class="painel"><div class="painel-cab"><h3><span class="ic" data-i="clock" style="color:var(--acc400)"></span>Horas estudadas</h3><div class="periodo" id="per-horas"><button aria-pressed="true" data-p="7">7 dias</button><button aria-pressed="false" data-p="30">30 dias</button></div></div><div id="graf-horas"></div></div>
+      <div class="painel"><div class="painel-cab"><h3><span class="ic" data-i="target" style="color:var(--cyan400)"></span>Questões de concurso</h3><button class="voltar" id="ir-questoes"><span class="ic" data-i="circle-help"></span>Fazer questões</button></div><div id="resumo-q"></div></div>
+    </div>
+  </section>
+  <section role="tabpanel" id="p-plano" aria-labelledby="t-plano" hidden>
+    <div id="plano-lista"><div class="cab"><div><h2>Planejamento</h2><p class="muted small bloco-texto">A semana seguinte libera quando você conclui a atual. O mentor monta cada semana toda segunda, com as horas e o desempenho reais da anterior.</p></div></div><div class="semanas" id="semanas"></div></div>
+    <div id="plano-semana" hidden></div>
+  </section>
+  <section role="tabpanel" id="p-edital" aria-labelledby="t-edital" hidden>
+    <div class="cab"><div><h2>Edital verticalizado</h2><p class="muted small bloco-texto">A estrela é o que a prova de Soldado cobra sempre (tier S); a letra é o tier. "De Soldado" são as questões das provas da PM-BA e do CBM-BA no assunto.</p></div>
+      <div class="filtros"><div class="seletor" id="sel-mat"></div><div class="seletor" id="sel-filtro"><button aria-pressed="true" data-f="corte">Na linha de corte</button><button aria-pressed="false" data-f="tudo">Tudo</button></div></div></div>
+    <div id="lista-edital"></div>
+    <div class="rodape-edital"><button class="btn" id="btn-fazer"><span class="ic" data-i="circle-help"></span>Fazer questões</button><span class="muted small" id="info-fazer"></span></div>
+  </section>
+  <section role="tabpanel" id="p-questoes" aria-labelledby="t-questoes" hidden>
+    <div class="cab"><div><h2>Fazer questões</h2><p class="muted small">Só questões de concurso. As respostas entram no placar e na repetição.</p></div></div>
+    <div class="painel" id="q-filtro" style="max-width:820px"><div class="filtros" style="justify-content:space-between"><div class="seletor" id="q-modo"><button aria-pressed="true" data-m="estudei">Tudo que já estudei</button><button aria-pressed="false" data-m="escolher">Escolher matérias</button></div><div class="seletor" id="q-qtd"><button data-q="10">10</button><button aria-pressed="true" data-q="20">20</button><button data-q="30">30</button></div></div>
+      <div id="q-escolha"></div><div class="q-rodape"><span class="muted small" id="q-resumo"></span><button class="btn" id="q-comecar"><span class="ic" data-i="play"></span>Começar</button></div></div>
+    <div class="qcard" id="qcard" hidden style="margin-top:16px"></div>
+    <div class="painel" style="margin-top:16px;max-width:820px"><div class="painel-cab"><h3><span class="ic" data-i="trophy" style="color:var(--amber400)"></span>Desempenho</h3></div><div id="desempenho"></div></div>
+  </section>
+  <section role="tabpanel" id="p-sim" aria-labelledby="t-sim" hidden><div id="sim-painel"></div><div id="sim-prova" hidden></div></section>
+  <section role="tabpanel" id="p-geral" aria-labelledby="t-geral" hidden></section>
+</main>
+<script>/* ===== MIKE MENTOR — painel v2 (visual do protótipo, dados da API v3) ===== */
+const ICONES = {"home": "<path d=\"m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\" /> <polyline points=\"9 22 9 12 15 12 15 22\" />", "calendar-days": "<path d=\"M8 2v4\" /> <path d=\"M16 2v4\" /> <rect width=\"18\" height=\"18\" x=\"3\" y=\"4\" rx=\"2\" /> <path d=\"M3 10h18\" /> <path d=\"M8 14h.01\" /> <path d=\"M12 14h.01\" /> <path d=\"M16 14h.01\" /> <path d=\"M8 18h.01\" /> <path d=\"M12 18h.01\" /> <path d=\"M16 18h.01\" />", "list-checks": "<path d=\"m3 17 2 2 4-4\" /> <path d=\"m3 7 2 2 4-4\" /> <path d=\"M13 6h8\" /> <path d=\"M13 12h8\" /> <path d=\"M13 18h8\" />", "circle-help": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3\" /> <path d=\"M12 17h.01\" />", "bar-chart-3": "<path d=\"M3 3v18h18\" /> <path d=\"M18 17V9\" /> <path d=\"M13 17V5\" /> <path d=\"M8 17v-3\" />", "play": "<polygon points=\"6 3 20 12 6 21 6 3\" />", "pause": "<rect x=\"14\" y=\"4\" width=\"4\" height=\"16\" rx=\"1\" /> <rect x=\"6\" y=\"4\" width=\"4\" height=\"16\" rx=\"1\" />", "check": "<path d=\"M20 6 9 17l-5-5\" />", "lock": "<rect width=\"18\" height=\"11\" x=\"3\" y=\"11\" rx=\"2\" ry=\"2\" /> <path d=\"M7 11V7a5 5 0 0 1 10 0v4\" />", "clock": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <polyline points=\"12 6 12 12 16 14\" />", "timer": "<line x1=\"10\" x2=\"14\" y1=\"2\" y2=\"2\" /> <line x1=\"12\" x2=\"15\" y1=\"14\" y2=\"11\" /> <circle cx=\"12\" cy=\"14\" r=\"8\" />", "flame": "<path d=\"M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z\" />", "target": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <circle cx=\"12\" cy=\"12\" r=\"6\" /> <circle cx=\"12\" cy=\"12\" r=\"2\" />", "book-open": "<path d=\"M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z\" /> <path d=\"M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z\" />", "circle-play": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <polygon points=\"10 8 16 12 10 16 10 8\" />", "brain": "<path d=\"M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z\" /> <path d=\"M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z\" /> <path d=\"M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4\" /> <path d=\"M17.599 6.5a3 3 0 0 0 .399-1.375\" /> <path d=\"M6.003 5.125A3 3 0 0 0 6.401 6.5\" /> <path d=\"M3.477 10.896a4 4 0 0 1 .585-.396\" /> <path d=\"M19.938 10.5a4 4 0 0 1 .585.396\" /> <path d=\"M6 18a4 4 0 0 1-1.967-.516\" /> <path d=\"M19.967 17.484A4 4 0 0 1 18 18\" />", "file-text": "<path d=\"M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z\" /> <path d=\"M14 2v4a2 2 0 0 0 2 2h4\" /> <path d=\"M10 9H8\" /> <path d=\"M16 13H8\" /> <path d=\"M16 17H8\" />", "trophy": "<path d=\"M6 9H4.5a2.5 2.5 0 0 1 0-5H6\" /> <path d=\"M18 9h1.5a2.5 2.5 0 0 0 0-5H18\" /> <path d=\"M4 22h16\" /> <path d=\"M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22\" /> <path d=\"M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22\" /> <path d=\"M18 2H6v7a6 6 0 0 0 12 0V2Z\" />", "chevron-down": "<path d=\"m6 9 6 6 6-6\" />", "chevron-up": "<path d=\"m18 15-6-6-6 6\" />", "arrow-left": "<path d=\"m12 19-7-7 7-7\" /> <path d=\"M19 12H5\" />", "x": "<path d=\"M18 6 6 18\" /> <path d=\"m6 6 12 12\" />", "rotate-ccw": "<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /> <path d=\"M3 3v5h5\" />", "activity": "<path d=\"M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2\" />", "zap": "<path d=\"M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z\" />", "graduation-cap": "<path d=\"M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z\" /> <path d=\"M22 10v6\" /> <path d=\"M6 12.5V16a6 3 0 0 0 12 0v-3.5\" />", "star": "<polygon points=\"12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2\" />", "layers": "<path d=\"m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z\" /> <path d=\"m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65\" /> <path d=\"m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65\" />", "bell": "<path d=\"M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9\" /> <path d=\"M10.3 21a1.94 1.94 0 0 0 3.4 0\" />", "log-out": "<path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4\" /> <polyline points=\"16 17 21 12 16 7\" /> <line x1=\"21\" x2=\"9\" y1=\"12\" y2=\"12\" />", "keyboard": "<path d=\"M10 8h.01\" /> <path d=\"M12 12h.01\" /> <path d=\"M14 8h.01\" /> <path d=\"M16 12h.01\" /> <path d=\"M18 8h.01\" /> <path d=\"M6 8h.01\" /> <path d=\"M7 16h10\" /> <path d=\"M8 12h.01\" /> <rect width=\"20\" height=\"16\" x=\"2\" y=\"4\" rx=\"2\" />", "circle-check-big": "<path d=\"M22 11.08V12a10 10 0 1 1-5.93-9.14\" /> <path d=\"m9 11 3 3L22 4\" />", "circle-x": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"m15 9-6 6\" /> <path d=\"m9 9 6 6\" />", "hourglass": "<path d=\"M5 22h14\" /> <path d=\"M5 2h14\" /> <path d=\"M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22\" /> <path d=\"M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2\" />", "sparkles": "<path d=\"M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z\" /> <path d=\"M20 3v4\" /> <path d=\"M22 5h-4\" /> <path d=\"M4 17v2\" /> <path d=\"M5 18H3\" />", "shield-check": "<path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\" /> <path d=\"m9 12 2 2 4-4\" />", "external-link": "<path d=\"M15 3h6v6\" /> <path d=\"M10 14 21 3\" /> <path d=\"M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6\" />", "monitor-play": "<path d=\"M10 7.75a.75.75 0 0 1 1.142-.638l3.664 2.249a.75.75 0 0 1 0 1.278l-3.664 2.25a.75.75 0 0 1-1.142-.64z\" /> <path d=\"M12 17v4\" /> <path d=\"M8 21h8\" /> <rect x=\"2\" y=\"3\" width=\"20\" height=\"14\" rx=\"2\" />", "flag": "<path d=\"M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z\" /> <line x1=\"4\" x2=\"4\" y1=\"22\" y2=\"15\" />", "clipboard-check": "<rect width=\"8\" height=\"4\" x=\"8\" y=\"2\" rx=\"1\" ry=\"1\" /> <path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2\" /> <path d=\"m9 14 2 2 4-4\" />", "chevron-left": "<path d=\"m15 18-6-6 6-6\" />", "chevron-right": "<path d=\"m9 18 6-6-6-6\" />", "send": "<path d=\"m22 2-7 20-4-9-9-4Z\" /> <path d=\"M22 2 11 13\" />", "calendar-check": "<path d=\"M8 2v4\" /> <path d=\"M16 2v4\" /> <rect width=\"18\" height=\"18\" x=\"3\" y=\"4\" rx=\"2\" /> <path d=\"M3 10h18\" /> <path d=\"m9 16 2 2 4-4\" />", "alarm-clock": "<circle cx=\"12\" cy=\"13\" r=\"8\" /> <path d=\"M12 9v4l2 2\" /> <path d=\"M5 3 2 6\" /> <path d=\"m22 6-3-3\" /> <path d=\"M6.38 18.7 4 21\" /> <path d=\"M17.64 18.67 20 21\" />", "list-ordered": "<line x1=\"10\" x2=\"21\" y1=\"6\" y2=\"6\" /> <line x1=\"10\" x2=\"21\" y1=\"12\" y2=\"12\" /> <line x1=\"10\" x2=\"21\" y1=\"18\" y2=\"18\" /> <path d=\"M4 6h1v4\" /> <path d=\"M4 10h2\" /> <path d=\"M6 18H4c0-1 2-2 2-3s-1-1.5-2-1\" />", "award": "<path d=\"m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526\" /> <circle cx=\"12\" cy=\"8\" r=\"6\" />"};
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const I=(n,cls='')=>`<span class="ic ${cls}" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONES[n]||''}</svg></span>`;
+function pintarIcones(raiz=document){raiz.querySelectorAll('[data-i]').forEach(el=>{if(el.dataset.pintado)return;el.dataset.pintado='1';const svg=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONES[el.dataset.i]||''}</svg>`;if(el.classList.contains('ic'))el.innerHTML=svg;else el.insertAdjacentHTML('afterbegin',`<span class="ic" aria-hidden="true">${svg}</span>`);});}
+const fmtMin=m=>m>=60?`${Math.floor(m/60)}h${String(Math.round(m%60)).padStart(2,'0')}`:`${Math.round(m)} min`;
+const fmtH=m=>(Math.round(m/6)/10).toString().replace('.',',')+'h';
+const MES=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'],SEM=['dom','seg','ter','qua','qui','sex','sáb'];
+const dt=s=>new Date(String(s).slice(0,10)+'T12:00:00');
+const fmtData=s=>{if(!s)return '';const d=dt(s);return `${SEM[d.getDay()]} ${String(d.getDate()).padStart(2,'0')}/${MES[d.getMonth()]}`};
+const curta=s=>{const d=dt(s);return `${String(d.getDate()).padStart(2,'0')}/${MES[d.getMonth()]}`};
+function toast(m,ic='check'){const t=document.createElement('div');t.className='toast';t.innerHTML=`${I(ic)}${esc(m)}`;document.body.appendChild(t);setTimeout(()=>t.remove(),2600)}
+
+/* ---------- API ---------- */
+const API=localStorage.getItem('mm_api')||location.origin;
+let TOKEN=sessionStorage.getItem('mm_token')||localStorage.getItem('mm_token')||localStorage.getItem('tipmike_access')||'';
+async function api(path,opts={}){
+  const r=await fetch(API+path,{...opts,headers:{'Content-Type':'application/json',...(TOKEN?{'Authorization':'Bearer '+TOKEN}:{}),...(opts.headers||{})}});
+  if(r.status===401){TOKEN='';sessionStorage.removeItem('mm_token');localStorage.removeItem('mm_token');if(localStorage.getItem('tipmike_access')){location.href='/login';}vLogin();throw new Error('login');}
+  const t=await r.text();let j;try{j=t?JSON.parse(t):null}catch{j={detail:t}}
+  if(!r.ok){toast((j&&j.detail)||('erro '+r.status),'circle-x');throw new Error(j&&j.detail||r.status)}
   return j;
 }
-const GET=(p)=>api(p), POST=(p,b)=>api(p,{method:'POST',body:JSON.stringify(b||{})});
-const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2600)}
-const fmtH=h=>{h=+h||0;const m=Math.round(h*60);return m<60?m+' min':Math.floor(m/60)+'h'+(m%60?String(m%60).padStart(2,'0'):'')};
-const fmtD=d=>d?new Date(d+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'}):'';
-// ------------------------------------------------------------- estado
-const S={aba:'inicio',sessao:null,cron:{on:false,ini:null,acum:0},fluxo:null,painel:null};
-const ABAS=[['inicio','Início'],['plano','Planejamento'],['edital','Edital'],['questoes','Questões'],['simulados','Simulados'],['maiscai','Mais cai']];
-function navs(){document.getElementById('abas').innerHTML=ABAS.map(([k,n])=>`<button class="${S.aba===k?'on':''}" onclick="ir('${k}')">${n}</button>`).join('');
-  document.getElementById('mnav').innerHTML=ABAS.map(([k,n])=>`<button class="${S.aba===k?'on':''}" onclick="ir('${k}')">${n}</button>`).join('')}
-function ir(a){S.aba=a;render(a)}
-setInterval(()=>{const c=S.cron;const seg=c.acum+(c.on?(Date.now()-c.ini)/1000:0);document.getElementById('relogio-txt').textContent=(c.on?'':'hoje ')+Math.floor(seg/60)+' min';document.getElementById('relogio').classList.toggle('on',c.on)},1000);
-async function iniciarSessao(tipo){const r=await POST('/mentor/sessao/iniciar',{tipo});S.sessao=r.sessao_id;S.cron={on:true,ini:Date.now(),acum:0};return r.sessao_id}
-async function fecharSessao(){if(!S.sessao)return;const r=await POST(`/mentor/sessao/${S.sessao}/fechar`);S.sessao=null;S.cron.on=false;S.cron.acum=0;mostrarResumo(r)}
-function mostrarResumo(r){const p=r.progresso||{};document.getElementById('main').innerHTML=`<div class="painel" style="max-width:640px;margin:20px auto"><div class="rot">Sessão fechada</div><h1>${r.meta_batida?'Meta do dia batida!':'Sessão registrada'}</h1>
-  <div class="kpi"><div><b>${r.resumo.questoes}</b><span>questões</span></div><div><b>${r.resumo.certas}</b><span>certas</span></div><div><b>${r.resumo.aulas}</b><span>gates fechados</span></div><div><b>+${r.xp_sessao}</b><span>XP</span></div></div>
-  <p class="soft">Hoje: ${fmtH(r.horas_hoje)} de ${fmtH(r.meta_dia)} · sequência ${p.streak_dias||0} dia(s) · ${p.patente} · ${p.xp_total} XP</p>
-  <div class="acoes"><button class="btn" onclick="ir('inicio')">Voltar ao início</button></div></div>`;atualizarXP(p)}
-function atualizarXP(p){if(!p)return;document.getElementById('xp').innerHTML=`<span>🔥 ${p.streak_dias||0}</span><span>${esc(p.patente)}</span><span>${p.xp_total} XP</span>`}
-// ------------------------------------------------------------- render
-async function render(a){navs();const m=document.getElementById('main');
-  try{
-    if(a==='login')return vLogin(m);
-    if(!TOKEN)return vLogin(m);
-    if(a==='inicio')return vInicio(m);
-    if(a==='plano')return vPlano(m);
-    if(a==='edital')return vEdital(m);
-    if(a==='questoes')return vQuestoes(m);
-    if(a==='simulados')return vSimulados(m);
-    if(a==='maiscai')return vMaisCai(m);
-  }catch(e){if(String(e.message)!=='login')m.innerHTML=`<div class="painel"><p class="err">${esc(e.message)}</p></div>`}
+const GET=p=>api(p),POST=(p,b)=>api(p,{method:'POST',body:JSON.stringify(b||{})});
+
+/* ---------- estado ---------- */
+const S={aba:'inicio',sessao:null,cronOn:false,cronIni:null,cronAcum:0,fluxo:null,painel:null,semAberta:null,mat:null,sim:null};
+const abas=[...document.querySelectorAll('.aba')];
+function abaVisivel(){return S.aba}
+function abrirAba(id){S.aba=id;abas.forEach(a=>{const on=a.id==='t-'+id;a.setAttribute('aria-selected',on);document.getElementById(a.getAttribute('aria-controls')).hidden=!on;});
+  if(id==='inicio')renderInicio();if(id==='plano')renderSemanas();if(id==='edital')renderEdital();if(id==='questoes')renderQuestoesTab();if(id==='sim')renderSim();if(id==='geral')renderGeral();window.scrollTo({top:0});}
+abas.forEach(a=>a.addEventListener('click',()=>abrirAba(a.id.slice(2))));
+document.getElementById('marca').onclick=()=>abrirAba('inicio');
+/* cronômetro do cabeçalho */
+setInterval(()=>{const b=document.getElementById('crono');const seg=S.cronAcum+(S.cronOn?(Date.now()-S.cronIni)/1000:0);b.classList.toggle('on',S.cronOn);document.getElementById('crono-ponto').classList.toggle('pulse',S.cronOn);
+  if(S.sessao){document.getElementById('crono-txt').textContent=S.cronOn?'estudando':'pausado';document.getElementById('crono-val').textContent=`${String(Math.floor(seg/60)).padStart(2,'0')}:${String(Math.floor(seg%60)).padStart(2,'0')}`}
+  else{document.getElementById('crono-txt').textContent='hoje';document.getElementById('crono-val').textContent=fmtMin((S.painel?.horas_hoje||0)*60)}},1000);
+document.getElementById('crono').onclick=()=>{if(S.sessao){if(S.cronOn){S.cronAcum+=(Date.now()-S.cronIni)/1000;S.cronOn=false}else{S.cronIni=Date.now();S.cronOn=true}}else abrirAba('inicio')};
+async function iniciarSessao(tipo){if(S.sessao)return S.sessao;const r=await POST('/mentor/sessao/iniciar',{tipo});S.sessao=r.sessao_id;S.cronOn=true;S.cronIni=Date.now();S.cronAcum=0;return r.sessao_id}
+async function fecharSessao(){if(!S.sessao)return;const r=await POST(`/mentor/sessao/${S.sessao}/fechar`);S.sessao=null;S.cronOn=false;S.cronAcum=0;S.fluxo=null;
+  const p=r.progresso||{};document.getElementById('agora').innerHTML=`<div class="agora"><div class="rot">${I('trophy')}Sessão fechada</div><h1>${r.meta_batida?'Meta do dia batida!':'Sessão registrada'}</h1>
+    <div class="mat">${r.resumo.questoes} questões · ${r.resumo.certas} certas · ${r.resumo.aulas} gate${r.resumo.aulas===1?'':'s'} · +${r.xp_sessao} XP</div>
+    <p class="soft small" style="margin-top:8px">Hoje ${fmtMin(r.horas_hoje*60)} de ${fmtMin(r.meta_dia*60)} · sequência ${p.streak_dias||0} dia(s) · ${esc(p.patente)} · ${p.xp_total} XP</p>
+    <div class="acoes"><button class="btn" onclick="renderInicio()">${I('home')}Voltar ao início</button></div></div>`;document.getElementById('sessao').innerHTML='';document.getElementById('p-inicio').classList.remove('foco');pintarUsuario(p)}
+function pintarUsuario(p){if(!p)return;const u=document.getElementById('usuario');u.innerHTML=`<span class="avatar">${I('flame')}</span><span><b>${p.streak_dias||0} dia${(p.streak_dias||0)===1?'':'s'} · ${esc(p.patente)}</b><i>${p.xp_total} XP</i></span>`}
+
+/* ---------- login / config ---------- */
+function vLogin(){document.getElementById('login').hidden=false;document.querySelector('main').hidden=true;
+  document.getElementById('l-ok').onclick=async()=>{try{const apiUrl=document.getElementById('l-api').value.trim().replace(/[/]+$/,'');if(apiUrl)localStorage.setItem('mm_api',apiUrl);
+    const r=await fetch((apiUrl||API)+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:document.getElementById('l-email').value.trim(),senha:document.getElementById('l-senha').value})});
+    const j=await r.json();if(!r.ok)throw new Error(j.detail||'login falhou');TOKEN=j.access_token;(document.getElementById('l-lembrar').checked?localStorage:sessionStorage).setItem('mm_token',TOKEN);location.reload();}catch(e){document.getElementById('l-err').textContent=e.message}};}
+function vConfig(msg){document.getElementById('login').hidden=false;document.querySelector('main').hidden=true;document.getElementById('login').innerHTML=`<div class="painel" style="max-width:420px;margin:60px auto"><div class="rotulo" style="color:var(--acc400)">Mike Mentor</div><h2>Endereço da API</h2><p class="muted small">${esc(msg||'O painel está num endereço diferente da API. Informe o mesmo endereço do site do TipMike (VITE_API_URL), com https://.')}</p><input class="campo" id="c-api" value="${esc(localStorage.getItem('mm_api')||'')}" placeholder="https://api.tipmike.com.br"><div class="acoes"><button class="btn" id="c-ok">${I('check')}Salvar</button></div></div>`;
+  document.getElementById('c-ok').onclick=()=>{let v=document.getElementById('c-api').value.trim();while(v.endsWith('/'))v=v.slice(0,-1);if(!v)return;localStorage.setItem('mm_api',v);location.reload()}}
+
+/* ---------- INÍCIO ---------- */
+const ETAPAS=[['aquecimento','Aquecimento','zap'],['video','Videoaula','monitor-play'],['fixacao','Fixação','list-checks'],['gate','Questões de concurso','target']];
+function trilhaHtml(a,idx){return ETAPAS.map(([id,nome,ic],i)=>{const det={aquecimento:'5 de concurso · não contam',video:`${a.duracao_s?fmtMin(a.duracao_s/60/1.5)+' em 1,5x':'aula própria'}`,fixacao:(a.fixacao||[]).length?'5 questões da aula':'esta aula não tem no Gran',gate:'5 questões · 4 certas'}[id];const est=i<idx?'feito':(i===idx?'atual':'');const tile=est==='feito'?'t-em':(est==='atual'?'t-cy':'t-mu');return `<li class="${est}"><span class="icone-tile ${tile}">${I(est==='feito'?'check':ic)}</span><div><b>${nome}</b><span>${det}</span></div></li>`}).join('')}
+async function renderInicio(){const p=await GET('/mentor/painel');S.painel=p;pintarUsuario(p.progresso);
+  const box=document.getElementById('agora');const prox=p.proxima;
+  if(S.fluxo&&S.fluxo.etapa!=='questoes')return;   // sessão em andamento: a tela dela fica como está
+  document.getElementById('p-inicio').classList.remove('foco');document.getElementById('sessao').innerHTML='';
+  if(!p.semana){box.innerHTML=`<div class="agora"><div class="rot">${I('calendar-days')}Semana</div><h1>Semana ainda não montada</h1><div class="mat">O mentor monta toda segunda, com as horas e o desempenho reais. Você pode montar agora.</div><div class="acoes"><button class="btn" onclick="montarSemana()">${I('sparkles')}Montar a semana</button></div></div>`}
+  else if(!prox){box.innerHTML=`<div class="agora"><div class="rot">${I('trophy')}Hoje</div><h1>Plano do dia concluído</h1><div class="mat">Se sobrar tempo: cards e "Fazer questões" dos assuntos fracos. Amanhã, as R1 abrem o dia.</div><div class="acoes"><button class="btn" onclick="abrirAba('questoes')">${I('circle-help')}Fazer questões</button>${p.cards_pendentes?`<button class="btn sec" onclick="fazerCards()">${I('layers')}Cards (${p.cards_pendentes})</button>`:''}</div></div>`}
+  else if(prox.tipo==='revisao'){box.innerHTML=`<div class="agora"><div class="rot">${I('rotate-ccw')}Agora · revisão</div><h1>${esc(prox.titulo)}</h1><div class="mat">${esc(prox.materia)} · ${p.revisoes_pendentes.length} revisão(ões) pendentes${p.revisoes_pendentes.some(r=>r.atrasada)?' · tem atrasada':''}</div><div class="acoes"><button class="btn" onclick="comecarRevisoes()">${I('play')}Fazer as revisões</button></div></div>`}
+  else{box.innerHTML=`<div class="agora"><div class="rot">${I('play')}Agora</div><h1>${esc(prox.titulo)}</h1><div class="mat">${esc(prox.materia)}${prox.modo?' · '+esc(prox.modo.replace(/_/g,' ')):''}</div>
+    <ol class="trilha">${trilhaHtml({duracao_s:prox.duracao_s,fixacao:[1]},-1)}</ol>
+    <div class="acoes"><button class="btn" onclick="comecarAula(${prox.aula_id})">${I('play')}Começar o estudo</button>${p.revisoes_pendentes.length?`<button class="btn sec" onclick="comecarRevisoes()">${I('rotate-ccw')}Revisões (${p.revisoes_pendentes.length})</button>`:''}${p.cards_pendentes?`<button class="btn sec" onclick="fazerCards()">${I('layers')}Cards (${p.cards_pendentes})</button>`:''}</div></div>`}
+  /* plano de hoje */
+  const h=document.getElementById('hoje');
+  const lista=p.plano.map(i=>{const feita=i.feito;const atual=prox&&prox.assunto_id===i.assunto_id;const tile=feita?'t-em':(atual?'t-cy':'t-mu');const ic=feita?'check':(atual?'play':'circle-play');return `<li><span class="icone-tile ${tile}">${I(ic)}</span><div><b>${esc(i.nome)}</b><span class="muted small">${esc(i.materia)} · ${i.n_concluidas}/${i.n_aulas} aulas · tier ${i.tier}</span></div><span class="muted small">${feita?'feito':(atual?'agora':'~'+fmtMin(i.previsto_h*60))}</span></li>`}).join('');
+  const revs=p.revisoes_pendentes.map(r=>`<li><span class="icone-tile ${r.atrasada?'t-re':'t-cy'}">${I('rotate-ccw')}</span><div><b>${r.tipo} · ${esc(r.nome)}</b><span class="muted small">${esc(r.materia)} · ${fmtData(r.prevista)}${r.atrasada?' · atrasada':''}</span></div><span></span></li>`).join('');
+  h.innerHTML=`<div class="painel-cab"><h3>${I('list-checks')}Plano da semana</h3><span class="muted small">${p.semana?`${fmtData(p.semana.inicio)} · fase ${esc(p.semana.fase||'')} · meta ${fmtH(+p.semana.meta_horas*60)}`:''}</span></div>
+    <ul class="hoje-lista">${lista||`<li><span class="icone-tile t-mu">${I('hourglass')}</span><div><b>Nada planejado</b><span class="muted small">Monte a semana pra ver as aulas.</span></div><span></span></li>`}${revs}</ul>`;
+  /* KPIs */
+  const k=p.kpi;const pctH=Math.min(100,Math.round(100*p.horas_hoje/Math.max(0.1,p.meta_dia_h)));const pctS=k.meta_semana?Math.min(100,Math.round(100*k.horas_semana/k.meta_semana)):0;
+  document.getElementById('kpis').innerHTML=`
+    <div class="kpi"><span class="icone-tile t-am">${I('clock')}</span><div><div class="rotulo">Hoje</div><div class="val">${fmtMin(p.horas_hoje*60)}<small>de ${fmtMin(p.meta_dia_h*60)}</small></div><div class="medidor brass"><i style="width:${pctH}%"></i></div></div></div>
+    <div class="kpi"><span class="icone-tile t-em">${I('calendar-check')}</span><div><div class="rotulo">Semana</div><div class="val">${fmtH(k.horas_semana*60)}<small>${k.meta_semana?'de '+fmtH(k.meta_semana*60):''}</small></div><div class="medidor"><i style="width:${pctS}%"></i></div></div></div>
+    <div class="kpi"><span class="icone-tile t-cy">${I('flame')}</span><div><div class="rotulo">Dias estudados · 30 dias</div><div class="val">${k.dias_30}</div><div class="sub">sequência de ${p.progresso?.streak_dias||0} dia(s) com meta</div></div></div>
+    <div class="kpi"><span class="icone-tile t-vi">${I('target')}</span><div><div class="rotulo">Questões</div><div class="val">${k.questoes_respondidas}<small>${k.acerto_geral!=null?k.acerto_geral+'% acerto':''}</small></div><div class="sub">${p.progresso?.patente||''} · ${p.progresso?.xp_total||0} XP</div></div></div>`;
+  renderHoras(p.horas_por_dia,p.meta_dia_h);renderResumoQ(p.acerto_por_materia);
 }
-function vLogin(m){m.innerHTML=`<div class="login painel"><div class="rot">Mike Mentor</div><h1>Entrar</h1>
-  <label class="small muted">E-mail</label><input id="l-email" type="email" autocomplete="username">
-  <label class="small muted">Senha</label><input id="l-senha" type="password" autocomplete="current-password">
-  <label class="small muted">Endereço da API (só se o painel não estiver no mesmo endereço da API, ex.: dentro do site do TipMike)</label><input id="l-api" value="${esc(localStorage.getItem('mm_api')||'')}" placeholder="${location.origin}">
-  <label class="small muted"><input type="checkbox" id="l-lembrar"> continuar conectado</label>
-  <div class="acoes"><button class="btn" id="l-ok">Entrar</button></div><p class="err" id="l-err"></p></div>`;
-  document.getElementById('l-ok').onclick=async()=>{try{const apiUrl=document.getElementById('l-api').value.trim();if(apiUrl)localStorage.setItem('mm_api',apiUrl);else localStorage.removeItem('mm_api');
-    const r=await fetch((apiUrl||location.origin)+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:document.getElementById('l-email').value.trim(),senha:document.getElementById('l-senha').value})});
-    const j=await r.json();if(!r.ok)throw new Error(j.detail||'login falhou');TOKEN=j.access_token;(document.getElementById('l-lembrar').checked?localStorage:sessionStorage).setItem('mm_token',TOKEN);if(apiUrl)location.reload();else ir('inicio');}
-    catch(e){document.getElementById('l-err').textContent=e.message}};
-  document.getElementById('l-senha').onkeydown=e=>{if(e.key==='Enter')document.getElementById('l-ok').click()};
-}
-async function vInicio(m){const p=await GET('/mentor/painel');S.painel=p;atualizarXP(p.progresso);
-  const prox=p.proxima;const sem=p.semana;
-  m.innerHTML=`<div class="painel" style="border-color:rgba(16,185,129,.35)"><div class="rot">Agora</div>
-    ${prox?`<h1>${esc(prox.titulo)}</h1><p class="muted">${esc(prox.materia)}${prox.duracao_s?' · '+fmtH(prox.duracao_s/3600)+' de vídeo':''}${prox.modo?' · '+esc(prox.modo.replace(/_/g,' ')):''}</p>
-      <div class="acoes"><button class="btn" onclick="${prox.tipo==='aula'?`comecarAula(${prox.aula_id})`:`comecarRevisoes()`}">${prox.tipo==='aula'?'Começar o estudo':'Fazer a revisão'}</button>
-      ${p.revisoes_pendentes.length?`<button class="btn sec" onclick="comecarRevisoes()">Revisões (${p.revisoes_pendentes.length})</button>`:''}${p.cards_pendentes?`<button class="btn sec" onclick="fazerCards()">Cards (${p.cards_pendentes})</button>`:''}</div>`
-     :`<h1>Semana ainda não montada</h1><p class="muted">O mentor monta a semana toda segunda. Você pode montar agora.</p><div class="acoes"><button class="btn" onclick="montarSemana()">Montar a semana</button></div>`}
-    <p class="small muted" style="margin-top:12px">Hoje: ${fmtH(p.horas_hoje)} de ${fmtH(p.meta_dia_h)} ${p.dia==='revisao'?'(sábado: só revisão)':p.dia==='livre'?'(domingo livre)':''}</p>
-    <div class="medidor"><i style="width:${Math.min(100,100*p.horas_hoje/Math.max(0.1,p.meta_dia_h))}%"></i></div></div>
-  <div class="grade">
-    <div class="painel"><h3>Plano da semana ${sem?`<span class="chip">${fmtD(sem.inicio)} · fase ${esc(sem.fase||'')}</span>`:''}</h3>
-      ${sem?`<div class="medidor" style="margin-bottom:10px"><i style="width:${Math.min(100,100*(+sem.horas_feitas)/Math.max(1,+sem.meta_horas))}%"></i></div><p class="small muted">${fmtH(sem.horas_feitas)} de ${fmtH(sem.meta_horas)} da meta</p>`:''}
-      <ul class="lista">${p.plano.map(i=>`<li><span class="chip ${i.tier}">${i.tier}</span><span style="flex:1"><b>${esc(i.nome)}</b><br><span class="small muted">${esc(i.materia)} · ${i.n_concluidas}/${i.n_aulas} aulas · ${fmtH(i.previsto_h)}</span></span>${i.feito?'<span class="chip ok">feito</span>':''}</li>`).join('')||'<li class="muted">nada planejado</li>'}</ul></div>
-    <div class="painel"><h3>Revisões pendentes</h3><ul class="lista">${p.revisoes_pendentes.map(r=>`<li><span class="chip ${r.atrasada?'red':''}">${r.tipo}</span><span style="flex:1">${esc(r.nome)}<br><span class="small muted">${esc(r.materia)} · ${fmtD(r.prevista)}</span></span></li>`).join('')||'<li class="muted">nenhuma hoje</li>'}</ul></div>
-  </div>
-  <div class="painel"><h3>Números</h3><div class="kpi"><div><b>${fmtH(p.kpi.horas_semana)}</b><span>na semana${p.kpi.meta_semana?' (meta '+fmtH(p.kpi.meta_semana)+')':''}</span></div><div><b>${p.kpi.dias_30}</b><span>dias estudados (30d)</span></div><div><b>${p.kpi.questoes_respondidas}</b><span>questões</span></div><div><b>${p.kpi.acerto_geral??'—'}%</b><span>acerto geral</span></div></div>
-    ${p.acerto_por_materia.length?`<table style="margin-top:12px"><tr><th>Matéria</th><th>Questões</th><th>Acerto</th></tr>${p.acerto_por_materia.map(r=>`<tr><td>${esc(r.materia)}</td><td class="n">${r.n}</td><td class="n" style="color:${r.acerto<70?'var(--red400)':'var(--acc400)'}">${r.acerto}%</td></tr>`).join('')}</table>`:''}</div>`;
-}
-async function montarSemana(){const r=await POST('/mentor/semana/montar',{});toast(`Semana montada: ${r.itens} assuntos, ${fmtH(r.horas_previstas)}`);ir('inicio')}
-// ------------------------------------------------------------- estudo por aula
-async function comecarAula(id){const a=await GET(`/mentor/aula/${id}`);if(!S.sessao)await iniciarSessao('estudo');
-  S.fluxo={aula:a,passo:0,idx:0,resp:{},certas:0};renderFluxo()}
-function renderFluxo(){const f=S.fluxo,a=f.aula,m=document.getElementById('main');const passos=['Aquecimento','Videoaula','Fixação','Questões de concurso','Resultado'];
-  const trilha=`<div class="trilha">${passos.map((_,i)=>`<span class="${i<f.passo?'ok':i===f.passo?'at':''}"></span>`).join('')}</div>`;
-  const cab=`<div class="qmeta"><span class="rot">${esc(a.materia)}</span><span>${esc(a.assunto)}</span><span class="chip ${a.tier}">${a.tier}</span><span>${passos[f.passo]}</span></div>${trilha}`;
-  if(f.passo===0)return renderQuestoes(m,cab,a.aquecimento,'aquecimento',()=>{f.passo=1;f.idx=0;renderFluxo()},{semConf:true,titulo:'Aquecimento: 5 questões de concurso, não contam.'});
-  if(f.passo===1){m.innerHTML=`<div class="qcard">${cab}<h2>${esc(a.titulo)}</h2><p class="muted small">${a.duracao_s?fmtH(a.duracao_s/3600)+' de vídeo · assista a 1,5x':''}${a.professor?' · '+esc(a.professor):''}</p>
-    ${a.url?`<div class="resol">O Gran não deixa a aula abrir dentro de outro site. O botão abaixo abre a aula numa janela ao lado, com o Mentor nesta.</div>`:''}
-    ${a.tipo==='propria'?`<div class="resol"><b>Aula própria:</b> ${esc(a.lei||a.descricao||'leitura guiada')}</div>`:''}
-    ${a.resumo_bolso?`<details><summary>Resumo de bolso</summary><div class="resol" style="white-space:pre-wrap">${esc(a.resumo_bolso).slice(0,6000)}</div></details>`:''}
-    ${a.bizus.length?`<details open><summary>Bizus da aula (${a.bizus.length})</summary><ul class="lista">${a.bizus.map(b=>`<li><span class="chip">${esc(b.secao||b.fonte)}</span><span>${esc(b.texto)}</span></li>`).join('')}</ul></details>`:''}
-    <div class="acoes">${a.url?`<button class="btn sec" onclick="abrirAoLado('${esc(a.url)}')">Abrir a aula ao lado</button>`:''}<button class="btn" onclick="assisti()">Acabei de assistir</button></div></div>`;return}
-  if(f.passo===2){const fx=(a.fixacao||[]).map(q=>({id:q.id,enunciado:q.question||q.enunciado,alternativas:(q.alternatives||q.alternativas||[]).map(x=>({letra:(x.id||x.letra||'').toUpperCase(),texto:x.text||x.texto,correta:x.correct,explicacao:x.explanation||x.explicacao})),gabarito:((q.alternatives||q.alternativas||[]).find(x=>x.correct)||{}).id?.toUpperCase()}));
-    if(!fx.length){f.passo=3;f.idx=0;return renderFluxo()}
-    return renderQuestoes(m,cab,fx,'fixacao',()=>{f.passo=3;f.idx=0;renderFluxo()},{semConf:true,local:true,titulo:'Fixação: 5 questões do Gran, com a explicação de cada alternativa.'})}
-  if(f.passo===3)return renderQuestoes(m,cab,a.gate,'gate',fecharGate,{titulo:'Questões de concurso: valem. Marque a confiança.'});
+function renderHoras(dias,meta){const box=document.getElementById('graf-horas');const hv={};(dias||[]).forEach(d=>hv[String(d.dia).slice(0,10)]=+d.horas*60);
+  const hoje=S.painel.hoje;const per=+(document.querySelector('#per-horas [aria-pressed=true]')?.dataset.p||7);
+  const ds=[];const ini=new Date(dt(hoje));ini.setDate(ini.getDate()-((per||30)-1));for(let d=new Date(ini);d<=dt(hoje);d.setDate(d.getDate()+1))ds.push(d.toISOString().slice(0,10));
+  const total=ds.reduce((a,d)=>a+(hv[d]||0),0);
+  if(!total){box.innerHTML=`<div class="vazio-box"><span class="icone-tile t-em">${I('clock')}</span>Nenhum estudo registrado nesse período.<span class="small">Use "Começar o estudo": o cronômetro conta sozinho.</span></div>`;return}
+  const W=560,H=220,l=34,r=10,t=12,b=28,iw=W-l-r,ih=H-t-b;const max=Math.max(meta*60*1.2,...ds.map(d=>hv[d]||0));const bw=iw/ds.length;const y=v=>t+ih-ih*v/max;
+  let s='<defs><linearGradient id="gb" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#10b981"/><stop offset="1" stop-color="#0891b2"/></linearGradient></defs>';
+  for(let v=0;v<=max;v+=60)s+=`<line x1="${l}" x2="${W-r}" y1="${y(v)}" y2="${y(v)}" stroke="#222a3d"/><text x="${l-6}" y="${y(v)+4}" text-anchor="end">${v/60}h</text>`;
+  ds.forEach((d,i)=>{const v=hv[d]||0;const x=l+i*bw+bw*.18;const fds=[0,6].includes(dt(d).getDay());s+=`<rect x="${x}" y="${y(v)}" width="${bw*.64}" height="${ih*v/max}" rx="3" fill="${fds?'#f59e0b':'url(#gb)'}"><title>${fmtData(d)}: ${fmtMin(v)}</title></rect>`;if(ds.length<=10||i%Math.ceil(ds.length/8)===0)s+=`<text x="${x+bw*.32}" y="${H-8}" text-anchor="middle">${curta(d)}</text>`});
+  s+=`<line x1="${l}" x2="${W-r}" y1="${y(meta*60)}" y2="${y(meta*60)}" stroke="#f87171" stroke-dasharray="5 4" stroke-width="1.5"/>`;
+  box.innerHTML=`<svg class="grafico" viewBox="0 0 ${W} ${H}" role="img">${s}</svg><div class="legenda"><span><i style="background:linear-gradient(#10b981,#0891b2)"></i>Dias úteis</span><span><i style="background:#f59e0b"></i>Fim de semana</span><span><i style="background:#f87171"></i>Meta do dia</span><span>Total: ${fmtMin(total)}</span></div>`}
+document.querySelectorAll('#per-horas button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#per-horas button').forEach(x=>x.setAttribute('aria-pressed',x===b));renderHoras(S.painel.horas_por_dia,S.painel.meta_dia_h)});
+function barrasMat(lista){return `<div class="barras-mat">${lista.map(r=>{const p=Math.round(+r.acerto);return `<div><div class="l"><b>${esc(r.materia)}</b><span>${r.n} respondidas · <b style="color:${p>=70?'var(--acc400)':'var(--red400)'}">${p}%</b></span></div><div class="medidor"><i style="width:${p}%;${p>=70?'':'background:linear-gradient(90deg,#ef4444,#f87171)'}"></i></div></div>`}).join('')}</div>`}
+function renderResumoQ(lista){const box=document.getElementById('resumo-q');if(!lista||!lista.length){box.innerHTML=`<div class="vazio-box"><span class="icone-tile t-cy">${I('target')}</span>Nenhuma questão respondida ainda.<span class="small">Aparecem aqui por matéria, com o seu acerto.</span></div>`;return}box.innerHTML=barrasMat(lista)+`<p class="muted small" style="margin-top:10px">Abaixo de 70%, o assunto entra na fila de reforço.</p>`}
+document.getElementById('ir-questoes').onclick=()=>abrirAba('questoes');
+async function montarSemana(){const r=await POST('/mentor/semana/montar',{});toast(`Semana montada: ${r.itens} assuntos · ${fmtH(r.horas_previstas*60)}`,'sparkles');renderInicio()}
+
+/* ---------- SESSÃO POR AULA ---------- */
+function pontosHtml(n,atual,marcas){return `<span class="pontos" aria-label="progresso">${Array.from({length:n},(_,i)=>`<i class="${i<marcas.length?(marcas[i]?'ok':'x'):(i===atual?'at':'')}"></i>`).join('')}</span>`}
+function resolucaoHtml(texto,prof){if(!texto)return '';const longo=texto.length>520;return `<div class="resolucao"><div class="res-cab">${I(prof?'graduation-cap':'file-text')}${prof?'Comentário do professor, do Gran':'Explicação'}</div><div class="res-txt${longo?' curto':''}">${esc(texto).replace(/\n+/g,'<br>')}</div>${longo?'<button class="ler-mais">Ler a resolução inteira</button>':''}</div>`}
+function ligarLerMais(raiz){raiz.querySelectorAll('.ler-mais').forEach(b=>b.onclick=()=>{b.previousElementSibling.classList.remove('curto');b.remove()})}
+async function comecarAula(id){await iniciarSessao('estudo');const a=await GET(`/mentor/aula/${id}`);S.fluxo={etapa:'carregando'};abrirAba('inicio');
+  const fix=(a.fixacao||[]).map(q=>({id:q.id,enunciado:q.question||q.enunciado,alternativas:(q.alternatives||q.alternativas||[]).map(x=>({letra:(x.id||x.letra||'').toUpperCase(),texto:x.text||x.texto,correta:x.correct,explicacao:x.explanation||x.explicacao})),gabarito:((q.alternatives||q.alternativas||[]).find(x=>x.correct)||{}).id?.toUpperCase()}));
+  a.fixacao=fix;S.fluxo={aula:a,etapa:'aquecimento',q:0,marcas:[],certas:0};renderFluxo()}
+function renderFluxo(){const f=S.fluxo,a=f.aula;const painel=document.getElementById('p-inicio');painel.classList.add('foco');
+  const idx=['aquecimento','video','fixacao','gate','resultado'].indexOf(f.etapa);
+  document.getElementById('agora').innerHTML=`<div class="agora"><div class="rot"><span class="ponto-live"></span>Agora · ${esc(a.materia)}</div><h1>${esc(a.assunto)}</h1><div class="mat">${esc(a.titulo)} · tier ${a.tier}</div><ol class="trilha">${trilhaHtml(a,idx)}</ol>
+    <div class="acoes"><button class="btn sec" onclick="document.getElementById('crono').click();renderFluxo()">${I(S.cronOn?'pause':'play')}${S.cronOn?'Pausar':'Retomar'}</button><button class="btn sec" onclick="fecharSessao()">${I('log-out')}Encerrar sessão</button></div></div>`;
+  const box=document.getElementById('sessao');
+  if(f.etapa==='aquecimento'||f.etapa==='gate')return renderQuestao(box,f.etapa==='aquecimento'?a.aquecimento:a.gate,f.etapa==='gate');
+  if(f.etapa==='video'){box.innerHTML=`<div class="qcard sess"><div class="qmeta"><span class="rotulo" style="color:var(--cyan400)">Videoaula</span><span class="muted small">${a.duracao_s?fmtMin(a.duracao_s/60)+' · a 1,5x '+fmtMin(a.duracao_s/60/1.5):''}${a.professor?' · '+esc(a.professor):''}</span></div>
+    <div class="player"><div class="player-in"><span class="icone-tile t-cy" style="width:56px;height:56px">${I('monitor-play')}</span><b>${esc(a.titulo)}</b><span class="muted small">O Gran não deixa a aula abrir dentro de outro site. Abra ao lado: o Mentor fica nesta janela.</span>
+      <div class="acoes">${a.url?`<button class="btn" onclick="abrirAoLado('${esc(a.url)}')">${I('external-link')}Abrir a aula ao lado</button>`:''}</div></div></div>
+    ${a.tipo==='propria'?`<div class="resolucao"><div class="res-cab">${I('book-open')}Aula própria</div><div class="res-txt">${esc(a.lei||a.descricao||'leitura guiada')}</div></div>`:''}
+    ${a.bizus?.length?`<details class="bloco-detalhe" open><summary>${I('sparkles')}Bizus da aula (${a.bizus.length})</summary><ul class="revs">${a.bizus.map(b=>`<li><span class="chip">${esc(b.secao||b.fonte)}</span><span>${esc(b.texto)}</span></li>`).join('')}</ul></details>`:''}
+    ${a.resumo_bolso?`<details class="bloco-detalhe"><summary>${I('file-text')}Resumo de bolso</summary><div class="res-txt">${esc(a.resumo_bolso).slice(0,6000).replace(/\n/g,'<br>')}</div></details>`:''}
+    <div class="acoes" style="margin-top:14px"><button class="btn" onclick="assisti()">${I('check')}Acabei de assistir</button></div></div>`;return}
+  if(f.etapa==='fixacao'){if(!a.fixacao.length){f.etapa='gate';f.q=0;f.marcas=[];toast('Esta aula não tem fixação no Gran: indo pras questões de concurso','zap');return renderFluxo()}return renderQuestao(box,a.fixacao,false,true)}
 }
 function abrirAoLado(url){const w=Math.round(screen.availWidth/2),h=screen.availHeight;const j=window.open(url,'gran',`width=${w},height=${h},left=${w},top=0`);if(!j)window.open(url,'_blank');else try{window.resizeTo(w,h);window.moveTo(0,0)}catch(e){}}
-async function assisti(){await POST(`/mentor/aula/${S.fluxo.aula.id}/assistida`);S.fluxo.passo=2;S.fluxo.idx=0;renderFluxo()}
-function renderQuestoes(m,cab,lista,contexto,aoFim,op={}){const f=S.fluxo;const q=lista[f.idx];if(!q){aoFim();return}
-  const r=f.resp[q.id];
-  m.innerHTML=`<div class="qcard">${cab}${op.titulo?`<p class="small muted">${op.titulo}</p>`:''}
-    <div class="qmeta"><span>${f.idx+1} de ${lista.length}</span>${q.banca_sigla?`<span>${esc(q.banca_sigla)} · ${q.ano||''} · ${esc(q.orgao_sigla||'')}</span>`:''}${q.soldado_ba?'<span class="chip S">caiu na PM-BA</span>':''}${q.indice_acerto!=null?`<span>acerto no Gran ${Math.round(q.indice_acerto)}%</span>`:''}</div>
+async function assisti(){await POST(`/mentor/aula/${S.fluxo.aula.id}/assistida`);S.fluxo.etapa='fixacao';S.fluxo.q=0;S.fluxo.marcas=[];renderFluxo()}
+function renderQuestao(box,lista,gate,local=false){const f=S.fluxo;const q=lista[f.q];if(!q){return avancarEtapa()}
+  const rot=gate?'Questões de concurso':(local?'Fixação · questões da aula':'Aquecimento · não conta');const cor=gate?'var(--acc400)':'var(--amber400)';
+  box.innerHTML=`<div class="qcard sess"><div class="qmeta"><span class="rotulo" style="color:${cor}">${rot}</span>${pontosHtml(lista.length,f.q,f.marcas)}</div>
+    ${q.orgao_sigla||q.banca_sigla?`<p class="fonte-q">${esc(q.orgao_sigla||'')}${q.cargo&&!/não definido/i.test(q.cargo)?', '+esc(q.cargo):''} · ${esc(q.banca_sigla||'')} ${q.ano||''}${q.soldado_ba?' · <b style="color:var(--amber400)">caiu na PM-BA</b>':''}</p>`:''}
     <p class="enun">${esc(q.enunciado)}</p>
-    <div class="alts">${(q.alternativas||[]).map(al=>`<button class="alt ${r?(al.letra===(r.gabarito||q.gabarito)?'certa':(al.letra===r.marcada?'errada':'')):''}" data-l="${esc(al.letra)}" aria-pressed="${r&&r.marcada===al.letra}" ${r?'disabled':''} onclick="marcar('${esc(al.letra)}')"><b>${esc(al.letra)}</b><span>${esc(al.texto)}${r&&al.explicacao?`<br><span class="small muted">${esc(al.explicacao)}</span>`:''}</span></button>`).join('')}</div>
-    ${!op.semConf&&!r?`<div class="conf"><button id="c1" onclick="conf('certeza')">1 · Certeza</button><button id="c2" onclick="conf('duvida')">2 · Dúvida</button><button id="c3" onclick="conf('chute')">3 · Chute</button></div>`:''}
-    ${r?`<div class="resol"><b>${r.correta?'Certa.':'Errada.'} Gabarito: ${esc(r.gabarito||q.gabarito)}</b>${r.comentario?`<br><br>${esc(r.comentario)}`:''}${r.combo?`<br><span class="chip S">combo de certeza +${r.combo} XP</span>`:''}</div><div class="acoes"><button class="btn" onclick="proximaQ()">${f.idx+1<lista.length?'Próxima':'Continuar'}</button></div>`
-       :`<div class="acoes"><button class="btn" id="q-resp" onclick="responderQ('${contexto}',${!!op.local})" ${op.semConf?'':'disabled'}>Responder</button></div>`}
-    <div class="atalhos"><kbd>A</kbd>–<kbd>E</kbd> marca · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> confiança · <kbd>Enter</kbd> responde/avança</div></div>`;
-  S._q={lista,q,contexto,aoFim,op};
+    <div class="alts">${(q.alternativas||[]).map(a=>`<button class="alt" data-l="${esc(a.letra)}" aria-pressed="false"><b>${esc(a.letra)}</b><span>${esc(a.texto)}</span></button>`).join('')}</div>
+    <div class="conf" id="conf" hidden><span class="muted small">Com que segurança?</span><button data-c="certeza">${I('shield-check')}Certeza <kbd>1</kbd></button><button data-c="duvida">${I('circle-help')}Dúvida <kbd>2</kbd></button><button data-c="chute">${I('zap')}Chute <kbd>3</kbd></button></div>
+    <div id="res"></div><div class="atalhos">${I('keyboard')}<span><kbd>A</kbd>–<kbd>E</kbd> responde</span>${gate?'<span><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> segurança</span>':''}<span><kbd>Enter</kbd> próxima</span></div></div>`;
+  let escolha=null;box.dataset.fechada='0';
+  box.querySelectorAll('.alt').forEach(b=>b.addEventListener('click',()=>{if(box.dataset.fechada==='1')return;box.querySelectorAll('.alt').forEach(x=>x.setAttribute('aria-pressed',x===b));escolha=b.dataset.l;if(!gate)fechar(null);else box.querySelector('#conf').hidden=false}));
+  box.querySelectorAll('#conf button').forEach(b=>b.addEventListener('click',()=>fechar(b.dataset.c)));
+  S._marcar=l=>{const b=box.querySelector(`.alt[data-l="${l}"]`);if(b)b.click()};S._conf=c=>{if(escolha&&gate&&box.dataset.fechada!=='1')fechar(c)};S._prox=()=>{const b=box.querySelector('#prox');if(b)b.click()};
+  async function fechar(conf){if(box.dataset.fechada==='1'||!escolha)return;box.dataset.fechada='1';
+    let res;if(local){res={correta:escolha===q.gabarito,gabarito:q.gabarito}}
+    else{res=await POST('/mentor/resposta',{questao_id:q.id,contexto:gate?'gate':'aquecimento',marcada:escolha,aula_id:f.aula.id,assunto_id:f.aula.assunto_id,sessao_id:S.sessao,confianca:conf})}
+    const certa=res.correta;const vale=certa&&conf!=='chute';f.marcas.push(gate?vale:certa);if(gate&&vale)f.certas++;
+    box.querySelectorAll('.alt').forEach(b=>{if(b.dataset.l===(res.gabarito||q.gabarito))b.classList.add('certa');else if(b.dataset.l===escolha)b.classList.add('errada')});box.querySelector('#conf').hidden=true;
+    const expl=local?(q.alternativas.find(x=>x.letra===(res.gabarito||q.gabarito))||{}).explicacao:res.comentario_professor;
+    const ver=!gate?`<span class="veredito ${certa?'ok':'x'}">${I(certa?'circle-check-big':'circle-x')}${certa?'Acertou':'Errou'}</span> <span class="muted small">${local?'fixação':'aquecimento, não conta'}</span>`:(!certa?`<span class="veredito x">${I('circle-x')}Errou</span>`:(conf==='chute'?`<span class="veredito x">${I('zap')}Acertou no chute (conta como erro)</span>`:`<span class="veredito ok">${I('circle-check-big')}Acertou</span>`));
+    const ultima=f.q>=lista.length-1;const prox=ultima?(gate?'Ver o resultado da aula':(local?'Ir pras questões de concurso':'Ir pra videoaula')):'Próxima questão';
+    const extra=gate?`<div class="destino">${I('rotate-ccw')}<span><b>O que acontece com ela:</b> ${!certa||conf==='chute'?'volta na R1, a própria questão.':(conf==='duvida'?'conta como acerto; na R1 vem uma irmã.':'fica 30 dias fora.')}</span></div>`:'';
+    box.querySelector('#res').innerHTML=`<div class="resultado">${ver}<p class="soft small">Gabarito <b style="color:var(--fg)">${esc(res.gabarito||q.gabarito)}</b>${q.indice_acerto!=null?` · no Gran, ${Math.round(q.indice_acerto)}% acertam`:''}${res.combo_xp?` · <b style="color:var(--amber400)">combo +${res.combo_xp} XP</b>`:''}</p>${resolucaoHtml(expl,!local)}${local&&q.alternativas.some(x=>x.explicacao)?`<details class="bloco-detalhe"><summary>${I('list-ordered')}Explicação de cada alternativa</summary>${q.alternativas.map(x=>`<p class="small"><b>${esc(x.letra)}</b> ${esc(x.explicacao||'')}</p>`).join('')}</details>`:''}${extra}<div class="acoes" style="margin-top:12px"><button class="btn" id="prox">${prox}${I('play')}</button></div></div>`;
+    ligarLerMais(box);box.querySelector('.qmeta .pontos').outerHTML=pontosHtml(lista.length,-1,f.marcas);
+    box.querySelector('#prox').onclick=()=>{f.q++;if(f.q>=lista.length)avancarEtapa();else renderQuestao(box,lista,gate,local)}}
 }
-function marcar(l){const st=S._q;st.marcada=l;document.querySelectorAll('.alt').forEach(b=>b.setAttribute('aria-pressed',b.dataset.l===l));const bt=document.getElementById('q-resp');if(bt&&(st.op.semConf||st.conf))bt.disabled=false}
-function conf(c){const st=S._q;st.conf=c;['c1','c2','c3'].forEach((id,i)=>document.getElementById(id)?.classList.toggle('on',['certeza','duvida','chute'][i]===c));const bt=document.getElementById('q-resp');if(bt&&st.marcada)bt.disabled=false}
-async function responderQ(contexto,local){const st=S._q,f=S.fluxo,q=st.q;if(!st.marcada)return;
-  let res;
-  if(local){res={correta:st.marcada===q.gabarito,gabarito:q.gabarito}}
-  else{res=await POST('/mentor/resposta',{questao_id:q.id,contexto,marcada:st.marcada,aula_id:f.aula?.id,assunto_id:f.assunto_id||f.aula?.assunto_id,sessao_id:S.sessao,confianca:st.conf||null,tempo_s:null,revisao_id:f.revisao_id||null});res.comentario=res.comentario_professor;res.combo=res.combo_xp}
-  f.resp[q.id]={...res,marcada:st.marcada};if(res.correta)f.certas++;st.marcada=null;st.conf=null;
-  renderQuestoes(document.getElementById('main'),S._cab||'',st.lista,contexto,st.aoFim,st.op);
-}
-function proximaQ(){const st=S._q;S.fluxo.idx++;renderQuestoes(document.getElementById('main'),S._cab||'',st.lista,st.contexto,st.aoFim,st.op)}
-async function fecharGate(){const f=S.fluxo,a=f.aula;const g=await POST(`/mentor/aula/${a.id}/gate`,{sessao_id:S.sessao});const m=document.getElementById('main');
-  const r=34,C=2*Math.PI*r;const certas=g.certas??0;
-  m.innerHTML=`<div class="qcard" style="text-align:center"><div class="rot">${esc(a.materia)} · ${esc(a.assunto)}</div><h2>${esc(a.titulo)}</h2>
-    <svg class="anel" viewBox="0 0 86 86"><circle cx="43" cy="43" r="${r}" fill="none" stroke="var(--bg2)" stroke-width="8"/>${certas?`<circle cx="43" cy="43" r="${r}" fill="none" stroke="${g.fechou&&!g.com_ressalva?'var(--acc)':'var(--red)'}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${C*certas/5} ${C}" transform="rotate(-90 43 43)"/>`:''}<text x="43" y="50" text-anchor="middle" style="font-size:18px">${certas}/5</text></svg>
-    <h1 style="color:${g.fechou&&!g.com_ressalva?'var(--acc400)':'var(--amber400)'}">${g.fechou?(g.com_ressalva?'Concluída com ressalva':'Aula concluída'):'Reestudo'}</h1>
-    ${g.xp?`<p class="soft">+${g.xp} XP</p>`:''}${g.assunto_fechou?`<p class="soft">Assunto fechado. R1 amanhã.</p>`:''}
-    ${g.reestudo?`<p class="soft">Ficou abaixo de 4. Releia o resumo de bolso e responda 5 novas.</p>${a.resumo_bolso?`<details><summary>Resumo de bolso</summary><div class="resol" style="text-align:left">${esc(a.resumo_bolso).slice(0,6000)}</div></details>`:''}`:''}
-    <div class="acoes" style="justify-content:center">${g.reestudo?`<button class="btn" onclick="reestudar()">Responder as 5 novas</button>`:`<button class="btn" onclick="proximaAula()">Próxima aula</button><button class="btn sec" onclick="fecharSessao()">Encerrar sessão</button>`}</div></div>`;
-  S._gate=g;
-}
-function reestudar(){const f=S.fluxo;f.aula.gate=S._gate.novas||[];f.passo=3;f.idx=0;renderFluxo()}
-async function proximaAula(){const p=await GET('/mentor/painel');atualizarXP(p.progresso);if(p.proxima&&p.proxima.tipo==='aula')return comecarAula(p.proxima.aula_id);if(p.proxima&&p.proxima.tipo==='revisao')return comecarRevisoes();toast('Plano do dia concluído');ir('inicio')}
-// ------------------------------------------------------------- revisões
-async function comecarRevisoes(){const r=await GET('/mentor/revisoes/hoje');if(!r.revisoes.length){toast('Nenhuma revisão pendente');return ir('inicio')}
-  if(!S.sessao)await iniciarSessao('revisao');S._revs=r.revisoes;S._ri=0;proximaRevisao()}
-function proximaRevisao(){const rv=S._revs[S._ri];if(!rv){toast('Revisões do dia feitas');return ir('inicio')}
-  S.fluxo={aula:null,assunto_id:rv.assunto_id,revisao_id:rv.id,passo:0,idx:0,resp:{},certas:0};
-  const cab=`<div class="qmeta"><span class="rot">${esc(rv.materia)}</span><span>${esc(rv.nome)}</span><span class="chip ${rv.atrasada?'red':''}">${rv.tipo}${rv.atrasada?' atrasada':''}</span><span>${S._ri+1} de ${S._revs.length}</span></div>`;S._cab=cab;
-  renderQuestoes(document.getElementById('main'),cab,rv.questoes,rv.tipo,async()=>{const c=await POST(`/mentor/revisao/${rv.id}/concluir`,{sessao_id:S.sessao});toast(`${rv.tipo} ${c.acerto}% · próxima ${c.proxima} em ${fmtD(c.prevista)} · +${c.xp}`);S._cab='';S._ri++;proximaRevisao()},{titulo:`Revisão ${rv.tipo}: ${rv.questoes.length} questões.`});
-}
-// ------------------------------------------------------------- planejamento
-async function vPlano(m){const ss=await GET('/mentor/semanas');
-  m.innerHTML=`<div class="painel"><h3>Semanas</h3><div class="acoes" style="margin:0 0 10px"><button class="btn sec" onclick="montarSemana()">Montar / refazer esta semana</button></div>
-    <ul class="lista">${ss.map(s=>`<li><span class="chip ${s.status==='aberta'?'ok':s.status==='fechada'?'':'red'}">${s.status}</span><span style="flex:1"><b>${fmtD(s.inicio)} a ${fmtD(s.fim)}</b> · fase ${esc(s.fase||'—')}<br><span class="small muted">${fmtH(s.horas_feitas)} de ${fmtH(s.meta_horas)} · ${s.feitos}/${s.itens} assuntos</span></span><button class="btn sec" onclick="verSemana(${s.id})">Abrir</button></li>`).join('')||'<li class="muted">nenhuma semana ainda</li>'}</ul></div><div id="semana-det"></div>`;
-}
-async function verSemana(id){const s=await GET(`/mentor/semana/${id}`);document.getElementById('semana-det').innerHTML=`<div class="painel"><h3>Semana de ${fmtD(s.inicio)}</h3>
-  <table><tr><th>#</th><th>Matéria</th><th>Assunto</th><th>Tier</th><th>Aulas</th><th>Prev.</th><th></th></tr>${s.itens.map(i=>`<tr><td class="n">${i.ordem}</td><td>${esc(i.materia)}</td><td>${esc(i.nome)}</td><td><span class="chip ${i.tier}">${i.tier}</span></td><td class="n">${i.n_concluidas}/${i.n_aulas}</td><td class="n">${fmtH(i.previsto_h)}</td><td>${i.feito?'<span class="chip ok">feito</span>':''}</td></tr>`).join('')}</table>
-  ${s.revisoes.length?`<h3 style="margin-top:14px">Revisões da semana</h3><ul class="lista">${s.revisoes.map(r=>`<li><span class="chip ${r.feita?'ok':''}">${r.tipo}</span><span style="flex:1">${esc(r.nome)} <span class="small muted">· ${esc(r.materia)} · ${fmtD(r.prevista)}${r.feita?' · '+r.acerto+'%':''}</span></span></li>`).join('')}</ul>`:''}</div>`}
-// ------------------------------------------------------------- edital
-async function vEdital(m,mid){const ms=await GET('/mentor/materias');mid=mid||S._mid||ms[0].id;S._mid=mid;const e=await GET(`/mentor/edital?materia_id=${mid}`);
-  m.innerHTML=`<div class="painel"><div class="qmeta">${ms.map(x=>`<button class="chip ${x.id===mid?'ok':''}" style="cursor:pointer" onclick="vEdital(document.getElementById('main'),${x.id})">${esc(x.nome)} ${x.estudados}/${x.assuntos}</button>`).join('')}</div></div>
-  <div class="painel"><h3>${esc(e.nome)} <span class="chip">peso ${e.peso_prova}</span></h3>
-  ${e.modulos.map(mo=>`<details ${mo.tipo==='conteudo'?'open':''}><summary>${esc(mo.nome).slice(0,110)} <span class="small muted">· ${mo.assuntos.length} assuntos</span></summary>
-    <table><tr><th>Assunto</th><th>Tier</th><th>Estado</th><th>Estoque</th><th>Soldado</th><th>Acerto</th></tr>${mo.assuntos.map(a=>`<tr><td>${esc(a.nome)}<br><span class="small muted">${a.aulas.map(x=>`${x.estado==='concluida'?'✓':'·'} ${esc(x.titulo).slice(0,40)}`).join(' | ')}</span></td><td><span class="chip ${a.tier}">${a.tier}</span></td><td>${esc(a.estado)}</td><td class="n">${a.estoque_usavel}</td><td class="n">${a.soldado??''}</td><td class="n">${a.acerto!=null?a.acerto+'%':''}</td></tr>`).join('')}</table></details>`).join('')}</div>`}
-// ------------------------------------------------------------- questões
-async function vQuestoes(m){const ms=await GET('/mentor/materias');
-  m.innerHTML=`<div class="painel"><h3>Fazer questões</h3><div class="qmeta"><label><input type="radio" name="modo" value="estudado" checked> Tudo que já estudei</label><label><input type="radio" name="modo" value="escolher"> Escolher matérias</label>
-    <select id="q-n"><option>10</option><option>20</option><option>30</option></select> questões</div>
-    <div id="q-mats" class="qmeta" style="display:none">${ms.map(x=>`<label><input type="checkbox" value="${x.id}"> ${esc(x.nome)}</label>`).join('')}</div>
-    <div class="acoes"><button class="btn" onclick="comecarQuestoes()">Começar</button></div></div>`;
-  document.querySelectorAll('input[name=modo]').forEach(r=>r.onchange=()=>document.getElementById('q-mats').style.display=r.value==='escolher'&&r.checked?'flex':'none')}
-async function comecarQuestoes(){const modo=document.querySelector('input[name=modo]:checked').value,n=document.getElementById('q-n').value;const mats=[...document.querySelectorAll('#q-mats input:checked')].map(i=>i.value).join(',');
-  const r=await GET(`/mentor/questoes?modo=${modo}&n=${n}${mats?'&materias='+mats:''}`);if(!r.questoes.length){toast(r.aviso||'nenhuma questão disponível');return}
-  if(!S.sessao)await iniciarSessao('questoes');S.fluxo={aula:null,passo:0,idx:0,resp:{},certas:0};S._cab=`<div class="qmeta"><span class="rot">Fazer questões</span><span>${r.disponiveis} disponíveis</span></div>`;
-  renderQuestoes(document.getElementById('main'),S._cab,r.questoes,'questoes',()=>{toast(`${S.fluxo.certas} de ${r.questoes.length}`);S._cab='';ir('questoes')},{})}
-// ------------------------------------------------------------- simulados
-async function vSimulados(m){const s=await GET('/mentor/simulados');
-  m.innerHTML=`<div class="painel"><h3>Simulados</h3><p class="small muted">80 questões de múltipla escolha, 4h30, distribuição do edital 2022, sem certo/errado. Mínimo 60 pontos.</p>
-    <div class="acoes"><button class="btn" onclick="montarSim()">Montar simulado (80)</button><button class="btn sec" onclick="montarSim(20)">Treino curto (20)</button></div>
-    <ul class="lista">${s.simulados.map(x=>`<li><span class="chip ${x.status==='entregue'?(x.nota>=60?'ok':'red'):''}">${x.status}</span><span style="flex:1"><b>#${x.numero} · ${x.tipo}${x.prova?' · '+esc(x.prova):''}</b><br><span class="small muted">${fmtD(x.data)} · ${x.n} questões${x.nota!=null?' · '+x.certas+' certas · '+x.nota+' pontos':''}</span></span>${x.status!=='entregue'?`<button class="btn sec" onclick="fazerSim(${x.id})">Fazer</button>`:`<button class="btn sec" onclick="verSim(${x.id})">Ver</button>`}</li>`).join('')||'<li class="muted">nenhum ainda</li>'}</ul></div>
-    <div class="painel"><h3>Provas reais de Soldado no acervo</h3><ul class="lista">${s.provas_reais.map(p=>`<li><span class="chip ${p.reservada?'S':''}">${p.reservada?'reservada':'no estudo'}</span><span style="flex:1">${esc(p.nome)} <span class="small muted">· ${p.n_questoes} q</span></span><button class="btn sec" onclick="montarSimReal(${p.id})">Simulado real</button></li>`).join('')}</ul></div>`}
-async function montarSim(n){const r=await POST('/mentor/simulado/montar',{n_total:n||80});toast(`Simulado #${r.numero} com ${r.n} questões`);vSimulados(document.getElementById('main'))}
-async function montarSimReal(pid){const r=await POST('/mentor/simulado/montar',{prova_real_id:pid});toast(`Simulado real #${r.numero} (${r.n})`);vSimulados(document.getElementById('main'))}
-async function fazerSim(id){const s=await GET(`/mentor/simulado/${id}`);if(!S.sessao)await iniciarSessao('simulado');S._sim={s,idx:0,resp:{},fim:Date.now()+Math.round(270*60*1000*s.questoes.length/80)};renderSim()}
-function renderSim(){const st=S._sim,s=st.s,q=s.questoes[st.idx],m=document.getElementById('main');const seg=Math.max(0,Math.round((st.fim-Date.now())/1000));
-  m.innerHTML=`<div class="painel" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;position:sticky;top:60px;z-index:20"><b class="xp" id="sim-rel">${Math.floor(seg/3600)}:${String(Math.floor(seg%3600/60)).padStart(2,'0')}:${String(seg%60).padStart(2,'0')}</b><span class="muted small">Questão ${st.idx+1} de ${s.questoes.length} · ${Object.keys(st.resp).length} respondidas</span><span class="espaco"></span><button class="btn" onclick="entregarSim()">Entregar</button></div>
-  <div class="grade" style="grid-template-columns:1fr 260px"><div class="qcard" style="max-width:none"><div class="qmeta"><span class="rot">${esc(q.materia||'')}</span><span>${esc(q.banca_sigla||'')} ${q.ano||''}</span></div><p class="enun">${esc(q.enunciado)}</p>
-    <div class="alts">${(q.alternativas||[]).map(al=>`<button class="alt" aria-pressed="${st.resp[q.id]===al.letra}" onclick="S._sim.resp[${q.id}]='${esc(al.letra)}';renderSim()"><b>${esc(al.letra)}</b><span>${esc(al.texto)}</span></button>`).join('')}</div>
-    <div class="acoes"><button class="btn sec" onclick="S._sim.idx=Math.max(0,S._sim.idx-1);renderSim()" ${st.idx===0?'disabled':''}>Anterior</button><button class="btn sec" onclick="S._sim.idx=Math.min(${s.questoes.length-1},S._sim.idx+1);renderSim()">Próxima</button></div></div>
-    <div class="painel"><h3>Folha de respostas</h3><div class="folha">${s.questoes.map((x,i)=>`<button class="${st.resp[x.id]?'resp':''}${i===st.idx?' at':''}" onclick="S._sim.idx=${i};renderSim()">${i+1}${st.resp[x.id]?' '+st.resp[x.id]:''}</button>`).join('')}</div></div></div>`;
-  clearInterval(S._simT);S._simT=setInterval(()=>{const r=document.getElementById('sim-rel');if(!r||!S._sim){clearInterval(S._simT);return}const g=Math.max(0,Math.round((S._sim.fim-Date.now())/1000));r.textContent=`${Math.floor(g/3600)}:${String(Math.floor(g%3600/60)).padStart(2,'0')}:${String(g%60).padStart(2,'0')}`;if(g<=0)entregarSim(true)},1000)}
-async function entregarSim(auto){const st=S._sim;if(!st)return;const falta=st.s.questoes.length-Object.keys(st.resp).length;if(!auto&&falta&&!confirm(`Ainda tem ${falta} em branco. Entregar?`))return;
-  clearInterval(S._simT);const r=await POST(`/mentor/simulado/${st.s.id}/entregar`,{respostas:st.resp,sessao_id:S.sessao});S._sim=null;
-  document.getElementById('main').innerHTML=`<div class="qcard" style="text-align:center"><div class="rot">Simulado entregue</div><h1 style="color:${r.nota>=60?'var(--acc400)':'var(--red400)'}">${r.nota} pontos</h1><p class="soft">${r.certas} de ${r.n} · ${r.nota>=60?'acima':'abaixo'} do mínimo de 60 · +${r.xp} XP</p>
-    <table style="text-align:left">${Object.entries(r.por_materia).map(([k,v])=>`<tr><td>${esc(k)}</td><td class="n">${v.certas}/${v.n}</td></tr>`).join('')}</table><div class="acoes" style="justify-content:center"><button class="btn" onclick="ir('simulados')">Voltar</button></div></div>`}
-async function verSim(id){const s=await GET(`/mentor/simulado/${id}`);toast(`#${s.numero}: ${s.certas} certas, ${s.nota} pontos`)}
-// ------------------------------------------------------------- mais cai · cards
-async function vMaisCai(m){const r=await GET('/mentor/mais-cai?limite=40');
-  m.innerHTML=`<div class="painel"><h3>O que mais cai na prova de Soldado</h3><p class="small muted">${r.total_questoes} questões de ${r.provas} provas da PM-BA e do CBM-BA no acervo.</p>
-  <table><tr><th>Assunto (etiqueta do Gran)</th><th>Matéria</th><th>Questões</th><th>Provas</th></tr>${r.etiquetas.map(e=>`<tr><td>${esc(e.nome)}</td><td>${esc(e.materia||'')}</td><td class="n">${e.questoes}</td><td class="n">${e.provas}</td></tr>`).join('')}</table></div>`}
-async function fazerCards(){const cs=await GET('/mentor/cards/hoje');if(!cs.length){toast('Nenhum card hoje');return}if(!S.sessao)await iniciarSessao('cards');let i=0;const m=document.getElementById('main');
-  const mostra=()=>{const c=cs[i];if(!c){toast('Cards do dia feitos');return ir('inicio')}m.innerHTML=`<div class="qcard" style="text-align:center"><div class="rot">${esc(c.materia||'')} · ${esc(c.assunto||'')}</div><p class="small muted">card ${i+1} de ${cs.length} · caixa ${c.caixa}</p><h2>${esc(c.frente)}</h2><div id="verso" hidden class="resol" style="text-align:left">${esc(c.verso)}</div>
-    <div class="acoes" style="justify-content:center"><button class="btn sec" onclick="document.getElementById('verso').hidden=false">Ver resposta</button><button class="btn" onclick="respCard(${c.id},true)">Lembrei</button><button class="btn warn" onclick="respCard(${c.id},false)">Não lembrei</button></div></div>`};
+function avancarEtapa(){const f=S.fluxo;const ordem=['aquecimento','video','fixacao','gate'];const k=ordem.indexOf(f.etapa)+1;f.q=0;f.marcas=[];if(k<ordem.length){f.etapa=ordem[k];renderFluxo()}else fecharGate()}
+async function fecharGate(){const f=S.fluxo,a=f.aula;const g=await POST(`/mentor/aula/${a.id}/gate`,{sessao_id:S.sessao});f.etapa='resultado';renderFluxo();
+  const r=34,C=2*Math.PI*r,certas=g.certas??0,ok=g.fechou&&!g.com_ressalva;
+  document.getElementById('sessao').innerHTML=`<div class="qcard sess"><div class="nota-final"><svg class="anel" viewBox="0 0 86 86"><circle cx="43" cy="43" r="${r}" fill="none" stroke="var(--bg2)" stroke-width="8"/>${certas?`<circle cx="43" cy="43" r="${r}" fill="none" stroke="${ok?'var(--acc)':'var(--red)'}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${C*certas/5} ${C}" transform="rotate(-90 43 43)"/>`:''}<text x="43" y="50" text-anchor="middle" style="font-size:18px">${certas}/5</text></svg>
+    <div><div class="veredito ${ok?'ok':'x'}" style="font-size:1.4rem">${I(ok?'circle-check-big':'rotate-ccw')}${g.fechou?(g.com_ressalva?'Concluída com ressalva':'Aula concluída'):'Reestudo'}</div>
+    <p class="soft">${g.xp?`+${g.xp} XP. `:''}${g.assunto_fechou?'Assunto fechado: a R1 abre amanhã.':(g.reestudo?'Ficou abaixo de 4. Releia o resumo de bolso e responda 5 novas.':'Próxima aula do assunto quando quiser.')}</p></div></div>
+    ${g.reestudo&&a.resumo_bolso?`<details class="bloco-detalhe" open><summary>${I('file-text')}Resumo de bolso</summary><div class="res-txt">${esc(a.resumo_bolso).slice(0,6000).replace(/\n/g,'<br>')}</div></details>`:''}
+    <div class="acoes" style="margin-top:14px">${g.reestudo?`<button class="btn" onclick="reestudar()">${I('target')}Responder as 5 novas</button>`:`<button class="btn" onclick="proximaAula()">${I('play')}Próxima aula</button><button class="btn sec" onclick="fecharSessao()">${I('log-out')}Encerrar sessão</button>`}</div></div>`;S._gate=g}
+function reestudar(){const f=S.fluxo;f.aula.gate=S._gate.novas||[];f.etapa='gate';f.q=0;f.marcas=[];f.certas=0;renderFluxo()}
+async function proximaAula(){const p=await GET('/mentor/painel');pintarUsuario(p.progresso);S.fluxo=null;document.getElementById('p-inicio').classList.remove('foco');if(p.proxima&&p.proxima.tipo==='aula')return comecarAula(p.proxima.aula_id);if(p.proxima&&p.proxima.tipo==='revisao')return comecarRevisoes();toast('Plano do dia concluído','trophy');renderInicio()}
+
+/* ---------- REVISÕES ---------- */
+async function comecarRevisoes(){const r=await GET('/mentor/revisoes/hoje');if(!r.revisoes.length){toast('Nenhuma revisão pendente','check');return renderInicio()}await iniciarSessao('revisao');S._revs=r.revisoes;S._ri=0;S.fluxo={etapa:'revisao'};abrirAba('inicio');proximaRevisao()}
+function proximaRevisao(){const rv=S._revs[S._ri];if(!rv){S.fluxo=null;toast('Revisões do dia feitas','trophy');return renderInicio()}
+  S.fluxo={aula:{id:null,assunto_id:rv.assunto_id,materia:rv.materia,assunto:rv.nome,titulo:`Revisão ${rv.tipo}`,tier:rv.tier,duracao_s:0,fixacao:[]},etapa:'revisao',q:0,marcas:[],certas:0,rev:rv};
+  document.getElementById('p-inicio').classList.add('foco');
+  document.getElementById('agora').innerHTML=`<div class="agora"><div class="rot"><span class="ponto-live"></span>Revisão ${rv.tipo}${rv.atrasada?' · atrasada':''} · ${S._ri+1} de ${S._revs.length}</div><h1>${esc(rv.nome)}</h1><div class="mat">${esc(rv.materia)} · ${rv.questoes.length} questões · a próxima data depende do seu acerto</div><div class="acoes"><button class="btn sec" onclick="fecharSessao()">${I('log-out')}Encerrar sessão</button></div></div>`;
+  const box=document.getElementById('sessao');const lista=rv.questoes;
+  const passo=()=>{const f=S.fluxo;if(f.q>=lista.length)return concluirRev();renderQuestaoRev(box,lista,rv,passo)};passo()}
+function renderQuestaoRev(box,lista,rv,passo){const f=S.fluxo;const q=lista[f.q];
+  box.innerHTML=`<div class="qcard sess"><div class="qmeta"><span class="rotulo" style="color:var(--acc400)">${rv.tipo}${q.repeticao?' · questão que você errou':''}</span>${pontosHtml(lista.length,f.q,f.marcas)}</div>
+    ${q.orgao_sigla||q.banca_sigla?`<p class="fonte-q">${esc(q.orgao_sigla||'')} · ${esc(q.banca_sigla||'')} ${q.ano||''}${q.soldado_ba?' · <b style="color:var(--amber400)">caiu na PM-BA</b>':''}</p>`:''}
+    <p class="enun">${esc(q.enunciado)}</p><div class="alts">${(q.alternativas||[]).map(a=>`<button class="alt" data-l="${esc(a.letra)}" aria-pressed="false"><b>${esc(a.letra)}</b><span>${esc(a.texto)}</span></button>`).join('')}</div>
+    <div class="conf" id="conf" hidden><span class="muted small">Com que segurança?</span><button data-c="certeza">${I('shield-check')}Certeza <kbd>1</kbd></button><button data-c="duvida">${I('circle-help')}Dúvida <kbd>2</kbd></button><button data-c="chute">${I('zap')}Chute <kbd>3</kbd></button></div><div id="res"></div>
+    <div class="atalhos">${I('keyboard')}<span><kbd>A</kbd>–<kbd>E</kbd> responde</span><span><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> segurança</span><span><kbd>Enter</kbd> próxima</span></div></div>`;
+  let escolha=null;box.dataset.fechada='0';
+  box.querySelectorAll('.alt').forEach(b=>b.addEventListener('click',()=>{if(box.dataset.fechada==='1')return;box.querySelectorAll('.alt').forEach(x=>x.setAttribute('aria-pressed',x===b));escolha=b.dataset.l;box.querySelector('#conf').hidden=false}));
+  box.querySelectorAll('#conf button').forEach(b=>b.addEventListener('click',()=>fechar(b.dataset.c)));
+  S._marcar=l=>{const b=box.querySelector(`.alt[data-l="${l}"]`);if(b)b.click()};S._conf=c=>{if(escolha&&box.dataset.fechada!=='1')fechar(c)};S._prox=()=>{const b=box.querySelector('#prox');if(b)b.click()};
+  async function fechar(conf){if(box.dataset.fechada==='1'||!escolha)return;box.dataset.fechada='1';
+    const res=await POST('/mentor/resposta',{questao_id:q.id,contexto:rv.tipo,marcada:escolha,assunto_id:rv.assunto_id,sessao_id:S.sessao,confianca:conf,revisao_id:rv.id});
+    const certa=res.correta;f.marcas.push(certa&&conf!=='chute');
+    box.querySelectorAll('.alt').forEach(b=>{if(b.dataset.l===res.gabarito)b.classList.add('certa');else if(b.dataset.l===escolha)b.classList.add('errada')});box.querySelector('#conf').hidden=true;
+    box.querySelector('#res').innerHTML=`<div class="resultado"><span class="veredito ${certa?'ok':'x'}">${I(certa?'circle-check-big':'circle-x')}${certa?'Acertou':'Errou'}</span><p class="soft small">Gabarito <b style="color:var(--fg)">${esc(res.gabarito)}</b></p>${resolucaoHtml(res.comentario_professor,true)}<div class="acoes" style="margin-top:12px"><button class="btn" id="prox">${f.q>=lista.length-1?'Fechar a revisão':'Próxima questão'}${I('play')}</button></div></div>`;
+    ligarLerMais(box);box.querySelector('.qmeta .pontos').outerHTML=pontosHtml(lista.length,-1,f.marcas);box.querySelector('#prox').onclick=()=>{f.q++;passo()}}}
+async function concluirRev(){const rv=S.fluxo.rev;const c=await POST(`/mentor/revisao/${rv.id}/concluir`,{sessao_id:S.sessao});toast(`${rv.tipo} ${c.acerto}% · próxima ${c.proxima} em ${fmtData(c.prevista)} · +${c.xp} XP`,'rotate-ccw');S._ri++;proximaRevisao()}
+
+/* ---------- PLANEJAMENTO ---------- */
+async function renderSemanas(){const ss=await GET('/mentor/semanas');const box=document.getElementById('semanas');document.getElementById('plano-lista').hidden=false;document.getElementById('plano-semana').hidden=true;
+  if(!ss.length){box.innerHTML=`<div class="vazio-box"><span class="icone-tile t-mu">${I('hourglass')}</span>Nenhuma semana montada ainda.<span class="small">O mentor monta toda segunda; você pode montar agora.</span></div><div class="acoes"><button class="btn" onclick="montarSemana().then(renderSemanas)">${I('sparkles')}Montar a semana</button></div>`;return}
+  box.innerHTML=ss.map((s,i)=>{const pct=s.itens?Math.round(100*s.feitos/s.itens):0;const cls=s.status==='aberta'?' atual':(s.status==='bloqueada'?' trancada':'');
+    const estado=s.status==='aberta'?`<button class="estado abrir" data-id="${s.id}">${I('play')}Abrir a semana</button>`:(s.status==='fechada'?`<button class="estado abrir" data-id="${s.id}">${I('check')}Fechada · ${fmtH(+s.horas_feitas*60)}</button>`:`<span class="estado">${I('lock')}Bloqueada · conclua a semana atual</span>`);
+    return `<div class="semana${cls}"><div class="n">Semana ${String(i+1).padStart(2,'0')}${s.status==='aberta'?' · em andamento':''}</div><div class="t">Fase ${esc(s.fase||'—')} · ${s.itens} assuntos</div><div class="d">${curta(s.inicio)} a ${curta(s.fim)} · meta de ${fmtH(+s.meta_horas*60)}</div>${s.status!=='bloqueada'?`<div class="medidor"><i style="width:${pct}%"></i></div><span class="d">${pct}% · ${s.feitos} de ${s.itens} assuntos</span>`:''}${estado}</div>`}).join('')+`<div class="semana" style="display:flex;align-items:center;justify-content:center"><button class="btn sec" onclick="montarSemana().then(renderSemanas)">${I('sparkles')}Montar / refazer a semana atual</button></div>`;
+  box.querySelectorAll('.estado.abrir').forEach(b=>b.onclick=()=>abrirSemana(+b.dataset.id))}
+async function abrirSemana(id){const s=await GET(`/mentor/semana/${id}`);document.getElementById('plano-lista').hidden=true;const el=document.getElementById('plano-semana');el.hidden=false;
+  const pct=s.itens.length?Math.round(100*s.itens.filter(i=>i.feito).length/s.itens.length):0;const pctH=Math.min(100,Math.round(100*(+s.horas_feitas)/Math.max(1,+s.meta_horas)));
+  const porMat={};s.itens.forEach(i=>(porMat[i.materia]=porMat[i.materia]||[]).push(i));
+  el.innerHTML=`<div class="sem-cab"><button class="voltar" onclick="renderSemanas()">${I('arrow-left')}Voltar</button><div style="flex:1;min-width:240px"><div class="rotulo" style="color:var(--acc400)">Semana de ${fmtData(s.inicio)}</div><h2>Fase ${esc(s.fase||'')} · ${s.itens.length} assuntos</h2><div class="chips"><span class="chip">${I('calendar-days')}${fmtData(s.inicio)} a ${fmtData(s.fim)}</span><span class="chip base">${I('clock')}meta de ${fmtH(+s.meta_horas*60)}</span></div></div></div>
+    <div class="grade2" style="margin:0 0 16px"><div class="progresso"><div class="topo2"><span class="rotulo">Progresso da semana</span><span class="pct">${pct}%</span></div><div class="medidor"><i style="width:${pct}%"></i></div><p class="muted small" style="margin:.5rem 0 0">Um assunto fecha quando todas as aulas dele passam no gate.</p></div>
+    <div class="progresso"><div class="topo2"><span class="rotulo">Horas da semana</span><span class="pct">${fmtH(+s.horas_feitas*60)} <small>de ${fmtH(+s.meta_horas*60)}</small></span></div><div class="medidor brass"><i style="width:${pctH}%"></i></div><p class="muted small" style="margin:.5rem 0 0">Contadas pelas sessões do cronômetro.</p></div></div>
+    ${s.revisoes.length?`<div class="materia"><button aria-expanded="true"><span class="icone-tile t-cy">${I('rotate-ccw')}</span><div><h3>Revisões da semana</h3><span class="muted">Só questões de concurso. Adiadas não perdem o intervalo.</span></div><span class="cont">${s.revisoes.length}</span></button><div class="corpo"><ul class="revs">${s.revisoes.map(r=>`<li>${r.feita?I('check'):'<span></span>'}<span>${esc(r.nome)}</span><b>${r.tipo}</b><span>${esc(r.materia)}</span><span class="muted small">${fmtData(r.prevista)}${r.feita?' · '+r.acerto+'%':''}</span></li>`).join('')}</ul></div></div>`:''}
+    ${Object.entries(porMat).map(([m,l])=>`<div class="materia"><button aria-expanded="true"><span class="icone-tile t-em">${I('book-open')}</span><div><h3>${esc(m)}</h3><span class="muted">${l.length} assunto${l.length>1?'s':''} · ${fmtH(l.reduce((a,i)=>a+ +i.previsto_h,0)*60)}</span></div><span class="cont">${l.filter(i=>i.feito).length}/${l.length}</span></button><div class="corpo">${l.map(i=>`<div class="ass-plan"><div class="topo3"><span class="tier t${i.tier}">${i.tier}</span><b>${esc(i.nome)}</b><span class="chip ${i.feito?'completo':''}">${i.feito?'feito':i.n_concluidas+'/'+i.n_aulas+' aulas'}</span><span class="muted small">~${fmtMin(+i.previsto_h*60)}</span></div></div>`).join('')}</div></div>`).join('')}`;
+  el.querySelectorAll('.materia > button').forEach(b=>b.onclick=()=>{const ab=b.getAttribute('aria-expanded')==='true';b.setAttribute('aria-expanded',!ab);b.nextElementSibling.hidden=ab});window.scrollTo({top:0})}
+
+/* ---------- EDITAL ---------- */
+function tierHtml(t){return `<span class="tier t${t}" title="tier ${t}">${t==='S'?I('star'):t}</span>`}
+async function renderEdital(){const ms=await GET('/mentor/materias');S.mat=S.mat||ms[0].id;
+  document.getElementById('sel-mat').innerHTML=ms.map(m=>`<button aria-pressed="${m.id===S.mat}" data-m="${m.id}">${esc(m.nome.replace('Direito ','D. ').replace('Língua Portuguesa','Português').replace('Igualdade Racial e de Gênero','Igualdade'))} <small>${m.estudados}/${m.assuntos}</small></button>`).join('');
+  document.querySelectorAll('#sel-mat button').forEach(b=>b.onclick=()=>{S.mat=+b.dataset.m;renderEdital()});
+  const filtro=document.querySelector('#sel-filtro [aria-pressed=true]')?.dataset.f||'corte';
+  const e=await GET(`/mentor/edital?materia_id=${S.mat}`);
+  const html=e.modulos.map(mod=>{const ass=mod.assuntos.filter(a=>filtro==='tudo'||['S','A','B'].includes(a.tier)||a.origem==='propria');if(!ass.length)return '';
+    return `<div class="modulo"><h3>${esc(mod.nome.length>90?mod.nome.slice(0,90)+'…':mod.nome)}</h3>${ass.map(a=>{const id='a'+a.id;const est=a.estado;
+      const chips=[a.base?'<span class="chip base">base</span>':'',`<span class="chip ${a.tier==='S'||a.tier==='A'?'completo':'expresso'}">${esc(a.modo.replace(/_/g,' '))}</span>`,a.origem==='propria'?'<span class="chip propria">aula própria</span>':'',est==='estudado'?'<span class="chip completo">estudado</span>':est==='em_andamento'?'<span class="chip">em andamento</span>':est==='ressalva'?'<span class="chip fora">ressalva</span>':''].join('');
+      return `<div class="assunto${a.tier==='C'||a.tier==='fora'?' fora':''}"><div class="linha"><span class="check" style="display:grid;place-items:center;color:${est==='estudado'?'var(--acc400)':'var(--muted)'}">${I(est==='estudado'?'circle-check-big':'circle-play')}</span>${tierHtml(a.tier)}<div class="nome">${esc(a.nome)}<div class="chips">${chips}</div></div>
+        <div class="num"><b>${a.soldado??0}</b> de Soldado · <b>${a.estoque_usavel}</b> no estoque${a.acerto!=null?` · <b style="color:${a.acerto>=70?'var(--acc400)':'var(--red400)'}">${a.acerto}%</b>`:''}<br>${a.aulas.length} aula${a.aulas.length!==1?'s':''} <button class="abrir" aria-expanded="false" aria-controls="${id}" aria-label="Ver aulas">${I('chevron-down')}</button></div></div>
+        <ul class="aulas" id="${id}" hidden>${a.aulas.map(t=>`<li>${I(t.estado==='concluida'?'check':'circle-play')}${esc(t.titulo)}${t.duracao_s?` <span class="muted small">· ${fmtMin(t.duracao_s/60)}</span>`:''}${t.estado!=='concluida'&&t.tipo!=='fora'?` <button class="ler-mais" style="margin:0 0 0 8px" onclick="comecarAula(${t.id})">estudar agora</button>`:''}</li>`).join('')}</ul></div>`}).join('')}</div>`}).join('');
+  document.getElementById('lista-edital').innerHTML=html||`<div class="vazio-box">Nada nesse filtro.</div>`;
+  document.querySelectorAll('#lista-edital .abrir').forEach(b=>b.onclick=()=>{const ul=document.getElementById(b.getAttribute('aria-controls'));const ab=ul.hidden;ul.hidden=!ab;b.setAttribute('aria-expanded',ab);b.innerHTML=I(ab?'chevron-up':'chevron-down')});
+  document.getElementById('info-fazer').textContent=`${e.modulos.reduce((n,m)=>n+m.assuntos.filter(a=>a.estado==='estudado').length,0)} assunto(s) estudado(s) nesta matéria.`}
+document.querySelectorAll('#sel-filtro button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#sel-filtro button').forEach(x=>x.setAttribute('aria-pressed',x===b));renderEdital()});
+document.getElementById('btn-fazer').onclick=()=>abrirAba('questoes');
+
+/* ---------- QUESTÕES ---------- */
+let qModo='estudei',qQtd=20;
+async function renderQuestoesTab(){document.getElementById('qcard').hidden=true;const ms=await GET('/mentor/materias');
+  document.querySelectorAll('#q-modo button').forEach(b=>{b.setAttribute('aria-pressed',b.dataset.m===qModo);b.onclick=()=>{qModo=b.dataset.m;renderQuestoesTab()}});
+  document.querySelectorAll('#q-qtd button').forEach(b=>{b.setAttribute('aria-pressed',+b.dataset.q===qQtd);b.onclick=()=>{qQtd=+b.dataset.q;renderQuestoesTab()}});
+  document.getElementById('q-escolha').innerHTML=qModo==='escolher'?`<div class="q-grupo">${ms.map(m=>`<label class="q-mat"><input type="checkbox" value="${m.id}" ${m.estudados?'checked':''}> <b>${esc(m.nome)}</b> <span class="muted small">${m.estudados} estudado(s) de ${m.assuntos}</span></label>`).join('')}</div>`:'';
+  document.getElementById('q-resumo').textContent=qModo==='estudei'?'Todos os assuntos que você já estudou, misturados.':'Escolha as matérias.';
+  document.getElementById('q-comecar').onclick=comecarQuestoes;renderDesempenho()}
+async function comecarQuestoes(){const mats=[...document.querySelectorAll('#q-escolha input:checked')].map(i=>i.value).join(',');
+  const r=await GET(`/mentor/questoes?modo=${qModo==='estudei'?'estudado':'escolher'}&n=${qQtd}${mats?'&materias='+mats:''}`);if(!r.questoes.length){toast(r.aviso||'nenhuma questão disponível','circle-x');return}
+  await iniciarSessao('questoes');const box=document.getElementById('qcard');box.hidden=false;S.fluxo={aula:{id:null,assunto_id:null},etapa:'questoes',q:0,marcas:[],certas:0};
+  const lista=r.questoes;const passo=()=>{const f=S.fluxo;if(f.q>=lista.length){toast(`${f.certas} de ${lista.length}`,'trophy');box.hidden=true;S.fluxo=null;renderDesempenho();return}
+    renderQuestaoRev(box,lista,{tipo:'questoes',id:null,assunto_id:null},passo)};passo()}
+async function renderDesempenho(){const p=S.painel||await GET('/mentor/painel');const box=document.getElementById('desempenho');if(!p.acerto_por_materia.length){box.innerHTML=`<div class="vazio-box"><span class="icone-tile t-am">${I('trophy')}</span>Responda uma questão pra ver o desempenho por matéria.</div>`;return}
+  box.innerHTML=`<div class="placar"><div><b>${p.kpi.questoes_respondidas}</b>respondidas</div><div><b>${p.kpi.acerto_geral??'—'}%</b>acerto</div><div><b>${p.progresso?.streak_dias||0}</b>dias seguidos</div><div><b>${p.progresso?.xp_total||0}</b>XP</div></div>`+barrasMat(p.acerto_por_materia)}
+
+/* ---------- SIMULADOS ---------- */
+async function renderSim(){const s=await GET('/mentor/simulados');const box=document.getElementById('sim-painel');document.getElementById('sim-prova').hidden=true;box.hidden=false;
+  box.innerHTML=`<div class="cab"><div><h2>Simulados</h2><p class="muted small bloco-texto">Do jeito da prova: 80 questões de múltipla escolha, cronômetro de 4h30, sem gabarito até entregar, mínimo de 60 pontos. Certo/errado fica fora.</p></div></div>
+    <div class="agora sim-hero"><div><div class="rot">${I('clipboard-check')}Montar</div><h1>Simulado</h1><div class="regras"><span class="chip completo">80 questões · 5 alternativas</span><span class="chip">sem certo/errado</span><span class="chip">4h30</span><span class="chip base">mínimo 60 pontos</span></div>
+      <div class="acoes"><button class="btn" onclick="montarSim(80)">${I('play')}Montar simulado (80)</button><button class="btn sec" onclick="montarSim(20)">${I('zap')}Treino curto (20)</button></div></div></div>
+    <div class="grade2" style="margin-top:0"><div class="painel"><div class="painel-cab"><h3>${I('trophy')}Histórico</h3></div><ul class="cal-sim hist">${s.simulados.map(x=>`<li><span class="icone-tile ${x.status==='entregue'?(x.nota>=60?'t-em':'t-re'):'t-cy'}">${I(x.tipo==='real'?'award':'clipboard-check')}</span><div><b style="font-size:14px">#${x.numero} · ${x.tipo}${x.prova?' · '+esc(x.prova):''}</b><span class="muted small" style="display:block">${fmtData(x.data)} · ${x.n} questões${x.nota!=null?' · '+x.certas+' certas':''}</span></div>${x.status==='entregue'?`<span class="nota-mini" style="color:${x.nota>=60?'var(--acc400)':'var(--red400)'}">${String(x.nota).replace('.',',')}</span>`:`<button class="btn sec" onclick="fazerSim(${x.id})">${I('play')}Fazer</button>`}</li>`).join('')||'<li class="muted">nenhum ainda</li>'}</ul></div>
+    <div class="painel"><div class="painel-cab"><h3>${I('award')}Provas reais de Soldado</h3></div><ul class="cal-sim">${s.provas_reais.map(p=>`<li><span class="icone-tile ${p.reservada?'t-am':'t-mu'}">${I('award')}</span><div><b style="font-size:14px">${esc(p.nome).slice(0,60)}</b><span class="muted small" style="display:block">${p.n_questoes} questões${p.reservada?' · reservada pra simulado':''}</span></div><button class="btn sec" onclick="montarSimReal(${p.id})">${I('play')}Real</button></li>`).join('')}</ul></div></div>`}
+async function montarSim(n){const r=await POST('/mentor/simulado/montar',{n_total:n});toast(`Simulado #${r.numero} com ${r.n} questões`,'clipboard-check');renderSim()}
+async function montarSimReal(pid){const r=await POST('/mentor/simulado/montar',{prova_real_id:pid});toast(`Simulado real #${r.numero} (${r.n})`,'award');renderSim()}
+async function fazerSim(id){const s=await GET(`/mentor/simulado/${id}`);await iniciarSessao('simulado');S.sim={s,idx:0,resp:{},marc:{},fim:Date.now()+Math.round(270*60*1000*s.questoes.length/80)};document.getElementById('sim-painel').hidden=true;document.getElementById('sim-prova').hidden=false;renderSimQ();window.scrollTo({top:0})}
+function renderSimQ(){const st=S.sim,s=st.s,q=s.questoes[st.idx],box=document.getElementById('sim-prova');const resp=Object.keys(st.resp).length;
+  box.innerHTML=`<div class="sim-barra"><span class="icone-tile t-am" style="width:32px;height:32px">${I('timer')}</span><span class="relogio-sim" id="relogio-sim">—</span><span class="muted small">Questão ${st.idx+1} de ${s.questoes.length} · ${resp} respondida${resp!==1?'s':''}</span><span class="espaco"></span><button class="btn sec" onclick="sairSim()">${I('x')}Sair</button><button class="btn" onclick="entregarSim()">${I('send')}Entregar</button></div>
+  <div class="sim-grade"><div class="qcard" style="max-width:none"><div class="qmeta"><span class="rotulo" style="color:var(--acc400)">${esc(q.materia||'')}</span><button class="btn-flag${st.marc[st.idx]?' on':''}" onclick="S.sim.marc[${st.idx}]=!S.sim.marc[${st.idx}];renderSimQ()">${I('flag')}${st.marc[st.idx]?'Marcada pra revisar':'Marcar pra revisar'}</button></div>
+    <p class="fonte-q">${esc(q.orgao_sigla||'')} · ${esc(q.banca_sigla||'')} ${q.ano||''}</p><p class="enun">${esc(q.enunciado)}</p>
+    <div class="alts">${(q.alternativas||[]).map(a=>`<button class="alt" aria-pressed="${st.resp[q.id]===a.letra}" onclick="S.sim.resp[${q.id}]='${esc(a.letra)}';renderSimQ()"><b>${esc(a.letra)}</b><span>${esc(a.texto)}</span></button>`).join('')}</div>
+    <div class="acoes"><button class="btn sec" onclick="S.sim.idx=Math.max(0,S.sim.idx-1);renderSimQ()" ${st.idx===0?'disabled':''}>${I('chevron-left')}Anterior</button><button class="btn sec" onclick="S.sim.idx=Math.min(${s.questoes.length-1},S.sim.idx+1);renderSimQ()">Próxima${I('chevron-right')}</button></div>
+    <div class="atalhos">${I('keyboard')}<span><kbd>A</kbd>–<kbd>E</kbd> marca</span><span><kbd>←</kbd><kbd>→</kbd> navega</span><span><kbd>M</kbd> revisar depois</span></div></div>
+  <div class="painel folha"><div class="painel-cab"><h3>${I('list-ordered')}Folha de respostas</h3></div><div class="folha-grid">${s.questoes.map((x,i)=>`<button class="${st.resp[x.id]?'resp':''}${st.marc[i]?' marc':''}${i===st.idx?' at':''}" onclick="S.sim.idx=${i};renderSimQ()">${i+1}${st.resp[x.id]?' '+st.resp[x.id]:''}</button>`).join('')}</div></div></div>`;
+  clearInterval(S._simT);const tick=()=>{const r=document.getElementById('relogio-sim');if(!r||!S.sim){clearInterval(S._simT);return}const g=Math.max(0,Math.round((S.sim.fim-Date.now())/1000));r.textContent=`${Math.floor(g/3600)}:${String(Math.floor(g%3600/60)).padStart(2,'0')}:${String(g%60).padStart(2,'0')}`;if(g<=0)entregarSim(true)};tick();S._simT=setInterval(tick,1000)}
+function sairSim(){if(confirm('Sair sem entregar?')){clearInterval(S._simT);S.sim=null;renderSim()}}
+async function entregarSim(auto){const st=S.sim;if(!st)return;const falta=st.s.questoes.length-Object.keys(st.resp).length;if(!auto&&falta&&!confirm(`Ainda tem ${falta} em branco. Entregar mesmo assim?`))return;clearInterval(S._simT);
+  const r=await POST(`/mentor/simulado/${st.s.id}/entregar`,{respostas:st.resp,sessao_id:S.sessao});S.sim=null;const rr=34,C=2*Math.PI*rr,ok=r.nota>=60;
+  document.getElementById('sim-prova').innerHTML=`<div class="cab"><div><div class="rotulo" style="color:var(--acc400)">Resultado</div><h2>Simulado entregue</h2></div><button class="voltar" onclick="renderSim()">${I('arrow-left')}Voltar aos simulados</button></div>
+    <div class="painel"><div class="nota-final"><svg class="anel" viewBox="0 0 86 86"><circle cx="43" cy="43" r="${rr}" fill="none" stroke="var(--bg2)" stroke-width="8"/>${r.certas?`<circle cx="43" cy="43" r="${rr}" fill="none" stroke="${ok?'var(--acc)':'var(--red)'}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${C*r.certas/r.n} ${C}" transform="rotate(-90 43 43)"/>`:''}<text x="43" y="50" text-anchor="middle" style="font-size:18px">${r.certas}/${r.n}</text></svg>
+      <div><div class="veredito ${ok?'ok':'x'}" style="font-size:1.5rem">${String(r.nota).replace('.',',')} pontos</div><p class="soft">${ok?'Acima':'Abaixo'} do mínimo de 60 do edital 2022 · +${r.xp} XP</p></div></div></div>
+    <div class="painel"><div class="painel-cab"><h3>${I('bar-chart-3')}Por matéria</h3></div>${barrasMat(Object.entries(r.por_materia).map(([k,v])=>({materia:k,n:v.n,acerto:100*v.certas/Math.max(1,v.n)})))}</div>`}
+
+/* ---------- PLANO GERAL / MAIS CAI ---------- */
+async function renderGeral(){const m=await GET('/mentor/mais-cai?limite=30');const ms=await GET('/mentor/materias');const box=document.getElementById('p-geral');
+  box.innerHTML=`<div class="cab"><div><h2>Plano geral</h2><p class="muted small bloco-texto">O que cada matéria tem de estudo (S e A) e o que a prova de Soldado mais cobra.</p></div></div>
+    <div class="grade2"><div class="painel"><div class="painel-cab"><h3>${I('bar-chart-3')}Horas de vídeo em S e A, por matéria</h3></div><div class="barras-mat">${ms.map(x=>{const h=+x.horas_sa;const mx=Math.max(...ms.map(y=>+y.horas_sa))||1;return `<div><div class="l"><b>${esc(x.nome)}</b><span>${fmtH(h*60)} · ${x.aulas_concluidas}/${x.aulas} aulas</span></div><div class="medidor"><i style="width:${Math.round(100*h/mx)}%"></i></div></div>`}).join('')}</div></div>
+    <div class="painel"><div class="painel-cab"><h3>${I('target')}O que mais cai na prova de Soldado</h3><span class="muted small">${m.total_questoes} questões · ${m.provas} provas</span></div><table class="dist"><tr class="bloco"><td>Assunto</td><td>Q</td><td>provas</td></tr>${m.etiquetas.map(e=>`<tr><td>${esc(e.nome)}<br><span class="muted small">${esc(e.materia||'')}</span></td><td>${e.questoes}</td><td>${e.provas}</td></tr>`).join('')}</table></div></div>`}
+
+/* ---------- CARDS ---------- */
+async function fazerCards(){const cs=await GET('/mentor/cards/hoje');if(!cs.length){toast('Nenhum card hoje','check');return}await iniciarSessao('cards');let i=0;S.fluxo={etapa:'cards'};abrirAba('inicio');document.getElementById('p-inicio').classList.add('foco');
+  const mostra=()=>{const c=cs[i];if(!c){toast('Cards do dia feitos','trophy');S.fluxo=null;return renderInicio()}document.getElementById('agora').innerHTML=`<div class="agora"><div class="rot">${I('layers')}Cards · ${i+1} de ${cs.length}</div><h1>${esc(c.assunto||'Card')}</h1><div class="mat">${esc(c.materia||'')} · caixa ${c.caixa}</div></div>`;
+    document.getElementById('sessao').innerHTML=`<div class="qcard sess"><p class="enun"><b>${esc(c.frente)}</b></p><div id="verso" hidden class="resolucao"><div class="res-txt">${esc(c.verso)}</div></div><div class="acoes"><button class="btn sec" onclick="document.getElementById('verso').hidden=false">${I('chevron-down')}Ver resposta</button><button class="btn" onclick="respCard(${c.id},true)">${I('check')}Lembrei</button><button class="btn sec" onclick="respCard(${c.id},false)">${I('x')}Não lembrei</button></div></div>`};
   window.respCard=async(id,ok)=>{await POST(`/mentor/card/${id}/responder`,{lembrou:ok});i++;mostra()};mostra()}
-// ------------------------------------------------------------- teclado
-document.addEventListener('keydown',e=>{if(e.target.closest('input,textarea,select')||e.metaKey||e.ctrlKey)return;const k=e.key.toLowerCase();
-  if(S._sim){if(/^[a-e]$/.test(k)){const q=S._sim.s.questoes[S._sim.idx];S._sim.resp[q.id]=k.toUpperCase();renderSim()}else if(k==='arrowright'){S._sim.idx=Math.min(S._sim.s.questoes.length-1,S._sim.idx+1);renderSim()}else if(k==='arrowleft'){S._sim.idx=Math.max(0,S._sim.idx-1);renderSim()}return}
-  if(!S._q)return;if(/^[a-e]$/.test(k)&&document.querySelector('.alt:not([disabled])')){marcar(k.toUpperCase())}else if(k==='1')conf('certeza');else if(k==='2')conf('duvida');else if(k==='3')conf('chute');
-  else if(k==='enter'){const b=document.getElementById('q-resp');if(b&&!b.disabled)b.click();else document.querySelector('.acoes .btn')?.click()}});
-// hospedado dentro do site do TipMike (Vercel), a API mora em outro endereço: pede uma vez e guarda
-function vConfig(m,msg){m.innerHTML=`<div class="login painel"><div class="rot">Mike Mentor</div><h1>Endereço da API</h1><p class="small muted">${esc(msg||'O painel está num endereço diferente da API. Informe o mesmo endereço que o site do TipMike usa (VITE_API_URL), com https://.')}</p>
-  <input id="c-api" value="${esc(localStorage.getItem('mm_api')||'')}" placeholder="https://api.exemplo.com.br"><div class="acoes"><button class="btn" onclick="let v=document.getElementById('c-api').value.trim();while(v.endsWith('/'))v=v.slice(0,-1);if(!v)return;localStorage.setItem('mm_api',v);location.reload()">Salvar</button></div></div>`}
-async function boot(){
+
+/* ---------- teclado ---------- */
+document.addEventListener('keydown',e=>{if(e.target.closest('input,textarea,select')||e.metaKey||e.ctrlKey||e.altKey)return;const k=e.key.toLowerCase();
+  if(S.sim){if(/^[a-e]$/.test(k)){const q=S.sim.s.questoes[S.sim.idx];S.sim.resp[q.id]=k.toUpperCase();renderSimQ()}else if(k==='arrowright'){S.sim.idx=Math.min(S.sim.s.questoes.length-1,S.sim.idx+1);renderSimQ()}else if(k==='arrowleft'){S.sim.idx=Math.max(0,S.sim.idx-1);renderSimQ()}else if(k==='m'){S.sim.marc[S.sim.idx]=!S.sim.marc[S.sim.idx];renderSimQ()}return}
+  if(!S.fluxo)return;if(/^[a-e]$/.test(k)&&S._marcar){S._marcar(k.toUpperCase());e.preventDefault()}else if(k==='1'&&S._conf)S._conf('certeza');else if(k==='2'&&S._conf)S._conf('duvida');else if(k==='3'&&S._conf)S._conf('chute');else if(k==='enter'&&S._prox){S._prox();e.preventDefault()}});
+
+/* ---------- boot ---------- */
+async function boot(){pintarIcones();
   const local=location.hostname.includes('tipmike')||location.hostname.includes('vercel');
-  if(local&&!localStorage.getItem('mm_api'))return vConfig(document.getElementById('main'));
-  if(TOKEN){try{const r=await fetch(API+'/mentor/painel',{headers:{'Authorization':'Bearer '+TOKEN}});if(r.status===404)return vConfig(document.getElementById('main'),'A API não respondeu neste endereço. Confira o endereço.');}catch(e){return vConfig(document.getElementById('main'),'Não consegui falar com a API neste endereço: '+e.message)}}
-  render(TOKEN?'inicio':'login');
-}
+  if(local&&!localStorage.getItem('mm_api'))return vConfig();
+  if(!TOKEN)return vLogin();
+  try{const r=await fetch(API+'/mentor/painel',{headers:{'Authorization':'Bearer '+TOKEN}});if(r.status===404)return vConfig('A API não respondeu neste endereço. Confira.');if(r.status===401)return vLogin()}catch(e){return vConfig('Não consegui falar com a API: '+e.message)}
+  document.getElementById('login').hidden=true;document.querySelector('main').hidden=false;abrirAba('inicio')}
 boot();
 </script>
-</body>
-</html>
+</body></html>
