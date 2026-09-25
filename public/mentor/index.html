@@ -267,9 +267,9 @@ document.addEventListener('keydown',e=>{if(e.target.closest('input,textarea,sele
   else if(k==='enter'){const b=document.getElementById('q-resp');if(b&&!b.disabled)b.click();else document.querySelector('.acoes .btn')?.click()}});
 // hospedado dentro do site do TipMike (Vercel), a API mora em outro endereço: pede uma vez e guarda
 function vConfig(m,msg){m.innerHTML=`<div class="login painel"><div class="rot">Mike Mentor</div><h1>Endereço da API</h1><p class="small muted">${esc(msg||'O painel está num endereço diferente da API. Informe o mesmo endereço que o site do TipMike usa (VITE_API_URL), com https://.')}</p>
-  <input id="c-api" value="${esc(localStorage.getItem('mm_api')||'')}" placeholder="https://api.exemplo.com.br"><div class="acoes"><button class="btn" onclick="const v=document.getElementById('c-api').value.trim().replace(/\/$/,'');if(!v)return;localStorage.setItem('mm_api',v);location.reload()">Salvar</button></div></div>`}
+  <input id="c-api" value="${esc(localStorage.getItem('mm_api')||'')}" placeholder="https://api.exemplo.com.br"><div class="acoes"><button class="btn" onclick="let v=document.getElementById('c-api').value.trim();while(v.endsWith('/'))v=v.slice(0,-1);if(!v)return;localStorage.setItem('mm_api',v);location.reload()">Salvar</button></div></div>`}
 async function boot(){
-  const local=/tipmike\.com\.br|vercel\.app/.test(location.hostname);
+  const local=location.hostname.includes('tipmike')||location.hostname.includes('vercel');
   if(local&&!localStorage.getItem('mm_api'))return vConfig(document.getElementById('main'));
   if(TOKEN){try{const r=await fetch(API+'/mentor/painel',{headers:{'Authorization':'Bearer '+TOKEN}});if(r.status===404)return vConfig(document.getElementById('main'),'A API não respondeu neste endereço. Confira o endereço.');}catch(e){return vConfig(document.getElementById('main'),'Não consegui falar com a API neste endereço: '+e.message)}}
   render(TOKEN?'inicio':'login');
