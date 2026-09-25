@@ -265,7 +265,16 @@ document.addEventListener('keydown',e=>{if(e.target.closest('input,textarea,sele
   if(S._sim){if(/^[a-e]$/.test(k)){const q=S._sim.s.questoes[S._sim.idx];S._sim.resp[q.id]=k.toUpperCase();renderSim()}else if(k==='arrowright'){S._sim.idx=Math.min(S._sim.s.questoes.length-1,S._sim.idx+1);renderSim()}else if(k==='arrowleft'){S._sim.idx=Math.max(0,S._sim.idx-1);renderSim()}return}
   if(!S._q)return;if(/^[a-e]$/.test(k)&&document.querySelector('.alt:not([disabled])')){marcar(k.toUpperCase())}else if(k==='1')conf('certeza');else if(k==='2')conf('duvida');else if(k==='3')conf('chute');
   else if(k==='enter'){const b=document.getElementById('q-resp');if(b&&!b.disabled)b.click();else document.querySelector('.acoes .btn')?.click()}});
-render(TOKEN?'inicio':'login');
+// hospedado dentro do site do TipMike (Vercel), a API mora em outro endereço: pede uma vez e guarda
+function vConfig(m,msg){m.innerHTML=`<div class="login painel"><div class="rot">Mike Mentor</div><h1>Endereço da API</h1><p class="small muted">${esc(msg||'O painel está num endereço diferente da API. Informe o mesmo endereço que o site do TipMike usa (VITE_API_URL), com https://.')}</p>
+  <input id="c-api" value="${esc(localStorage.getItem('mm_api')||'')}" placeholder="https://api.exemplo.com.br"><div class="acoes"><button class="btn" onclick="const v=document.getElementById('c-api').value.trim().replace(/\/$/,'');if(!v)return;localStorage.setItem('mm_api',v);location.reload()">Salvar</button></div></div>`}
+async function boot(){
+  const local=/tipmike\.com\.br|vercel\.app/.test(location.hostname);
+  if(local&&!localStorage.getItem('mm_api'))return vConfig(document.getElementById('main'));
+  if(TOKEN){try{const r=await fetch(API+'/mentor/painel',{headers:{'Authorization':'Bearer '+TOKEN}});if(r.status===404)return vConfig(document.getElementById('main'),'A API não respondeu neste endereço. Confira o endereço.');}catch(e){return vConfig(document.getElementById('main'),'Não consegui falar com a API neste endereço: '+e.message)}}
+  render(TOKEN?'inicio':'login');
+}
+boot();
 </script>
 </body>
 </html>
