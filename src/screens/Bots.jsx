@@ -15,7 +15,7 @@
 // - ModalHistorico em Historico.jsx (separado)
 // ============================================================
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
   Search, Bell, Settings, ChevronDown, Home, Activity, Store, Bot, Table2, BarChart3, Plus,
   X, FilterX, Filter, Trash2, Edit2, Copy, Play, Pause, RefreshCw,
@@ -23,11 +23,12 @@ import {
   Star, Share2, Clock, Download, History, Maximize2, Minimize2,
   TrendingUp, TrendingDown, DollarSign, Percent,
   Power,
+  Folder, FolderPlus, FolderInput, CheckSquare, Square, Pencil,
 } from 'lucide-react';
 import MikeHeader from '../shared/MikeHeader.jsx';
 import BacktestModal from './BacktestModal';
 import { ModalHistorico } from './Historico';
-import { ApiBots } from '../lib/api';
+import { ApiBots, ApiBotsOrg } from '../lib/api';
 
 // ============================================================
 // CONSTANTES
@@ -70,6 +71,9 @@ const MERCADOS_LABEL = {
   odd_even_ft:          'Par/Ímpar',
   odd_even_ht:          'Par/Ímpar 1T',
 };
+
+// v50: paleta dos grupos (mesmas cores do resto do sistema)
+const CORES_GRUPO = ['#10b981', '#0891b2', '#3b82f6', '#8b5cf6', '#f59e0b', '#f43f5e', '#64748b'];
 
 function normaliza(s) {
   return (s || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -215,7 +219,8 @@ function CorpoExpandido({ bot, stats, statsLoading, onAcao, loadingAcao, isAtivo
 // LINHA DO BOT
 // ============================================================
 
-function LinhaBot({ bot, expandido, onToggleExpand, onAcao, loadingAcao, onAbrirHistorico, stats, statsLoading, onBaixarCsv, loadingCsv }) {
+function LinhaBot({ bot, expandido, onToggleExpand, onAcao, loadingAcao, onAbrirHistorico, stats, statsLoading, onBaixarCsv, loadingCsv,
+                    onToggleFav, favLoading, modoSelecao, selecionado, onToggleSel, grupo }) {
   const casa = CASAS[bot.casa] || { label: (bot.casa || '').toUpperCase(), color: '#64748b' };
   const esporte = ESPORTES[bot.esporte] || { label: (bot.esporte || '').toUpperCase(), cor: '#64748b' };
   const isAtivo = bot.status === 'ativo';
@@ -235,11 +240,23 @@ function LinhaBot({ bot, expandido, onToggleExpand, onAcao, loadingAcao, onAbrir
       borderLeft: `3px solid ${borderColor}`,
     }}>
       <div className="flex items-center gap-2 px-3 py-2.5 flex-wrap">
+        {modoSelecao && (
+          <button
+            onClick={() => onToggleSel(bot.id)}
+            className={`flex-shrink-0 transition ${selecionado ? 'text-[--mike-accent]' : 'text-[--mike-fg-muted] hover:text-[--mike-fg]'}`}
+            title={selecionado ? 'Tirar da seleção' : 'Selecionar'}
+          >
+            {selecionado ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+          </button>
+        )}
+
         <button
-          className="text-[--mike-fg-muted] hover:text-amber-400 transition flex-shrink-0"
-          title="Favoritar (em breve)"
+          onClick={() => onToggleFav(bot)}
+          disabled={!!favLoading}
+          className={`transition flex-shrink-0 disabled:opacity-50 ${bot.favorito ? 'text-amber-400' : 'text-[--mike-fg-muted] hover:text-amber-400'}`}
+          title={bot.favorito ? 'Tirar dos favoritos' : 'Favoritar'}
         >
-          <Star className="w-4 h-4" />
+          <Star className="w-4 h-4" fill={bot.favorito ? 'currentColor' : 'none'} />
         </button>
 
         <div className="flex-shrink-0 w-12 h-8 rounded flex flex-col items-center justify-center text-white text-[10px] font-bold" style={{ backgroundColor: esporte.cor }}>
@@ -279,6 +296,15 @@ function LinhaBot({ bot, expandido, onToggleExpand, onAcao, loadingAcao, onAbrir
         >
           {bot.nome}
         </button>
+
+        {grupo && (
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold flex items-center gap-1 flex-shrink-0" style={{
+            color: grupo.cor || '#94a3b8',
+            border: `0.5px solid ${grupo.cor || 'rgba(60, 85, 130, 0.5)'}`,
+          }} title={`Grupo: ${grupo.nome}`}>
+            <Folder className="w-3 h-3" /> {grupo.nome}
+          </span>
+        )}
 
         <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold text-white flex-shrink-0" style={{ backgroundColor: '#10b981' }}>
           {casa.label}
@@ -395,6 +421,223 @@ function MikeSelect({ value, onChange, options, placeholder = 'Selecione', width
 // APP PRINCIPAL
 // ============================================================
 
+// ============================================================
+// v50 — BARRA DE VISÕES: Todos · Favoritos · Sem grupo · grupos · + Novo
+// ============================================================
+function ChipVisao({ ativo, onClick, children, cor, title }) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold transition flex-shrink-0 ${
+        ativo ? 'text-[--mike-bg]' : 'mike-border-thin text-[--mike-fg-soft] hover:text-[--mike-fg]'
+      }`}
+      style={ativo ? { backgroundColor: cor || 'var(--mike-accent)', border: `0.5px solid ${cor || 'var(--mike-accent)'}` } : {}}
+    >
+      {children}
+    </button>
+  );
+}
+
+function BarraVisoes({ visao, onVisao, org, modoSelecao, onSelecao, onNovoGrupo, onRenomear, onExcluir }) {
+  const totalFav = org.favoritos.length;
+  const grupoAtivo = typeof visao === 'number' ? org.grupos.find(g => g.id === visao) : null;
+  const n = (v) => <span className="opacity-70 font-mono text-[10px]">{v}</span>;
+  return (
+    <div className="mb-3">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        <ChipVisao ativo={visao === 'todos'} onClick={() => onVisao('todos')}>Todos</ChipVisao>
+        <ChipVisao ativo={visao === 'favoritos'} onClick={() => onVisao('favoritos')} cor="#f59e0b">
+          <Star className="w-3 h-3" fill={visao === 'favoritos' ? 'currentColor' : 'none'} /> Favoritos {n(totalFav)}
+        </ChipVisao>
+        <ChipVisao ativo={visao === 'sem'} onClick={() => onVisao('sem')} cor="#64748b">
+          Sem grupo {n(org.sem_grupo)}
+        </ChipVisao>
+        {org.grupos.map(g => (
+          <ChipVisao key={g.id} ativo={visao === g.id} onClick={() => onVisao(g.id)} cor={g.cor || '#0891b2'} title={`Grupo ${g.nome}`}>
+            <Folder className="w-3 h-3" /> {g.nome} {n(g.total)}
+          </ChipVisao>
+        ))}
+        <button
+          onClick={onNovoGrupo}
+          className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold text-[--mike-accent] hover:bg-[--mike-accent]/10 transition flex-shrink-0"
+          style={{ border: '0.5px dashed rgba(16, 185, 129, 0.5)' }}
+          title="Criar um grupo"
+        >
+          <FolderPlus className="w-3 h-3" /> Novo grupo
+        </button>
+        <div className="flex-1" />
+        <button
+          onClick={onSelecao}
+          className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[11px] font-semibold transition flex-shrink-0 ${
+            modoSelecao ? 'bg-[--mike-accent]/15 text-[--mike-accent]' : 'mike-border-thin text-[--mike-fg-soft] hover:text-[--mike-fg]'
+          }`}
+          style={modoSelecao ? { border: '0.5px solid rgba(16, 185, 129, 0.5)' } : {}}
+          title="Marcar vários bots pra mover de grupo"
+        >
+          <CheckSquare className="w-3.5 h-3.5" /> {modoSelecao ? 'Selecionando' : 'Selecionar'}
+        </button>
+      </div>
+      {grupoAtivo && (
+        <div className="flex items-center gap-3 mt-1.5 text-[11px] text-[--mike-fg-muted]">
+          <span>Grupo <span className="text-[--mike-fg] font-semibold">{grupoAtivo.nome}</span></span>
+          <button onClick={() => onRenomear(grupoAtivo)} className="flex items-center gap-1 hover:text-[--mike-fg] transition">
+            <Pencil className="w-3 h-3" /> Renomear
+          </button>
+          <button onClick={() => onExcluir(grupoAtivo)} className="flex items-center gap-1 hover:text-rose-300 transition">
+            <Trash2 className="w-3 h-3" /> Excluir grupo
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// v50 — BARRA DE AÇÃO DA SELEÇÃO (fixa embaixo)
+// ============================================================
+function BarraSelecao({ qtd, grupos, visao, ocupado, menuAberto, onMenu, onMover, onNovoGrupo, onTodos, onLimpar, onCancelar }) {
+  return (
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 px-3 py-2 rounded-xl shadow-2xl flex-wrap justify-center max-w-[95vw]" style={{
+      backgroundColor: 'var(--mike-card)',
+      border: '0.5px solid rgba(16, 185, 129, 0.5)',
+    }}>
+      <span className="text-xs text-[--mike-fg] font-semibold px-1">
+        {qtd} selecionado{qtd === 1 ? '' : 's'}
+      </span>
+      <div className="relative">
+        <button
+          onClick={onMenu}
+          disabled={qtd === 0 || ocupado}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold bg-[--mike-accent] text-[--mike-bg] hover:bg-emerald-400 transition disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {ocupado ? <RefreshCw className="w-3.5 h-3.5 mike-spin" /> : <FolderInput className="w-3.5 h-3.5" />}
+          Mover para <ChevronDown className="w-3 h-3" />
+        </button>
+        {menuAberto && (
+          <div className="absolute bottom-full mb-2 left-0 min-w-[200px] max-h-72 overflow-y-auto rounded-md py-1 shadow-2xl" style={{
+            backgroundColor: 'var(--mike-card-2)',
+            border: '0.5px solid rgba(60, 85, 130, 0.6)',
+          }}>
+            {grupos.map(g => (
+              <button
+                key={g.id}
+                onClick={() => onMover(g.id)}
+                disabled={visao === g.id}
+                className="w-full text-left px-3 py-1.5 text-xs text-[--mike-fg-soft] hover:bg-[--mike-card-hover] hover:text-[--mike-fg] flex items-center gap-2 disabled:opacity-40"
+              >
+                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: g.cor || '#0891b2' }} />
+                <span className="truncate">{g.nome}</span>
+              </button>
+            ))}
+            {grupos.length > 0 && <div className="my-1" style={{ borderTop: '0.5px solid rgba(60, 85, 130, 0.4)' }} />}
+            <button
+              onClick={onNovoGrupo}
+              className="w-full text-left px-3 py-1.5 text-xs text-[--mike-accent] hover:bg-[--mike-card-hover] flex items-center gap-2"
+            >
+              <FolderPlus className="w-3.5 h-3.5" /> Novo grupo…
+            </button>
+            <button
+              onClick={() => onMover(null)}
+              className="w-full text-left px-3 py-1.5 text-xs text-[--mike-fg-muted] hover:bg-[--mike-card-hover] hover:text-[--mike-fg] flex items-center gap-2"
+            >
+              <X className="w-3.5 h-3.5" /> Tirar do grupo
+            </button>
+          </div>
+        )}
+      </div>
+      <button onClick={onTodos} className="px-2 py-1.5 text-[11px] text-[--mike-fg-soft] hover:text-[--mike-fg] transition">
+        Marcar a página
+      </button>
+      <button onClick={onLimpar} disabled={qtd === 0} className="px-2 py-1.5 text-[11px] text-[--mike-fg-soft] hover:text-[--mike-fg] transition disabled:opacity-40">
+        Limpar
+      </button>
+      <button onClick={onCancelar} className="p-1.5 text-[--mike-fg-muted] hover:text-[--mike-fg] transition" title="Sair da seleção (Esc)">
+        <X className="w-4 h-4" />
+      </button>
+    </div>
+  );
+}
+
+// ============================================================
+// v50 — MODAL DO GRUPO: criar / renomear / excluir
+// ============================================================
+function ModalGrupo({ modal, ocupado, onFechar, onSalvar }) {
+  const [nome, setNome] = useState(modal.grupo?.nome || '');
+  const [cor, setCor] = useState(modal.grupo?.cor || CORES_GRUPO[0]);
+  const excluir = modal.modo === 'excluir';
+  const titulo = excluir ? 'Excluir grupo?' : modal.modo === 'renomear' ? 'Editar grupo' : 'Novo grupo';
+  return (
+    <div onClick={onFechar} className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}>
+      <div onClick={e => e.stopPropagation()} className="rounded-2xl p-6 max-w-sm w-full" style={{
+        backgroundColor: 'var(--mike-card)',
+        border: '0.5px solid rgba(60, 85, 130, 0.6)',
+        animation: 'mike-modal-fade 200ms ease-out',
+      }}>
+        <div className="flex items-start gap-3 mb-4">
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${excluir ? 'bg-rose-800/30 border border-rose-700/50' : 'bg-[--mike-accent]/15 border border-[--mike-accent]/40'}`}>
+            {excluir ? <Trash2 className="w-5 h-5 text-rose-300" /> : <Folder className="w-5 h-5 text-[--mike-accent]" />}
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-base font-bold text-[--mike-fg] mb-1">{titulo}</h3>
+            {excluir ? (
+              <p className="text-xs text-[--mike-fg-muted] leading-relaxed">
+                O grupo <span className="text-[--mike-fg] font-semibold">"{modal.grupo?.nome}"</span> será excluído.
+                Os bots <span className="text-[--mike-fg] font-semibold">não</span> são apagados: voltam pra "Sem grupo".
+              </p>
+            ) : modal.moverIds?.length ? (
+              <p className="text-xs text-[--mike-fg-muted]">{modal.moverIds.length} bot(s) selecionado(s) vão direto pra ele.</p>
+            ) : null}
+          </div>
+        </div>
+
+        {!excluir && (
+          <div className="space-y-3 mb-5">
+            <input
+              autoFocus
+              value={nome}
+              maxLength={60}
+              onChange={e => setNome(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !ocupado) onSalvar(nome, cor); }}
+              placeholder="Nome do grupo (ex.: CLA Under)"
+              className="mike-border-thin w-full px-3 py-2 rounded-md bg-transparent text-sm text-[--mike-fg] placeholder:text-[--mike-fg-muted] outline-none"
+            />
+            <div className="flex items-center gap-2">
+              {CORES_GRUPO.map(c => (
+                <button
+                  key={c}
+                  onClick={() => setCor(c)}
+                  className="w-6 h-6 rounded-full transition flex items-center justify-center"
+                  style={{ backgroundColor: c, outline: cor === c ? '2px solid var(--mike-fg)' : 'none', outlineOffset: '2px' }}
+                  title={c}
+                >
+                  {cor === c && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-center gap-2 justify-end">
+          <button onClick={onFechar} className="px-3 py-1.5 rounded-md text-xs font-medium mike-border-thin text-[--mike-fg-soft] hover:text-[--mike-fg] transition">
+            Cancelar
+          </button>
+          <button
+            onClick={() => onSalvar(nome, cor)}
+            disabled={ocupado || (!excluir && !nome.trim())}
+            className={`px-3 py-1.5 rounded-md text-xs font-bold transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 ${
+              excluir ? 'text-white bg-rose-700 hover:bg-rose-600' : 'text-[--mike-bg] bg-[--mike-accent] hover:bg-emerald-400'
+            }`}
+          >
+            {ocupado && <RefreshCw className="w-3.5 h-3.5 mike-spin" />}
+            {excluir ? 'Excluir grupo' : modal.modo === 'renomear' ? 'Salvar' : 'Criar grupo'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App({ onNavegar: onNavegarExterno } = {}) {
   const [bots, setBots] = useState([]);
   const [total, setTotal] = useState(0);
@@ -428,6 +671,17 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
   const [backtestBot, setBacktestBot] = useState(null);
   const [historicoBotId, setHistoricoBotId] = useState(null);
 
+  // v50: organização por usuário (favoritos + grupos)
+  const [org, setOrg] = useState({ grupos: [], favoritos: [], sem_grupo: 0 });
+  const [orgIndisponivel, setOrgIndisponivel] = useState(false);
+  const [visao, setVisao] = useState('todos');          // 'todos' | 'favoritos' | 'sem' | id do grupo
+  const [modoSelecao, setModoSelecao] = useState(false);
+  const [selecionados, setSelecionados] = useState(() => new Set());
+  const [menuMover, setMenuMover] = useState(false);
+  const [modalGrupo, setModalGrupo] = useState(null);   // { modo: 'criar'|'renomear'|'excluir', grupo?, moverIds? }
+  const [favLoading, setFavLoading] = useState({});
+  const [orgOcupado, setOrgOcupado] = useState(false);
+
   const [expandidos, setExpandidos] = useState({});
   const [statsPorBot, setStatsPorBot] = useState({});
   const [statsLoadingBot, setStatsLoadingBot] = useState({});
@@ -436,7 +690,12 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
     if (onNavegarExterno) onNavegarExterno(telaId, ctx);
   }, [onNavegarExterno]);
 
+  // v50: só a resposta do pedido MAIS RECENTE entra na tela (trocar de aba
+  // rápido não deixa uma resposta velha sobrescrever a lista nova)
+  const seqFetch = useRef(0);
+
   const fetchBots = useCallback(async () => {
+    const meu = ++seqFetch.current;
     setLoading(true);
     setErro(null);
     try {
@@ -445,21 +704,163 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
       if (filtroEsporte !== 'todas') params.esporte = filtroEsporte;
       if (filtroStatus !== 'todos') params.status = filtroStatus;
       params.escopo = escopo;
+      if (visao === 'favoritos') params.favoritos = true;
+      else if (visao === 'sem') params.grupo = 'sem';
+      else if (typeof visao === 'number') params.grupo = String(visao);
 
       const data = await ApiBots.list(params);
+      if (meu !== seqFetch.current) return;
       setBots(data.items || []);
       setTotal(data.total || 0);
       setEhAdmin(Boolean(data.admin));
     } catch (e) {
+      if (meu !== seqFetch.current) return;
       setErro(e.message);
       setBots([]);
       setTotal(0);
     } finally {
-      setLoading(false);
+      if (meu === seqFetch.current) setLoading(false);
     }
-  }, [page, filtroCasa, filtroEsporte, filtroStatus, escopo]);
+  }, [page, filtroCasa, filtroEsporte, filtroStatus, escopo, visao]);
 
   useEffect(() => { fetchBots(); }, [fetchBots]);
+
+  // ============================================================
+  // v50 — FAVORITOS E GRUPOS
+  // ============================================================
+  const fetchOrg = useCallback(async () => {
+    try {
+      const data = await ApiBotsOrg.get();
+      setOrg({
+        grupos: Array.isArray(data?.grupos) ? data.grupos : [],
+        favoritos: Array.isArray(data?.favoritos) ? data.favoritos : [],
+        sem_grupo: Number(data?.sem_grupo) || 0,
+      });
+      setOrgIndisponivel(false);
+    } catch (e) {
+      // backend sem a v50 / migration não aplicada: a tela segue funcionando sem grupos
+      console.error('Erro carregando favoritos/grupos', e);
+      setOrgIndisponivel(true);
+    }
+  }, []);
+
+  // contagens acompanham a lista (bot apagado/criado/movido)
+  useEffect(() => { fetchOrg(); }, [fetchOrg, bots]);
+
+  // grupo apagado enquanto estava aberto -> volta pra "Todos"
+  useEffect(() => {
+    if (typeof visao === 'number' && !org.grupos.some(g => g.id === visao)) {
+      setVisao('todos');
+      setPage(0);
+    }
+  }, [org.grupos, visao]);
+
+  const grupoPorId = useMemo(() => {
+    const m = {};
+    for (const g of org.grupos) m[g.id] = g;
+    return m;
+  }, [org.grupos]);
+
+  const trocarVisao = useCallback((v) => {
+    setVisao(v);
+    setPage(0);
+    setMenuMover(false);
+  }, []);
+
+  const toggleFavorito = useCallback(async (bot) => {
+    if (!bot || favLoading[bot.id]) return;
+    const novo = !bot.favorito;
+    setFavLoading(prev => ({ ...prev, [bot.id]: true }));
+    setBots(prev => prev.map(b => (b.id === bot.id ? { ...b, favorito: novo } : b)));   // otimista
+    try {
+      await ApiBotsOrg.favoritar(bot.id, novo);
+      fetchBots();   // favoritos sobem pro topo
+    } catch (e) {
+      setBots(prev => prev.map(b => (b.id === bot.id ? { ...b, favorito: !novo } : b)));
+      adicionarToast(`Erro ao favoritar: ${e.message}`, 'error');
+    } finally {
+      setFavLoading(prev => { const n = { ...prev }; delete n[bot.id]; return n; });
+    }
+  }, [favLoading, fetchBots, adicionarToast]);
+
+  const toggleSel = useCallback((botId) => {
+    setSelecionados(prev => {
+      const n = new Set(prev);
+      if (n.has(botId)) n.delete(botId); else n.add(botId);
+      return n;
+    });
+  }, []);
+
+  const sairSelecao = useCallback(() => {
+    setModoSelecao(false);
+    setSelecionados(new Set());
+    setMenuMover(false);
+  }, []);
+
+  const moverPara = useCallback(async (grupoId, ids) => {
+    const lista = Array.from(ids || selecionados);
+    if (lista.length === 0) return;
+    setOrgOcupado(true);
+    try {
+      const r = await ApiBotsOrg.mover(lista, grupoId);
+      const destino = grupoId == null ? 'sem grupo' : `"${grupoPorId[grupoId]?.nome || 'grupo'}"`;
+      adicionarToast(`${r.movidos} bot(s) ${grupoId == null ? 'tirado(s) do grupo' : `movido(s) para ${destino}`}`, 'success');
+      if (r.ignorados > 0) adicionarToast(`${r.ignorados} bot(s) ignorado(s) (sem acesso)`, 'warn');
+      sairSelecao();
+      fetchBots();
+    } catch (e) {
+      adicionarToast(`Erro ao mover: ${e.message}`, 'error');
+    } finally {
+      setOrgOcupado(false);
+    }
+  }, [selecionados, grupoPorId, adicionarToast, sairSelecao, fetchBots]);
+
+  const salvarGrupo = useCallback(async (nome, cor) => {
+    if (!modalGrupo) return;
+    const limpo = (nome || '').trim();
+    if (modalGrupo.modo !== 'excluir' && !limpo) {
+      adicionarToast('Dê um nome ao grupo', 'warn');
+      return;
+    }
+    setOrgOcupado(true);
+    let trocouVisao = false;   // se a aba muda, o próprio efeito recarrega a lista
+    try {
+      if (modalGrupo.modo === 'criar') {
+        const g = await ApiBotsOrg.criarGrupo(limpo, cor);
+        adicionarToast(`Grupo "${g.nome}" criado`, 'success');
+        if (modalGrupo.moverIds && modalGrupo.moverIds.length) {
+          const r = await ApiBotsOrg.mover(modalGrupo.moverIds, g.id);
+          adicionarToast(`${r.movidos} bot(s) movido(s) para "${g.nome}"`, 'success');
+          sairSelecao();
+        }
+      } else if (modalGrupo.modo === 'renomear') {
+        await ApiBotsOrg.editarGrupo(modalGrupo.grupo.id, { nome: limpo, cor: cor || null });
+        adicionarToast('Grupo atualizado', 'success');
+      } else if (modalGrupo.modo === 'excluir') {
+        await ApiBotsOrg.excluirGrupo(modalGrupo.grupo.id);
+        adicionarToast(`Grupo "${modalGrupo.grupo.nome}" excluído — os bots voltaram pra "Sem grupo"`, 'info');
+        if (visao === modalGrupo.grupo.id) { setVisao('todos'); setPage(0); trocouVisao = true; }
+      }
+      setModalGrupo(null);
+      await fetchOrg();
+      if (!trocouVisao) fetchBots();
+    } catch (e) {
+      adicionarToast(`Erro: ${e.message}`, 'error');
+    } finally {
+      setOrgOcupado(false);
+    }
+  }, [modalGrupo, visao, adicionarToast, sairSelecao, fetchOrg, fetchBots]);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key !== 'Escape') return;
+      if (modalGrupo) setModalGrupo(null);
+      else if (menuMover) setMenuMover(false);
+      else if (modoSelecao) sairSelecao();
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [modalGrupo, menuMover, modoSelecao, sairSelecao]);
 
   const botsFiltrados = useMemo(() => {
     if (!busca.trim()) return bots;
@@ -711,6 +1112,19 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
           </button>
         </div>
 
+        {!orgIndisponivel && (
+          <BarraVisoes
+            visao={visao}
+            onVisao={trocarVisao}
+            org={org}
+            modoSelecao={modoSelecao}
+            onSelecao={() => (modoSelecao ? sairSelecao() : setModoSelecao(true))}
+            onNovoGrupo={() => setModalGrupo({ modo: 'criar' })}
+            onRenomear={(g) => setModalGrupo({ modo: 'renomear', grupo: g })}
+            onExcluir={(g) => setModalGrupo({ modo: 'excluir', grupo: g })}
+          />
+        )}
+
         {filtrosAbertos && (
           <div className="mb-4 rounded-lg p-3" style={{ backgroundColor: 'transparent', border: '0.5px solid rgba(60, 85, 130, 0.4)' }}>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -780,6 +1194,12 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
                 statsLoading={!!statsLoadingBot[bot.id]}
                 onBaixarCsv={handleBaixarCsv}
                 loadingCsv={!!loadingCsv[bot.id]}
+                onToggleFav={toggleFavorito}
+                favLoading={!!favLoading[bot.id]}
+                modoSelecao={modoSelecao}
+                selecionado={selecionados.has(bot.id)}
+                onToggleSel={toggleSel}
+                grupo={(bot.grupo_id != null && visao !== bot.grupo_id) ? grupoPorId[bot.grupo_id] : null}
               />
             ))}
           </div>
@@ -789,9 +1209,17 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
             border: '0.5px solid rgba(60, 85, 130, 0.4)',
           }}>
             <Bot className="w-12 h-12 text-[--mike-fg-muted] opacity-40 mx-auto mb-3" />
-            <p className="text-sm text-[--mike-fg] font-semibold mb-1">Nenhum bot encontrado</p>
+            <p className="text-sm text-[--mike-fg] font-semibold mb-1">
+              {visao === 'favoritos' ? 'Nenhum favorito ainda'
+                : typeof visao === 'number' ? 'Grupo vazio'
+                : 'Nenhum bot encontrado'}
+            </p>
             <p className="text-xs text-[--mike-fg-muted] mb-4">
-              {algumFiltroAtivo
+              {visao === 'favoritos' && !algumFiltroAtivo
+                ? 'Clique na estrela de um bot pra ele aparecer aqui.'
+                : typeof visao === 'number' && !algumFiltroAtivo
+                ? 'Use "Selecionar" na aba Todos, marque os bots e mova pra este grupo.'
+                : algumFiltroAtivo
                 ? 'Os filtros aplicados não retornaram nenhum bot.'
                 : 'Crie seu primeiro bot pra começar a operar automaticamente.'}
             </p>
@@ -857,6 +1285,31 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
 
       {historicoBotId && (
         <ModalHistorico botId={historicoBotId} aberto={!!historicoBotId} onClose={() => setHistoricoBotId(null)} />
+      )}
+
+      {modoSelecao && (
+        <BarraSelecao
+          qtd={selecionados.size}
+          grupos={org.grupos}
+          visao={visao}
+          ocupado={orgOcupado}
+          menuAberto={menuMover}
+          onMenu={() => setMenuMover(v => !v)}
+          onMover={(gid) => { setMenuMover(false); moverPara(gid); }}
+          onNovoGrupo={() => { setMenuMover(false); setModalGrupo({ modo: 'criar', moverIds: Array.from(selecionados) }); }}
+          onTodos={() => setSelecionados(new Set(botsFiltrados.map(b => b.id)))}
+          onLimpar={() => setSelecionados(new Set())}
+          onCancelar={sairSelecao}
+        />
+      )}
+
+      {modalGrupo && (
+        <ModalGrupo
+          modal={modalGrupo}
+          ocupado={orgOcupado}
+          onFechar={() => setModalGrupo(null)}
+          onSalvar={salvarGrupo}
+        />
       )}
 
       <div className="fixed bottom-4 left-4 z-50 flex flex-col gap-2 pointer-events-none">

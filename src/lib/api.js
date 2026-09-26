@@ -217,6 +217,23 @@ export const ApiBots = {
     return _downloadBlob(url, filenameFallback || `bot_${id}_tipmanager.xlsx`);
   },
 };
+// ============================================================
+// v50 — Organização dos bots (por usuário): favoritos e grupos
+// GET  /bots/org                      -> { grupos:[{id,nome,cor,ordem,total}], favoritos:[ids], sem_grupo }
+// PUT  /bots/org/favoritos/:id        { favorito: bool }
+// POST /bots/org/grupos               { nome, cor? }
+// PATCH/DELETE /bots/org/grupos/:id
+// POST /bots/org/mover                { bot_ids:[...], grupo_id: id | null }
+// ============================================================
+export const ApiBotsOrg = {
+  get:          ()              => api.get('/bots/org'),
+  favoritar:    (botId, fav)    => api.put(`/bots/org/favoritos/${botId}`, { favorito: !!fav }),
+  criarGrupo:   (nome, cor)     => api.post('/bots/org/grupos', { nome, cor: cor || null }),
+  editarGrupo:  (id, campos)    => api.patch(`/bots/org/grupos/${id}`, campos),
+  excluirGrupo: (id)            => api.delete(`/bots/org/grupos/${id}`),
+  mover:        (botIds, grupoId) => api.post('/bots/org/mover', { bot_ids: botIds, grupo_id: grupoId ?? null }),
+};
+
 export const ApiApostas = {
   list:   (params) => api.get('/apostas', params),
   get:    (id)     => api.get(`/apostas/${id}`),
