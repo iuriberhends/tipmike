@@ -35,6 +35,7 @@ import {
 import MikeHeader from '../shared/MikeHeader.jsx';
 import { api } from '../lib/api.js';
 import { BASE_URL, getAccessToken } from '../lib/auth.js';
+import { cabecalhoPais } from '../lib/pais.js';
 
 // ============================================================
 // CONSTANTES
@@ -212,7 +213,7 @@ async function enviarPlanilha(file) {
   fd.append('arquivo', file, file.name);
   const res = await fetch(`${BASE_URL}/esteira/upload-planilha`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${getAccessToken()}` },
+    headers: { Authorization: `Bearer ${getAccessToken()}`, ...cabecalhoPais() },
     body: fd,
   });
   const j = await res.json().catch(() => null);
@@ -227,7 +228,7 @@ async function enviarParquet(file) {
   fd.append('arquivo', file, file.name);
   const res = await fetch(`${BASE_URL}/backtest/upload-ticks`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${getAccessToken()}` },
+    headers: { Authorization: `Bearer ${getAccessToken()}`, ...cabecalhoPais() },
     body: fd,
   });
   const j = await res.json().catch(() => null);
@@ -237,7 +238,7 @@ async function enviarParquet(file) {
 
 async function baixarPlanilhaRodada(jobId) {
   const res = await fetch(`${BASE_URL}/esteira/rodadas/${jobId}/planilha`,
-    { headers: { Authorization: `Bearer ${getAccessToken()}` } });
+    { headers: { Authorization: `Bearer ${getAccessToken()}`, ...cabecalhoPais() } });
   if (!res.ok) {
     const j = await res.json().catch(() => null);
     throw new Error((j && j.detail) || `HTTP ${res.status}`);

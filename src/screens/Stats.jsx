@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import MikeHeader from '../shared/MikeHeader.jsx';
 import { ApiStats } from '../lib/api.js';
+import { cabecalhoPais } from '../lib/pais.js';
 
 // ============================================================
 // 1. CONSTANTES
@@ -509,7 +510,7 @@ async function apiGet(endpoint, params) {
   }
   // Fallback (raro): chama direto
   const qs = new URLSearchParams(Object.entries(params || {}).filter(([_, v]) => v !== null && v !== undefined && v !== '')).toString();
-  const res = await fetch(`${endpoint}${qs ? '?' + qs : ''}`);
+  const res = await fetch(`${endpoint}${qs ? '?' + qs : ''}`, { headers: cabecalhoPais() });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }

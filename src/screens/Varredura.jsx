@@ -33,6 +33,7 @@ import {
 import MikeHeader from '../shared/MikeHeader.jsx';
 import { api } from '../lib/api.js';
 import { BASE_URL, getAccessToken } from '../lib/auth.js';
+import { cabecalhoPais } from '../lib/pais.js';
 
 // ============================================================
 // CONSTANTES
@@ -106,7 +107,7 @@ const duracao = (seg) => {
 
 async function baixarArquivo(jobId, tipo) {
   const res = await fetch(`${BASE_URL}/varredura/jobs/${jobId}/download?tipo=${tipo}`,
-    { headers: { Authorization: `Bearer ${getAccessToken()}` } });
+    { headers: { Authorization: `Bearer ${getAccessToken()}`, ...cabecalhoPais() } });
   if (!res.ok) {
     const j = await res.json().catch(() => null);
     throw new Error((j && j.detail) || `HTTP ${res.status}`);

@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import MikeHeader from '../shared/MikeHeader.jsx';
 import { ApiEventos, ApiH2H } from '../lib/api.js';
+import { usePais } from '../context/PaisContext.jsx';
+import { corDaCasa, COR_CASA } from '../lib/pais.js';
 
 // ============================================================
 // TEMAS POR ESPORTE
@@ -144,14 +146,19 @@ function processarMercados(odds) {
 // COMPONENTES
 // ============================================================
 function BookmakerChip({ casa }) {
+  // nov/2026: cor pela família do cadastro (casa.cor -> COR_CASA, mapa
+  // estático por causa do Tailwind JIT). Estas fixas ficam de reserva.
+  const { buscarCasa } = usePais();
   const cores = {
     bet365:     'bg-emerald-500/15 border-emerald-500/40 text-emerald-300',
     betano:     'bg-blue-500/15 border-blue-500/40 text-blue-300',
     superbet:   'bg-amber-500/15 border-amber-500/40 text-amber-300',
     estrelabet: 'bg-purple-500/15 border-purple-500/40 text-purple-300',
   };
+  const casaCad = buscarCasa(casa);
+  const classes = casaCad ? corDaCasa(casaCad).chip : (cores[casa] || COR_CASA.slate.chip);
   return (
-    <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${cores[casa] || 'bg-slate-500/15 border-slate-500/40 text-slate-300'}`}>
+    <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${classes}`}>
       {casa}
     </span>
   );

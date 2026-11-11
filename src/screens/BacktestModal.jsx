@@ -16,16 +16,14 @@ import {
   ChevronDown, ChevronRight, Info, Download,
 } from 'lucide-react';
 import { ApiBacktest } from '../lib/api';
+import { usePais } from '../context/PaisContext.jsx';
 
 // ============================================================
 // HELPERS
 // ============================================================
 
-function formatarBRL(v) {
-  if (v === null || v === undefined) return '—';
-  const n = Number(v);
-  return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-}
+// nov/2026: o antigo formatarBRL (fixo em R$) virou o formatarMoeda do
+// PaisContext — moeda e locale do país escolhido (R$, S/...).
 
 function formatarU(v) {
   // v5: unidades — e a metrica que serve pra COMPARAR estrategias, porque nao
@@ -99,6 +97,7 @@ function CardMetrica({ titulo, valor, sub, cor = 'cyan', Icon }) {
 // ============================================================
 
 function ChartEquity({ pontos }) {
+  const { formatarMoeda } = usePais();
   const [hover, setHover] = useState(null);
   const svgRef = useRef(null);
 
@@ -195,7 +194,7 @@ function ChartEquity({ pontos }) {
       <div className="flex items-center justify-between mb-2">
         <span className="text-[11px] font-bold text-[--mike-fg]">Curva de Equity</span>
         <span className="text-[9px] text-[--mike-fg-muted]">
-          {data.length} apostas · min {formatarBRL(min)} · max {formatarBRL(max)}
+          {data.length} apostas · min {formatarMoeda(min)} · max {formatarMoeda(max)}
         </span>
       </div>
 
@@ -237,7 +236,7 @@ function ChartEquity({ pontos }) {
                 stroke="rgba(16,185,129,0.5)" strokeWidth="0.5" />
               <text x="6" y="14" fontSize="9" fill="#94a3b8">Aposta #{hover.n}</text>
               <text x="6" y="27" fontSize="11" fill={corLinha} fontWeight="bold">
-                {formatarBRL(hover.banca)}
+                {formatarMoeda(hover.banca)}
               </text>
             </g>
           </g>
@@ -341,6 +340,7 @@ function HistoricoJobs({ botId, onSelecionar }) {
 // ============================================================
 
 export default function BacktestModal({ aberto, bot, onFechar }) {
+  const { formatarMoeda, infoPais } = usePais();
   const [estado, setEstado] = useState('config');
   const [jobId, setJobId] = useState(null);
   const [job, setJob] = useState(null);
@@ -776,7 +776,7 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
 
                 {stakeModo === 'fixo' ? (
                   <div>
-                    <label className="block text-[10px] text-[--mike-fg-muted] mb-1">Valor por aposta (R$)</label>
+                    <label className="block text-[10px] text-[--mike-fg-muted] mb-1">Valor por aposta ({infoPais.simbolo})</label>
                     <input
                       type="number" step="0.01" min="0.01"
                       value={stakeValor}
@@ -798,7 +798,7 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] text-[--mike-fg-muted] mb-1">Banca inicial (R$)</label>
+                      <label className="block text-[10px] text-[--mike-fg-muted] mb-1">Banca inicial ({infoPais.simbolo})</label>
                       <input
                         type="number" step="1" min="1"
                         value={bancaInicial}
@@ -884,7 +884,7 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
                 />
                 <CardMetrica
                   titulo="Drawdown" valor={formatarU(job.drawdown_unidades ?? job.drawdown_max)}
-                  sub={`${formatarBRL(job.drawdown_max)} · streak red ${job.max_streak_red || 0}`}
+                  sub={`${formatarMoeda(job.drawdown_max)} · streak red ${job.max_streak_red || 0}`}
                   cor="amber" Icon={TrendingDown}
                 />
               </div>
@@ -941,12 +941,12 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
                 <div className="text-2xl font-black mt-1" style={{
                   color: (job.pnl || 0) >= 0 ? '#10b981' : '#f43f5e',
                 }}>
-                  {(job.pnl || 0) >= 0 ? '+' : ''}{formatarBRL(job.pnl)}
+                  {(job.pnl || 0) >= 0 ? '+' : ''}{formatarMoeda(job.pnl)}
                 </div>
                 <div className="text-[10px] text-[--mike-fg-muted] mt-1">
                   Stake {job.stake_modo === 'fixo'
-                    ? `fixo ${formatarBRL(job.stake_valor)}`
-                    : `ratchet ${job.stake_valor}% sobre banca pico (inicial ${formatarBRL(job.banca_inicial)})`}
+                    ? `fixo ${formatarMoeda(job.stake_valor)}`
+                    : `ratchet ${job.stake_valor}% sobre banca pico (inicial ${formatarMoeda(job.banca_inicial)})`}
                   {' · '}
                   {job.total_ticks_avaliados || 0} ticks avaliados
                 </div>

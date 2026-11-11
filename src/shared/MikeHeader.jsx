@@ -8,18 +8,24 @@
 // Fase 2 (auth): chip do usuário agora vem do AuthContext
 // (nome/role reais) + botão de sair.
 //
+// nov/2026 (países): seletor de país antes do sino. Trocar grava no
+// localStorage (PaisContext) e o App remonta a tela com key={pais}, então
+// os dados recarregam já com o X-Pais novo.
+//
 // USO:
 //   import MikeHeader, { NAV_ITEMS } from '../shared/MikeHeader.jsx';
 //   <MikeHeader telaAtiva="live" onNavegar={navegar} />
 // ============================================================
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  Bell, Settings, LogOut,
+  Bell, Settings, LogOut, ChevronDown, Check,
   Home, Activity, Store, Bot, Table2, BarChart3, Plus, FlaskConical, Users,
   Radar, ListChecks,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
+import { usePais } from '../context/PaisContext.jsx';
+import { bandeiraDoPais } from '../lib/pais.js';
 
 export const NAV_ITEMS = [
   { id: 'today',       label: 'Início',          icon: Home },
@@ -34,6 +40,81 @@ export const NAV_ITEMS = [
   { id: 'extras',      label: 'Extras',          icon: Plus },
   { id: 'usuarios',    label: 'Usuários',        icon: Users, admin: true },
 ];
+
+// Seletor de país (bandeira + nome). Todos os usuários veem todos os países.
+function SeletorPais() {
+  const { pais, setPais, paises, infoPais } = usePais();
+  const [aberto, setAberto] = useState(false);
+  const caixaRef = useRef(null);
+
+  useEffect(() => {
+    if (!aberto) return undefined;
+    const aoClicarFora = (e) => {
+      if (caixaRef.current && !caixaRef.current.contains(e.target)) setAberto(false);
+    };
+    const aoTeclar = (e) => { if (e.key === 'Escape') setAberto(false); };
+    document.addEventListener('mousedown', aoClicarFora);
+    document.addEventListener('keydown', aoTeclar);
+    return () => {
+      document.removeEventListener('mousedown', aoClicarFora);
+      document.removeEventListener('keydown', aoTeclar);
+    };
+  }, [aberto]);
+
+  const escolher = (codigo) => {
+    setAberto(false);
+    if (codigo !== pais) setPais(codigo);
+  };
+
+  return (
+    <div ref={caixaRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setAberto((v) => !v)}
+        className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-semibold text-[--mike-fg-muted] hover:text-[--mike-fg] transition"
+        style={{ border: '0.5px solid rgba(60, 85, 130, 0.4)' }}
+        title={`País: ${infoPais.nome} (clique para trocar)`}
+        aria-haspopup="listbox"
+        aria-expanded={aberto}
+      >
+        <span className="text-sm leading-none">{infoPais.bandeira}</span>
+        <span className="hidden sm:inline">{infoPais.nome}</span>
+        <ChevronDown className={`w-3 h-3 transition-transform ${aberto ? 'rotate-180' : ''}`} />
+      </button>
+      {aberto && (
+        <div
+          role="listbox"
+          className="absolute right-0 top-full mt-1 min-w-[150px] rounded-md py-1 z-40"
+          style={{
+            backgroundColor: '#0d1220',
+            border: '0.5px solid rgba(60, 85, 130, 0.4)',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+          }}
+        >
+          {paises.map((p) => {
+            const ativo = p.codigo === pais;
+            return (
+              <button
+                key={p.codigo}
+                type="button"
+                role="option"
+                aria-selected={ativo}
+                onClick={() => escolher(p.codigo)}
+                className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left transition ${
+                  ativo ? 'bg-[--mike-accent]/15 text-[--mike-accent] font-semibold' : 'text-[--mike-fg-soft] hover:bg-[--mike-card-hover]'
+                }`}
+              >
+                <span className="text-sm leading-none">{bandeiraDoPais(p.codigo)}</span>
+                <span className="flex-1">{p.nome || p.codigo}</span>
+                {ativo && <Check className="w-3 h-3" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 
 export default function MikeHeader({ telaAtiva, onNavegar }) {
@@ -101,6 +182,8 @@ export default function MikeHeader({ telaAtiva, onNavegar }) {
         </div>
 
         <div className="flex-1" />
+
+        <SeletorPais />
 
         <button className="text-[--mike-fg-muted] hover:text-[--mike-fg] transition">
           <Bell className="w-4 h-4" />

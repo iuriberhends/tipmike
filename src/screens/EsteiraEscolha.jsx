@@ -32,6 +32,7 @@ import {
 import MikeHeader from '../shared/MikeHeader.jsx';
 import { api } from '../lib/api.js';
 import { BASE_URL, getAccessToken } from '../lib/auth.js';
+import { cabecalhoPais } from '../lib/pais.js';
 
 async function enviarParquet(file) {
   // o MESMO endpoint do backtest avulso (500 MB, valida e resume)
@@ -39,7 +40,7 @@ async function enviarParquet(file) {
   fd.append('arquivo', file, file.name);
   const res = await fetch(`${BASE_URL}/backtest/upload-ticks`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${getAccessToken()}` },
+    headers: { Authorization: `Bearer ${getAccessToken()}`, ...cabecalhoPais() },
     body: fd,
   });
   const j = await res.json().catch(() => null);

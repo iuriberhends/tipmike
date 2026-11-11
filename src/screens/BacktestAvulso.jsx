@@ -25,11 +25,15 @@ import MikeHeader from '../shared/MikeHeader.jsx';
 import H2hSyncPanel from '../shared/H2hSyncPanel.jsx';
 import MikeDbPanel from '../shared/MikeDbPanel.jsx';
 import { ApiBacktest, api } from '../lib/api.js';
+import { usePais } from '../context/PaisContext.jsx';
 
 // ============================================================
 // CONSTANTES
 // ============================================================
 
+// nov/2026: as opções vêm de GET /casas do país (PaisContext); esta lista
+// fica de reserva. Casa do arquivo vale se estiver no CADASTRO (qualquer
+// país) — antes, casa fora desta lista era ignorada em silêncio.
 const CASAS = [
   { value: 'betano', label: 'Betano' },
   { value: 'superbet', label: 'Superbet' },
@@ -38,6 +42,10 @@ const CASAS = [
   { value: 'kto', label: 'KTO' },
   { value: 'meridianbet', label: 'Meridianbet' },
 ];
+function casaConhecida(codigo, buscarCasa) {
+  if (!codigo) return false;
+  return CASAS.some((o) => o.value === codigo) || !!(buscarCasa && buscarCasa(codigo));
+}
 const ESPORTES = [
   { value: 'fifa', label: 'E-Football (FIFA)', icon: '⚽' },
   { value: 'nba2k', label: 'E-Basketball (NBA2K)', icon: '🏀' },
@@ -277,6 +285,7 @@ function StatCard({ icon: Icon, label, valor, cor = '#eaeef7' }) {
 
 // Barras por dia (estilo TM): green embaixo, red em cima, altura = apostas do dia.
 function BarrasPorDia({ dias }) {
+  const { formatarMoeda } = usePais();
   if (!dias || dias.length === 0) return null;
   const maxN = Math.max(...dias.map(d => d.g + d.r + d.v), 1);
   return (
@@ -289,7 +298,7 @@ function BarrasPorDia({ dias }) {
           const hR = tot ? (d.r / tot) * hTot : 0;
           const hV = hTot - hG - hR;
           return (
-            <div key={i} className="flex-1 flex flex-col justify-end min-w-0" title={`${d.data}: ${d.g}G ${d.r}R${d.v ? ` ${d.v}V` : ''} · PnL R$ ${d.pnl >= 0 ? '+' : ''}${d.pnl.toFixed(1)}`}>
+            <div key={i} className="flex-1 flex flex-col justify-end min-w-0" title={`${d.data}: ${d.g}G ${d.r}R${d.v ? ` ${d.v}V` : ''} · PnL ${d.pnl >= 0 ? '+' : ''}${formatarMoeda(d.pnl)}`}>
               {hV > 0 && <div style={{ height: hV, backgroundColor: 'rgba(107,118,145,0.5)' }} />}
               <div style={{ height: hR, backgroundColor: '#f43f5e' }} />
               <div style={{ height: hG, backgroundColor: '#10b981', borderRadius: '2px 2px 0 0' }} />
@@ -435,7 +444,29 @@ export default function BacktestAvulso({ onNavegar } = {}) {
   const [apelidoTxt, setApelidoTxt] = useState('');
 
   // filtros
-  const [casa, setCasa] = useState('betano');
+  // nov/2026: casas do país. Casa inicial: 'betano' se o país tiver, senão
+  // a primeira do país (a tela remonta na troca de país, então vale de novo).
+  const { casas: casasPais, buscarCasa, formatarMoeda, infoPais } = usePais();
+  const buscarCasaRef = useRef(buscarCasa);
+  buscarCasaRef.current = buscarCasa;
+  const [casa, setCasa] = useState(() => (
+    (casasPais && casasPais.length > 0 && !casasPais.some((c) => c.codigo === 'betano'))
+      ? casasPais[0].codigo
+      : 'betano'));
+  const casasOpcoes = useMemo(() => {
+    const base = (casasPais && casasPais.length > 0)
+      ? casasPais.map((c) => ({ value: c.codigo, label: c.nome || c.codigo }))
+      : CASAS;
+    if (casa && !base.some((o) => o.value === casa)) {
+      const cad = buscarCasa(casa);
+      return [...base, { value: casa, label: (cad && cad.nome) || casa }];
+    }
+    return base;
+  }, [casasPais, casa, buscarCasa]);
+  const rotuloCasa = (codigo) => (
+    (casasOpcoes.find((o) => o.value === codigo) || {}).label
+    || (buscarCasa(codigo) || {}).nome
+    || codigo);
   const [esporte, setEsporte] = useState('fifa');
   const [mercado, setMercado] = useState('over_under_ft');
   // v37: Estrelabet nao coleta total por time/jogador — some da lista la'
@@ -638,7 +669,8 @@ export default function BacktestAvulso({ onNavegar } = {}) {
     setResumo({ arquivo: p.arquivo, ts_min: p.de, ts_max: p.ate,
                 casas: p.casa ? [p.casa] : [], esportes: [] });
     setResultado(null); setErro(null); setArquivo(null);
-    if (p.casa && CASAS.some((o) => o.value === p.casa)) setCasa(p.casa);
+    const casaP = String(p.casa || '').toLowerCase().trim();
+    if (casaConhecida(casaP, buscarCasaRef.current)) setCasa(casaP);
   }, []);
 
   const criarJobMae = useCallback(async () => {
@@ -679,7 +711,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
     if (!res) return;
     if (res.casas?.length === 1) {
       const c = String(res.casas[0]).toLowerCase().trim();
-      if (CASAS.some((o) => o.value === c)) setCasa(c);
+      if (casaConhecida(c, buscarCasaRef.current)) setCasa(c);
     }
     if (res.esportes?.length === 1) {
       const ui = ESPORTE_BANCO_PARA_UI[String(res.esportes[0]).toLowerCase().trim()];
@@ -1197,7 +1229,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
               {(() => {
                 const casaArq = resumo?.casas?.length === 1 ? String(resumo.casas[0]).toLowerCase().trim() : null;
                 if (!casaArq || casaArq === casa) return null;
-                const label = CASAS.find(o => o.value === casaArq)?.label || casaArq;
+                const label = rotuloCasa(casaArq);
                 return (
                   <div className="mt-2 rounded-md p-2.5 flex items-start gap-2 text-[11px]" style={{ backgroundColor: 'rgba(251,191,36,0.08)', border: '0.5px solid rgba(251,191,36,0.35)' }}>
                     <AlertTriangle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-0.5" />
@@ -1235,7 +1267,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                 {/* GRUPO 1: Aposta */}
                 <Grupo icon={Trophy} cor="#22d3ee" titulo="Aposta" desc="Onde, o quê e qual lado — e a faixa de linha.">
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <Campo label="Casa"><Select value={casa} onChange={setCasa} options={CASAS} /></Campo>
+                    <Campo label="Casa"><Select value={casa} onChange={setCasa} options={casasOpcoes} /></Campo>
                     <Campo label="Esporte"><Select value={esporte} onChange={setEsporte} options={ESPORTES} /></Campo>
                     <Campo label="Mercado"><Select value={mercado} onChange={setMercado} options={mercadosAvulso} /></Campo>
                     {!ehHc && (
@@ -1571,8 +1603,8 @@ export default function BacktestAvulso({ onNavegar } = {}) {
             <section className="rounded-lg p-4" style={cardStyle}>
               <SecaoTitulo icon={DollarSign}>3. Stake e execução</SecaoTitulo>
               <div className="grid grid-cols-2 gap-3 mb-4">
-                <Campo label="Stake (R$)"><Input type="number" min="0" value={stakeValor} onChange={setStakeValor} /></Campo>
-                <Campo label="Banca inicial (R$)"><Input type="number" min="0" value={bancaInicial} onChange={setBancaInicial} /></Campo>
+                <Campo label={`Stake (${infoPais.simbolo})`}><Input type="number" min="0" value={stakeValor} onChange={setStakeValor} /></Campo>
+                <Campo label={`Banca inicial (${infoPais.simbolo})`}><Input type="number" min="0" value={bancaInicial} onChange={setBancaInicial} /></Campo>
               </div>
               <button
                 onClick={handleRodar}
@@ -1666,7 +1698,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                     </div>
                     {pnlU != null && (
                       <div className="text-[9px] text-[--mike-fg-muted] mt-1.5 text-center font-mono">
-                        em R$: lucro {u(r.pnl)} · drawdown {u(r.drawdown_max)} · stake {u(r.stake_valor)}
+                        em dinheiro: lucro {formatarMoeda(r.pnl)} · drawdown {formatarMoeda(r.drawdown_max)} · stake {formatarMoeda(r.stake_valor)}
                       </div>
                     )}
 

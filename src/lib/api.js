@@ -9,17 +9,21 @@
  *     Em 401, tenta UM refresh (single-flight em lib/auth.js) e repete a
  *     chamada uma única vez. Refresh morto → logout global via evento.
  *     Vale pros 3 caminhos: request() JSON, _downloadBlob e uploadTicks.
+ * v7: PAÍS (nov/2026) — todo fetch sai também com X-Pais: BR|PE (lib/pais.js).
+ *     Sem o cabeçalho a API assume BR; listas vêm filtradas pelo país.
  */
 import { BASE_URL, getAccessToken, refreshSession, limparSessao, dispararLogout } from './auth.js';
+import { getPaisAtual } from './pais.js';
 
 /**
- * fetch com Authorization + retry único pós-refresh em 401.
+ * fetch com Authorization + X-Pais + retry único pós-refresh em 401.
  * _podeRepetir evita loop: a repetição nunca repete de novo.
  */
 async function fetchComAuth(url, options = {}, _podeRepetir = true) {
   const headers = { ...(options.headers || {}) };
   const token = getAccessToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (!headers['X-Pais']) headers['X-Pais'] = getPaisAtual();
 
   let res;
   try {

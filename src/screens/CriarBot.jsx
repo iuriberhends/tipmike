@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Bell, Settings, ChevronDown, Home, Activity, Store, Bot, Table2, BarChart3, Plus,
   X, Check, AlertCircle, CheckCircle2,
@@ -8,6 +8,7 @@ import {
 import MikeHeader from '../shared/MikeHeader.jsx';
 import MercadoFiltros from './MercadoFiltros';
 import { ApiTorneios, ApiBots } from '../lib/api';
+import { usePais } from '../context/PaisContext.jsx';
 
 // ============================================================
 // CONSTANTES (opcoes dos dropdowns)
@@ -19,6 +20,8 @@ const ESPORTES = [
   { value: 'etennis', label: 'e-Tênis' },
 ];
 
+// nov/2026: a lista vem de GET /casas do país (PaisContext). Esta fica só
+// de reserva, se o contexto vier sem casas.
 const CASAS_APOSTAS = [
   { value: 'betano',     label: 'BETANO' },
   { value: 'superbet',   label: 'SUPERBET' },
@@ -1648,6 +1651,23 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
   const [esporte, setEsporte] = useState('fifa');
   const [casa, setCasa] = useState('betano');
 
+  // nov/2026: casas do PAÍS escolhido (GET /casas via PaisContext).
+  // Casa fora da lista (bot antigo, rascunho de outro país) continua
+  // aparecendo no select em vez de sumir em silêncio.
+  const { pais, casas: casasPais } = usePais();
+  const casasOpcoes = useMemo(() => {
+    const base = (casasPais && casasPais.length > 0)
+      ? casasPais.map((c) => ({ value: c.codigo, label: String(c.nome || c.codigo).toUpperCase() }))
+      : CASAS_APOSTAS;
+    if (casa && !base.some((o) => o.value === casa)) {
+      return [...base, { value: casa, label: String(casa).toUpperCase() }];
+    }
+    return base;
+  }, [casasPais, casa]);
+  const casaInfo = (casasPais || []).find((c) => c.codigo === casa) || null;
+  const casaNoPais = !!casaInfo;
+  const casaSoBacktest = !!casaInfo && casaInfo.ao_vivo === false;
+
   // SECAO 3 — Torneio + Grade (variações específicas dentro do torneio)
   const [torneioAtivo, setTorneioAtivo] = useState(false);
   const [torneios, setTorneios] = useState([]);
@@ -2318,6 +2338,14 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     }
   }, [casa]); // eslint-disable-line
 
+  // nov/2026: bot NOVO num país sem a casa padrão (ex.: 'betano' no Peru)
+  // -> vai pra primeira casa do país. Edição nunca troca a casa do bot.
+  useEffect(() => {
+    if (modoEdicao || !draftCarregado) return;
+    if (!casasPais || casasPais.length === 0 || casaNoPais) return;
+    setCasa(casasPais[0].codigo);
+  }, [pais, casasPais, casaNoPais, modoEdicao, draftCarregado]);
+
   const radioWR = [
     { value: 'all', label: 'Todas' },
     { value: 'lte30', label: '≤30%' },
@@ -2663,7 +2691,13 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
               <MikeSelect value={esporte} onChange={setEsporte} options={ESPORTES} />
             </LinhaFiltro>
             <LinhaFiltro label="Casa de Apostas" comToggle={false}>
-              <MikeSelect value={casa} onChange={setCasa} options={CASAS_APOSTAS} />
+              <MikeSelect value={casa} onChange={setCasa} options={casasOpcoes} />
+              {casaSoBacktest && (
+                <div className="flex items-center gap-1.5 mt-1.5 text-[10px] text-amber-300/80">
+                  <Info className="w-3 h-3 flex-shrink-0" />
+                  <span>{casaInfo.pais === 'PE' ? 'Casa do Peru' : 'Casa'}: só backtest; robôs ao vivo ainda desligados</span>
+                </div>
+              )}
             </LinhaFiltro>
           </div>
         </SecaoForm>
@@ -3323,7 +3357,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
                   {(() => {
                     const partes = [];
                     const esporteLabel = (ESPORTES.find(e => e.value === esporte) || {}).label || esporte;
-                    const casaLabel = (CASAS_APOSTAS.find(c => c.value === casa) || {}).label || casa;
+                    const casaLabel = (casasOpcoes.find(c => c.value === casa) || {}).label || casa;
                     const mercadoLabel = (mercadosDisp.find(m => m.value === mercado) || {}).label || mercado;
 
                     partes.push(<p key="base"><strong className="text-[--mike-fg]">Bot "{nome || '(sem nome)'}"</strong> opera em <strong className="text-cyan-400">{esporteLabel}</strong> na <strong className="text-cyan-400">{casaLabel}</strong>, mercado <strong className="text-cyan-400">{mercadoLabel}</strong>.</p>);

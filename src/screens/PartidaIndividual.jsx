@@ -7,6 +7,7 @@ import {
   ArrowUpDown, Plus, Activity, Flame,
 } from 'lucide-react';
 import MikeHeader from '../shared/MikeHeader.jsx';
+import { cabecalhoPais } from '../lib/pais.js';
 
 // ============================================================
 // THEME
@@ -669,7 +670,7 @@ async function apiGetPartida(endpoint, params) {
     return gerarDados(params.jogA, params.jogB || null, params.filtros || {}, params.esporte || 'e-Basket');
   }
   const qs = new URLSearchParams({ jogA: params.jogA, jogB: params.jogB || '', esporte: params.esporte || '', filtros: JSON.stringify(params.filtros || {}) }).toString();
-  const res = await fetch(`${endpoint}?${qs}`);
+  const res = await fetch(`${endpoint}?${qs}`, { headers: cabecalhoPais() });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }

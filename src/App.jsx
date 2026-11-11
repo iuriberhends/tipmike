@@ -28,6 +28,7 @@ import AdminUsuarios from './screens/AdminUsuarios.jsx';
 import RequireAuth from './shared/RequireAuth.jsx';
 import RequireAdmin from './shared/RequireAdmin.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
+import { PaisProvider, usePais } from './context/PaisContext.jsx';
 
 function TelaPlaceholder({ titulo, descricao }) {
   const navigate = useNavigate();
@@ -67,6 +68,12 @@ function AppRoutes() {
   const navigate = useNavigate();
   const location = useLocation();
   const [historicoBotId, setHistoricoBotId] = useState(null);
+  // Troca de pais: key={pais} nas rotas remonta a tela aberta, e todos os
+  // useEffect de carga rodam de novo com o X-Pais novo (sem mexer tela a tela).
+  const { pais } = usePais();
+
+  // modal de historico e' de um bot do pais anterior: fecha na troca
+  useEffect(() => { setHistoricoBotId(null); }, [pais]);
 
   // Normaliza partida â€” converte snake_case (API) para camelCase (PartidaIndividual)
   const normalizarPartida = useCallback((p) => {
@@ -131,7 +138,7 @@ function AppRoutes() {
 
   return (
     <>
-      <Routes>
+      <Routes key={pais}>
         {/* PÃºblicas */}
         <Route path="/login" element={<Login />} />
         <Route path="/registro" element={<Registro />} />
@@ -172,7 +179,9 @@ export default function App() {
   return (
     <HashRouter>
       <AuthProvider>
-        <AppRoutes />
+        <PaisProvider>
+          <AppRoutes />
+        </PaisProvider>
       </AuthProvider>
     </HashRouter>
   );

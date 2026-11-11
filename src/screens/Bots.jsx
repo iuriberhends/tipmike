@@ -29,11 +29,15 @@ import MikeHeader from '../shared/MikeHeader.jsx';
 import BacktestModal from './BacktestModal';
 import { ModalHistorico } from './Historico';
 import { ApiBots, ApiBotsOrg } from '../lib/api';
+import { usePais } from '../context/PaisContext.jsx';
+import { corDaCasa } from '../lib/pais.js';
 
 // ============================================================
 // CONSTANTES
 // ============================================================
 
+// nov/2026: rótulo e cor vêm do cadastro de casas do país (PaisContext).
+// Esta lista fica só de reserva.
 const CASAS = {
   betano:     { id: 'betano',     label: 'BETANO',     color: '#10b981' },
   superbet:   { id: 'superbet',   label: 'SUPERBET',   color: '#10b981' },
@@ -116,6 +120,7 @@ function CardStat({ label, valor, negativo = false, loading = false }) {
 // ============================================================
 
 function CorpoExpandido({ bot, stats, statsLoading, onAcao, loadingAcao, isAtivo }) {
+  const { formatarMoeda } = usePais();
   const lucroNeg = stats && parseFloat(stats.lucro || 0) < 0;
   const roiNeg = stats && parseFloat(stats.roi || 0) < 0;
 
@@ -147,7 +152,7 @@ function CorpoExpandido({ bot, stats, statsLoading, onAcao, loadingAcao, isAtivo
         }}>
           <div>
             <div className="text-[9px] uppercase tracking-wider text-[--mike-fg-muted]">Stake</div>
-            <div className="text-[13px] font-mono font-bold text-[--mike-fg]">R$ 10</div>
+            <div className="text-[13px] font-mono font-bold text-[--mike-fg]">{formatarMoeda(10, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
           </div>
           <CheckCircle2 className="w-4 h-4 text-emerald-400" />
         </div>
@@ -221,7 +226,11 @@ function CorpoExpandido({ bot, stats, statsLoading, onAcao, loadingAcao, isAtivo
 
 function LinhaBot({ bot, expandido, onToggleExpand, onAcao, loadingAcao, onAbrirHistorico, stats, statsLoading, onBaixarCsv, loadingCsv,
                     onToggleFav, favLoading, modoSelecao, selecionado, onToggleSel, grupo }) {
-  const casa = CASAS[bot.casa] || { label: (bot.casa || '').toUpperCase(), color: '#64748b' };
+  const { buscarCasa } = usePais();
+  const casaCad = buscarCasa(bot.casa);
+  const casa = casaCad
+    ? { label: String(casaCad.nome || bot.casa).toUpperCase(), color: corDaCasa(casaCad).hex }
+    : (CASAS[bot.casa] || { label: (bot.casa || '').toUpperCase(), color: '#64748b' });
   const esporte = ESPORTES[bot.esporte] || { label: (bot.esporte || '').toUpperCase(), cor: '#64748b' };
   const isAtivo = bot.status === 'ativo';
   const mercadoLabel = MERCADOS_LABEL[bot.mercado] || bot.mercado;
@@ -306,7 +315,7 @@ function LinhaBot({ bot, expandido, onToggleExpand, onAcao, loadingAcao, onAbrir
           </span>
         )}
 
-        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold text-white flex-shrink-0" style={{ backgroundColor: '#10b981' }}>
+        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold text-white flex-shrink-0" style={{ backgroundColor: casa.color }}>
           {casa.label}
         </span>
 
@@ -646,6 +655,13 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
 
   const [busca, setBusca] = useState('');
   const [filtroCasa, setFiltroCasa] = useState('todas');
+  // nov/2026: opções do filtro = casas do país (reserva: CASAS fixa)
+  const { casas: casasPais } = usePais();
+  const opcoesCasa = useMemo(() => (
+    (casasPais && casasPais.length > 0)
+      ? casasPais.map((c) => ({ value: c.codigo, label: String(c.nome || c.codigo).toUpperCase() }))
+      : Object.values(CASAS).map((c) => ({ value: c.id, label: c.label }))
+  ), [casasPais]);
   const [filtroEsporte, setFiltroEsporte] = useState('todas');
   const [filtroStatus, setFiltroStatus] = useState('todos');
   // v2 (11/ago): admin escolhe entre TODOS os bots e SÓ OS DELE. Pro usuário
@@ -1132,7 +1148,7 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
                 <label className="block text-[10px] text-[--mike-fg-muted] mb-1">Casa</label>
                 <MikeSelect value={filtroCasa} onChange={(v) => { setFiltroCasa(v); setPage(0); }} options={[
                   { value: 'todas', label: 'Todas' },
-                  ...Object.values(CASAS).map(c => ({ value: c.id, label: c.label })),
+                  ...opcoesCasa,
                 ]} />
               </div>
               <div>
