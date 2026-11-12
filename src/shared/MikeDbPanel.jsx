@@ -157,6 +157,9 @@ export default function MikeDbPanel({ onGerado }) {
   const [baixando, setBaixando] = useState(false);
   const [cancelando, setCancelando] = useState(false);
   const [jobAtivo, setJobAtivo] = useState(null);
+  // nov/2026: de onde vem a bet365 — histórico da coleta própria (JBot, padrão)
+  // ou BetsAPI (raspa e converte; alternativa). O back diz o padrão em catalogo.fonte.
+  const [fonteBet365, setFonteBet365] = useState('historico');
 
   const pollRef = useRef(null);
   const vivoRef = useRef(true);
@@ -171,6 +174,9 @@ export default function MikeDbPanel({ onGerado }) {
       ]);
       if (!vivoRef.current) return;
       setStatus(st); setCatalogo(cat);
+      if ((casaAlvo || '').toLowerCase() === 'bet365') {
+        setFonteBet365(cat?.fonte === 'betsapi' ? 'betsapi' : 'historico');
+      }
       if (cat?.periodo && !manterDatas) { setDe(cat.periodo.de); setAte(cat.periodo.ate); }
     } catch (e) {
       setErro(String(e.message || e));
@@ -195,7 +201,9 @@ export default function MikeDbPanel({ onGerado }) {
   };
 
   const casaEhBet365 = (casa || '').toLowerCase() === 'bet365';
-  const usandoBetsapi = casaEhBet365;   // bet365 = BetsAPI, sempre
+  // nov/2026: a bet365 vem do histórico (JBot) por padrão; BetsAPI só se escolhida
+  // (ou se o servidor não tiver histórico dela).
+  const usandoBetsapi = casaEhBet365 && fonteBet365 === 'betsapi';
   const ligasDisp = catalogo?.ligas || [];
   // MERCADOS REAIS: o servidor amostra o histórico e devolve os mercado_tipo
   // que existem nessa casa/esporte (os códigos mudam por esporte dentro da
@@ -268,6 +276,7 @@ export default function MikeDbPanel({ onGerado }) {
         sport: esporte || undefined,
         mercado: mercado || undefined, jogador: jogador || undefined,
         de: de || undefined, ate: ate || undefined,
+        via: casaEhBet365 ? (usandoBetsapi ? 'betsapi' : 'historico') : undefined,
       });
       setJobAtivo(r0?.job_id || null);
       seguir(r0?.job_id);
@@ -332,10 +341,25 @@ export default function MikeDbPanel({ onGerado }) {
                    ...(catalogo?.casas || []).map((c) => ({ valor: c, rotulo: c }))]} />
       </div>
 
-      {/* bet365 não tem coletor próprio: SEMPRE via BetsAPI (raspa + converte
-          pro dialeto que o motor entende). O histórico local dela existe mas
-          está em outro dialeto de mercado — não serve pro backtest. */}
-      {casaEhBet365 && (
+      {/* nov/2026: a bet365 tem coleta PRÓPRIA (JBot) no histórico, no dialeto
+          que o motor casa (1450, 1446, 10566...): é o padrão e sai em segundos.
+          A BetsAPI (raspa + converte) fica como alternativa. */}
+      {casaEhBet365 && catalogo?.betsapi_disponivel && (
+        <div>
+          <label className={labelCls}>Fonte da bet365</label>
+          <Segmentado disabled={gerando} valor={fonteBet365}
+            onChange={(v) => { setFonteBet365(v); setLiga(''); }}
+            opcoes={[{ valor: 'historico', rotulo: 'Histórico (JBot)' }, { valor: 'betsapi', rotulo: 'BetsAPI' }]} />
+        </div>
+      )}
+      {casaEhBet365 && !usandoBetsapi && (
+        <div className="rounded-md p-2 text-[10px] flex items-start gap-1.5"
+             style={{ backgroundColor: 'rgba(6,182,212,0.06)', border: '0.5px solid rgba(6,182,212,0.25)' }}>
+          <CheckCircle2 className="w-3 h-3 mt-0.5 shrink-0 text-emerald-400" />
+          <span className="text-[--mike-fg-soft]">bet365 vem do <b>histórico da coleta própria (JBot)</b> — gera em segundos. Antes de agosto o histórico dela está em outro formato de mercado e não entra no backtest.</span>
+        </div>
+      )}
+      {usandoBetsapi && (
         <div className="rounded-md p-2 text-[10px] flex items-start gap-1.5"
              style={{ backgroundColor: 'rgba(6,182,212,0.06)', border: '0.5px solid rgba(6,182,212,0.25)' }}>
           {status?.chrome_cdp_aberto
@@ -354,6 +378,12 @@ export default function MikeDbPanel({ onGerado }) {
         {usandoBetsapi ? (
           <Segmentado disabled={gerando} valor={liga} onChange={setLiga}
             opcoes={(status?.ligas_betsapi || []).map((l) => ({ valor: l.valor, rotulo: l.rotulo }))} />
+        ) : casaEhBet365 ? (
+          // bet365 do histórico: os códigos da JBot são crípticos (ESOC-GTL-12MP);
+          // mostra o nome e manda o código (é ele que está na pasta do parquet).
+          <Segmentado disabled={gerando} valor={liga} onChange={setLiga}
+            opcoes={[{ valor: '', rotulo: 'Todas' },
+                     ...ligasDisp.map((l) => ({ valor: l.liga, rotulo: l.rotulo || l.liga }))]} />
         ) : (
           <CampoLiga ligas={ligasDisp} valor={liga} onChange={setLiga} disabled={gerando} />
         )}
