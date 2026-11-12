@@ -81,14 +81,14 @@ export const CASAS_RESERVA = [
   _c('betmgm', 'BetMGM', 'BR', null, true, 11),
   _c('betboom', 'Betboom', 'BR', null, true, 12),
   _c('starbet', 'Starbet', 'BR', null, true, 13),
-  _c('betsson_pe', 'Betsson', 'PE', null, false, 1),
-  _c('betsafe_pe', 'Betsafe', 'PE', null, false, 2),
-  _c('inkabet_pe', 'Inkabet', 'PE', null, false, 3),
-  _c('jokerbet_pe', 'Jokerbet', 'PE', null, false, 4),
-  _c('masterbets365_pe', 'Masterbets365', 'PE', null, false, 5),
-  _c('rushbet_pe', 'Rushbet', 'PE', null, false, 6),
-  _c('olimpo_pe', 'Olimpo', 'PE', null, false, 7),
-  _c('betano_pe', 'Betano', 'PE', 'blue', false, 8),
+  _c('betsson_pe', 'Betsson', 'PE', null, true, 1),
+  _c('betsafe_pe', 'Betsafe', 'PE', null, true, 2),
+  _c('inkabet_pe', 'Inkabet', 'PE', null, true, 3),
+  _c('jokerbet_pe', 'Jokerbet', 'PE', null, true, 4),
+  _c('masterbets365_pe', 'Masterbets365', 'PE', null, true, 5),
+  _c('rushbet_pe', 'Rushbet', 'PE', null, true, 6),
+  _c('olimpo_pe', 'Olimpo', 'PE', null, true, 7),
+  _c('betano_pe', 'Betano', 'PE', 'blue', true, 8),
 ];
 
 /** Casas do país + globais, globais primeiro (mesma ordem do back). */
