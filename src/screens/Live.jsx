@@ -157,9 +157,11 @@ function BookmakerChip({ casa }) {
   };
   const casaCad = buscarCasa(casa);
   const classes = casaCad ? corDaCasa(casaCad).chip : (cores[casa] || COR_CASA.slate.chip);
+  // Nome do cadastro em maiúsculas (betsson_pe -> BETSSON); fora do cadastro, o código.
+  const rotulo = casaCad && casaCad.nome ? String(casaCad.nome).toUpperCase() : casa;
   return (
     <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${classes}`}>
-      {casa}
+      {rotulo}
     </span>
   );
 }
@@ -506,7 +508,10 @@ export default function Live({ onNavegar, onAbrirPartida }) {
 
   const { data: eventosLive, loading, refetch } = useEventosLive(esporteAtivo);
 
-  // Agrupa por par, consolida casas, prioriza melhor event_id
+  // Agrupa por par, consolida casas, prioriza melhor event_id.
+  // nov/2026: /eventos/live já vem filtrado pelo país (X-Pais), então o par
+  // nunca junta casas de países diferentes. Casa fora de priorCasas (as _pe)
+  // dá indexOf -1: entra no grupo e só não toma o event_id de quem já está.
   const eventosAgrupados = useMemo(() => {
     const mapa = new Map();
     const priorCasas = ['bet365', 'superbet', 'betano', 'estrelabet'];

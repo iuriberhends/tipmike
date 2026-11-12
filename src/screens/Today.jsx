@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import MikeHeader from '../shared/MikeHeader.jsx';
 import { ApiEventos, ApiStats } from '../lib/api.js';
+import { usePais } from '../context/PaisContext.jsx';
 
 // ============================================================
 // CONFIG
@@ -145,7 +146,11 @@ function useStatsDashboard() {
 // ============================================================
 // NORMALIZAÇÃO: evento da API → formato do card
 // ============================================================
-function normalizarEvento(ev) {
+// nov/2026: data/hora no fuso do país escolhido (fmt = formatarData/formatarHora
+// do PaisContext). O tick vem em ISO com fuso (timestamptz): /eventos/live manda
+// `ultimo_tick` e /eventos/finished manda `ts`.
+function normalizarEvento(ev, fmt) {
+  const instante = ev.ultimo_tick || ev.ts || null;
   return {
     id: ev.event_id,
     esporte: ev.sport || '',
@@ -156,8 +161,8 @@ function normalizarEvento(ev) {
     timeB: '',
     placarA: ev.score_home,
     placarB: ev.score_away,
-    hora: ev.ultimo_tick ? new Date(ev.ultimo_tick).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '',
-    data: ev.ultimo_tick ? new Date(ev.ultimo_tick).toLocaleDateString('pt-BR') : '',
+    hora: instante ? fmt.formatarHora(instante) : '',
+    data: instante ? fmt.formatarData(instante) : '',
     bookmaker: ev.bookmaker,
     aoVivo: true,
     live_time: ev.live_time || '',
@@ -328,24 +333,28 @@ export default function Today({ onNavegar, onAbrirPartida }) {
 
   const loading = loadingLive || loadingFinished;
 
+  // Data/hora dos jogos no fuso do país escolhido
+  const { formatarData, formatarHora } = usePais();
+  const fmt = useMemo(() => ({ formatarData, formatarHora }), [formatarData, formatarHora]);
+
   // Normaliza e filtra por busca
   const proximasFiltradas = useMemo(() => {
-    let evs = (eventosLive || []).map(normalizarEvento);
+    let evs = (eventosLive || []).map(ev => normalizarEvento(ev, fmt));
     if (busca) {
       const t = normalizaBusca(busca);
       evs = evs.filter(p => [p.jogadorA, p.jogadorB, p.liga, p.esporte].some(c => normalizaBusca(c).includes(t)));
     }
     return evs;
-  }, [eventosLive, busca]);
+  }, [eventosLive, busca, fmt]);
 
   const anterioresFiltradas = useMemo(() => {
-    let evs = (eventosFinished || []).map(normalizarEvento);
+    let evs = (eventosFinished || []).map(ev => normalizarEvento(ev, fmt));
     if (busca) {
       const t = normalizaBusca(busca);
       evs = evs.filter(p => [p.jogadorA, p.jogadorB, p.liga, p.esporte].some(c => normalizaBusca(c).includes(t)));
     }
     return evs;
-  }, [eventosFinished, busca]);
+  }, [eventosFinished, busca, fmt]);
 
   const stats = useMemo(() => ({
     aoVivo:   proximasFiltradas.length,

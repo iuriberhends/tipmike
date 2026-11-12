@@ -114,9 +114,26 @@ export function corDaCasa(casa) {
 }
 
 // --------------------------------------------------------- formatadores ---
+// ISO com fuso explícito no fim (Z, +00:00, -0300, -03). Exige a hora antes
+// do fuso: senão '2026-07-29' (só data) casaria pelo '-29'.
+const RE_ISO_COM_FUSO = /\d{2}:\d{2}(?::\d{2}(?:[.,]\d+)?)?\s*(?:Z|[+-]\d{2}(?::?\d{2})?)$/i;
+// ISO "naive" (sem fuso): 'AAAA-MM-DD', 'AAAA-MM-DD HH:MM[:SS]', 'AAAA-MM-DDTHH:MM...'
+const RE_ISO_NAIVE = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?/;
+
+/** true se a string ISO traz fuso (é um instante real, dá para converter). */
+export function temFuso(valor) {
+  return typeof valor === 'string' && RE_ISO_COM_FUSO.test(valor.trim());
+}
+
 /**
- * formatarMoeda(valor, opcoes?) e formatarDataHora(d) no locale/fuso do país.
+ * formatarMoeda(valor, opcoes?) e, no locale/fuso do país,
+ * formatarDataHora(d) 'dd/mm/aa hh:mm', formatarData(d) 'dd/mm/aaaa' e
+ * formatarHora(d) 'hh:mm'.
  * null/undefined/inválido → '—' (mesmo comportamento do antigo formatarBRL).
+ *
+ * Datas: Date, número (epoch ms) ou ISO COM fuso são instantes → saem no
+ * fuso do país. ISO SEM fuso (rotas que já mandam BRT "naive") NÃO é
+ * convertido: mostra o relógio exatamente como veio.
  */
 export function criarFormatadores(info) {
   const idioma = (info && info.idioma) || 'pt-BR';
@@ -135,17 +152,33 @@ export function criarFormatadores(info) {
     }
   }
 
-  function formatarDataHora(d) {
+  function formatarNoFuso(d, campos) {
     if (d === null || d === undefined || d === '') return '—';
-    const dt = d instanceof Date ? d : new Date(d);
+    let dt = null;
+    let tz = fuso;
+    if (typeof d === 'string' && !temFuso(d)) {
+      // sem fuso: monta os mesmos campos em UTC e formata em UTC = relógio intacto
+      const m = RE_ISO_NAIVE.exec(d.trim());
+      if (m) {
+        dt = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0), +(m[6] || 0)));
+        tz = 'UTC';
+      }
+    }
+    if (!dt) dt = d instanceof Date ? d : new Date(d);
     if (Number.isNaN(dt.getTime())) return '—';
-    const base = { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' };
     try {
-      return dt.toLocaleString(idioma, { ...base, timeZone: fuso });
+      return dt.toLocaleString(idioma, { ...campos, timeZone: tz });
     } catch {
-      try { return dt.toLocaleString(idioma, base); } catch { return '—'; }
+      try { return dt.toLocaleString(idioma, campos); } catch { return '—'; }
     }
   }
 
-  return { formatarMoeda, formatarDataHora };
+  // hourCycle h23: o es-PE sairia em 12 h ("01:05 p. m."); 24 h em todo país
+  // mantém a largura das colunas e o mesmo jeito de ler do BR.
+  const formatarDataHora = (d) => formatarNoFuso(d,
+    { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+  const formatarData = (d) => formatarNoFuso(d, { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const formatarHora = (d) => formatarNoFuso(d, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+
+  return { formatarMoeda, formatarDataHora, formatarData, formatarHora };
 }

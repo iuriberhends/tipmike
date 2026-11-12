@@ -1654,7 +1654,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
   // nov/2026: casas do PAÍS escolhido (GET /casas via PaisContext).
   // Casa fora da lista (bot antigo, rascunho de outro país) continua
   // aparecendo no select em vez de sumir em silêncio.
-  const { pais, casas: casasPais } = usePais();
+  const { pais, paises, casas: casasPais } = usePais();
   const casasOpcoes = useMemo(() => {
     const base = (casasPais && casasPais.length > 0)
       ? casasPais.map((c) => ({ value: c.codigo, label: String(c.nome || c.codigo).toUpperCase() }))
@@ -1666,7 +1666,13 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
   }, [casasPais, casa]);
   const casaInfo = (casasPais || []).find((c) => c.codigo === casa) || null;
   const casaNoPais = !!casaInfo;
+  // Aviso "só backtest" depende SÓ do ao_vivo do cadastro (GET /casas): quando
+  // o back ligar o ao vivo da casa, o aviso some sem mexer aqui. O nome do
+  // país no texto também vem do cadastro (GET /paises), nada fixo no código.
   const casaSoBacktest = !!casaInfo && casaInfo.ao_vivo === false;
+  const paisDaCasa = casaInfo && casaInfo.pais
+    ? ((paises || []).find((p) => p.codigo === casaInfo.pais) || { nome: casaInfo.pais })
+    : null;
 
   // SECAO 3 — Torneio + Grade (variações específicas dentro do torneio)
   const [torneioAtivo, setTorneioAtivo] = useState(false);
@@ -2695,7 +2701,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
               {casaSoBacktest && (
                 <div className="flex items-center gap-1.5 mt-1.5 text-[10px] text-amber-300/80">
                   <Info className="w-3 h-3 flex-shrink-0" />
-                  <span>{casaInfo.pais === 'PE' ? 'Casa do Peru' : 'Casa'}: só backtest; robôs ao vivo ainda desligados</span>
+                  <span>{paisDaCasa ? `Casa do ${paisDaCasa.nome || casaInfo.pais}` : 'Casa'}: só backtest; robôs ao vivo ainda desligados</span>
                 </div>
               )}
             </LinhaFiltro>

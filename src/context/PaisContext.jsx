@@ -9,7 +9,9 @@
 //   rotas exigem sessão — chamar deslogado dispararia o logout forçado)
 // - Se a API falhar, usa a reserva embutida (BR + PE e as casas atuais)
 // - Expõe { pais, setPais, paises, casas, infoPais, formatarMoeda,
-//   formatarDataHora, buscarCasa, carregando, fonte } via usePais()
+//   formatarDataHora, formatarData, formatarHora, buscarCasa, carregando,
+//   fonte } via usePais(). As datas saem no fuso do país; ISO sem fuso
+//   (BRT "naive" de algumas rotas) sai como veio, sem converter.
 //
 // O api.js manda X-Pais em todo fetch lendo lib/pais.js. A recarga das
 // telas na troca de país é feita no App.jsx com key={pais} nas rotas.
@@ -61,10 +63,10 @@ function criarBuscarCasa(casas) {
 
 function montarValor({ pais, setPais, paises, casas, carregando, fonte }) {
   const infoPais = montarInfoPais(pais, paises);
-  const { formatarMoeda, formatarDataHora } = criarFormatadores(infoPais);
+  const { formatarMoeda, formatarDataHora, formatarData, formatarHora } = criarFormatadores(infoPais);
   return {
     pais, setPais, paises, casas, infoPais,
-    formatarMoeda, formatarDataHora,
+    formatarMoeda, formatarDataHora, formatarData, formatarHora,
     buscarCasa: criarBuscarCasa(casas),
     carregando, fonte,
   };

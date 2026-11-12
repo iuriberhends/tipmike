@@ -38,7 +38,10 @@ function formatarPct(v) {
   return `${(Number(v) * 100).toFixed(2)}%`;
 }
 
-function formatarDataHora(iso) {
+// nov/2026: SÓ para datas SEM fuso (ts_min/ts_max do upload: relógio BRT do
+// arquivo, o 'Z' do feed é mentiroso) — mostra como veio, sem converter.
+// iniciado_em/concluido_em (timestamptz) usam o formatarDataHora do PaisContext.
+function formatarDataHoraSemFuso(iso) {
   if (!iso) return '—';
   try {
     return new Date(iso).toLocaleString('pt-BR', {
@@ -258,6 +261,7 @@ function ChartEquity({ pontos }) {
 // ============================================================
 
 function HistoricoJobs({ botId, onSelecionar }) {
+  const { formatarDataHora } = usePais();
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [aberto, setAberto] = useState(false);
@@ -340,7 +344,7 @@ function HistoricoJobs({ botId, onSelecionar }) {
 // ============================================================
 
 export default function BacktestModal({ aberto, bot, onFechar }) {
-  const { formatarMoeda, infoPais } = usePais();
+  const { formatarMoeda, formatarDataHora, infoPais } = usePais();
   const [estado, setEstado] = useState('config');
   const [jobId, setJobId] = useState(null);
   const [job, setJob] = useState(null);
@@ -671,7 +675,7 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
                         </div>
                         <div className="text-[--mike-fg-muted] leading-relaxed">
                           {resumoUpload.ts_min && (
-                            <div>Período: {formatarDataHora(resumoUpload.ts_min)} → {formatarDataHora(resumoUpload.ts_max)}</div>
+                            <div>Período: {formatarDataHoraSemFuso(resumoUpload.ts_min)} → {formatarDataHoraSemFuso(resumoUpload.ts_max)}</div>
                           )}
                           {resumoUpload.casas?.length > 0 && <div>Casas: {resumoUpload.casas.join(', ')}</div>}
                           {resumoUpload.ligas?.length > 0 && <div>Ligas: {resumoUpload.ligas.slice(0, 4).join(', ')}{resumoUpload.ligas.length > 4 ? '…' : ''}</div>}
