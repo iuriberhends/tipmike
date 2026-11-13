@@ -192,17 +192,17 @@ const POLL_TIMEOUT_MS = 4 * 60 * 60 * 1000;
 
 
 const themeVars = {
-  '--mike-bg': '#0b0f1a',
-  '--mike-bg-2': '#070a13',
-  '--mike-card': '#141a28',
-  '--mike-card-2': '#1a2030',
-  '--mike-card-hover': '#1c2336',
-  '--mike-border': '#222a3d',
-  '--mike-fg': '#eaeef7',
-  '--mike-fg-soft': '#b8c0d4',
-  '--mike-fg-muted': '#6b7691',
-  '--mike-accent': '#10b981',
-  '--mike-accent-2': '#0891b2',
+  '--mike-bg': '#060b0f',
+  '--mike-bg-2': '#04080b',
+  '--mike-card': '#0b1519',
+  '--mike-card-2': '#0f1c21',
+  '--mike-card-hover': '#132429',
+  '--mike-border': '#1a2c31',
+  '--mike-fg': '#eef8f6',
+  '--mike-fg-soft': '#b5c9c8',
+  '--mike-fg-muted': '#6c8689',
+  '--mike-accent': '#2bcdb9',
+  '--mike-accent-2': '#0d847a',
 };
 
 // helper: string de input -> numero ou null
@@ -235,7 +235,7 @@ function Select({ value, onChange, options }) {
       style={{ appearance: 'none', WebkitAppearance: 'none' }}
     >
       {options.map(o => (
-        <option key={o.value} value={o.value} style={{ background: '#141a28' }}>
+        <option key={o.value} value={o.value} style={{ background: '#0b1519' }}>
           {o.icon ? `${o.icon} ` : ''}{o.label}
         </option>
       ))}
@@ -268,11 +268,11 @@ function SecaoTitulo({ icon: Icon, children }) {
   );
 }
 
-function StatCard({ icon: Icon, label, valor, cor = '#eaeef7' }) {
+function StatCard({ icon: Icon, label, valor, cor = '#eef8f6' }) {
   return (
     <div className="rounded-lg p-3" style={{
-      backgroundColor: 'rgba(20, 26, 40, 0.4)',
-      border: '0.5px solid rgba(60, 85, 130, 0.4)',
+      backgroundColor: 'rgba(11, 21, 25, 0.4)',
+      border: '0.5px solid rgba(50, 100, 104, 0.4)',
     }}>
       <div className="flex items-center gap-1.5 mb-1.5">
         {Icon && <Icon className="w-3 h-3 flex-shrink-0" style={{ color: cor }} />}
@@ -299,9 +299,9 @@ function BarrasPorDia({ dias }) {
           const hV = hTot - hG - hR;
           return (
             <div key={i} className="flex-1 flex flex-col justify-end min-w-0" title={`${d.data}: ${d.g}G ${d.r}R${d.v ? ` ${d.v}V` : ''} · PnL ${d.pnl >= 0 ? '+' : ''}${formatarMoeda(d.pnl)}`}>
-              {hV > 0 && <div style={{ height: hV, backgroundColor: 'rgba(107,118,145,0.5)' }} />}
+              {hV > 0 && <div style={{ height: hV, backgroundColor: 'rgba(108,134,137,0.5)' }} />}
               <div style={{ height: hR, backgroundColor: '#f43f5e' }} />
-              <div style={{ height: hG, backgroundColor: '#10b981', borderRadius: '2px 2px 0 0' }} />
+              <div style={{ height: hG, backgroundColor: '#2bcdb9', borderRadius: '2px 2px 0 0' }} />
             </div>
           );
         })}
@@ -331,10 +331,10 @@ function CurvaEquity({ pontos, bancaInicial }) {
   const pts = vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
   const yBase = y(bancaInicial);
   const fim = vals[vals.length - 1];
-  const cor = fim >= bancaInicial ? '#10b981' : '#f43f5e';
+  const cor = fim >= bancaInicial ? '#2bcdb9' : '#f43f5e';
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: H }}>
-      <line x1={PAD} y1={yBase} x2={W - PAD} y2={yBase} stroke="rgba(107,118,145,0.5)" strokeWidth="1" strokeDasharray="4 3" />
+      <line x1={PAD} y1={yBase} x2={W - PAD} y2={yBase} stroke="rgba(108,134,137,0.5)" strokeWidth="1" strokeDasharray="4 3" />
       <polyline points={pts} fill="none" stroke={cor} strokeWidth="1.5" strokeLinejoin="round" />
     </svg>
   );
@@ -345,8 +345,8 @@ function CurvaEquity({ pontos, bancaInicial }) {
 function Grupo({ icon: Icon, cor, titulo, desc, children }) {
   return (
     <div className="rounded-lg p-3.5" style={{
-      backgroundColor: 'rgba(13,17,27,0.5)',
-      border: '0.5px solid rgba(60,85,130,0.28)',
+      backgroundColor: 'rgba(8,14,18,0.5)',
+      border: '0.5px solid rgba(50,100,104,0.28)',
     }}>
       <div className="flex items-start gap-2.5 mb-3">
         <div className="w-[3px] self-stretch rounded-full flex-shrink-0" style={{ backgroundColor: cor }} />
@@ -374,7 +374,7 @@ function SubLabel({ children }) {
 
 // Divisoria fina entre sub-blocos dentro de um Grupo.
 function DivFina() {
-  return <div className="h-px my-3.5" style={{ backgroundColor: 'rgba(60,85,130,0.18)' }} />;
+  return <div className="h-px my-3.5" style={{ backgroundColor: 'rgba(50,100,104,0.18)' }} />;
 }
 
 // ============================================================
@@ -954,8 +954,8 @@ export default function BacktestAvulso({ onNavegar } = {}) {
   const semApostas = resultado && (num(r.total_apostas) ?? 0) === 0;
 
   const cardStyle = {
-    backgroundColor: 'rgba(20, 26, 40, 0.4)',
-    border: '0.5px solid rgba(60, 85, 130, 0.4)',
+    backgroundColor: 'rgba(11, 21, 25, 0.4)',
+    border: '0.5px solid rgba(50, 100, 104, 0.4)',
   };
 
   return (
@@ -963,12 +963,12 @@ export default function BacktestAvulso({ onNavegar } = {}) {
       ...themeVars,
       backgroundColor: 'var(--mike-bg)',
       color: 'var(--mike-fg)',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontFamily: 'var(--mike-font)',
     }}>
       <style>{`
-        .mike-border-thin { border: 0.5px solid rgba(60, 85, 130, 0.4) !important; }
-        .mike-border-thin:hover { border-color: rgba(80, 110, 170, 0.7) !important; }
-        .mike-border-thin:focus { border-color: rgba(16, 185, 129, 0.7) !important; outline: none; }
+        .mike-border-thin { border: 0.5px solid rgba(50, 100, 104, 0.4) !important; }
+        .mike-border-thin:hover { border-color: rgba(70, 130, 132, 0.7) !important; }
+        .mike-border-thin:focus { border-color: rgba(43, 205, 185, 0.7) !important; outline: none; }
         @keyframes mike-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .mike-spin { animation: mike-spin 0.8s linear infinite; }
       `}</style>
@@ -1017,7 +1017,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                   <button key={id} onClick={() => setAbaTicks(id)}
                     className="px-3 py-1.5 rounded-md text-[11px] font-bold transition"
                     style={abaTicks === id
-                      ? { backgroundColor: 'rgba(6,182,212,0.15)', color: '#22d3ee', border: '0.5px solid rgba(6,182,212,0.4)' }
+                      ? { backgroundColor: 'rgba(14,165,233,0.15)', color: '#38bdf8', border: '0.5px solid rgba(14,165,233,0.4)' }
                       : { color: 'var(--mike-fg-muted)', border: '0.5px solid rgba(255,255,255,0.07)' }}>
                     {rotulo}
                   </button>
@@ -1053,7 +1053,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                           <div key={p.upload_id}
                             className="flex items-center gap-2 px-2.5 py-2 text-[11px] cursor-pointer transition"
                             style={{
-                              backgroundColor: sel ? 'rgba(6,182,212,0.12)' : 'transparent',
+                              backgroundColor: sel ? 'rgba(14,165,233,0.12)' : 'transparent',
                               borderBottom: '0.5px solid rgba(255,255,255,0.05)',
                             }}
                             onClick={() => escolherParquet(p)}>
@@ -1074,7 +1074,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                                 />
                               ) : (
                                 <div className="truncate">
-                                  <span className="font-bold" style={{ color: sel ? '#22d3ee' : 'var(--mike-fg)' }}>
+                                  <span className="font-bold" style={{ color: sel ? '#38bdf8' : 'var(--mike-fg)' }}>
                                     {p.apelido || p.limpo || p.arquivo}
                                   </span>
                                   <span className="ml-2 text-[--mike-fg-muted]">
@@ -1105,7 +1105,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                   </div>
 
                   {/* v34: JOB-MAE PRA GARIMPO */}
-                  <div className="mt-3 rounded-md p-3 mike-border-thin" style={{ backgroundColor: 'rgba(6,182,212,0.06)' }}>
+                  <div className="mt-3 rounded-md p-3 mike-border-thin" style={{ backgroundColor: 'rgba(14,165,233,0.06)' }}>
                     <div className="text-[11px] font-bold mb-1">Job-mãe pra garimpo</div>
                     <div className="text-[10px] text-[--mike-fg-muted] mb-2">
                       Cria o backtest escancarado do jeito que a varredura precisa — chip 0-100,
@@ -1137,7 +1137,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                         className="flex-1 min-w-[140px] px-2 py-1 rounded text-[11px] mike-border-thin bg-transparent text-[--mike-fg]" />
                       <button onClick={criarJobMae} disabled={jmCriando || !uploadId}
                         className="px-3 py-1.5 rounded-md text-[11px] font-bold mike-border-thin"
-                        style={{ backgroundColor: uploadId ? 'rgba(6,182,212,0.2)' : 'transparent', color: '#22d3ee' }}>
+                        style={{ backgroundColor: uploadId ? 'rgba(14,165,233,0.2)' : 'transparent', color: '#38bdf8' }}>
                         {jmCriando ? 'Criando…' : 'Criar job-mãe'}
                       </button>
                     </div>
@@ -1149,10 +1149,10 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                           {(() => {
                             const j = jmStatus?.job;
                             if (!j) return <span className="text-[--mike-fg-muted]">criando…</span>;
-                            if (j.status === 'concluido') return <span style={{ color: '#10b981' }}>✔ concluído</span>;
+                            if (j.status === 'concluido') return <span style={{ color: '#2bcdb9' }}>✔ concluído</span>;
                             if (j.status === 'erro') return <span style={{ color: '#f43f5e' }}>erro: {String(j.erro || '').slice(0, 120)}</span>;
                             if (j.status === 'cancelado') return <span className="text-[--mike-fg-muted]">cancelado</span>;
-                            return <span style={{ color: '#22d3ee' }}>rodando {j.progresso ?? 0}%{j.progresso_msg ? ` · ${String(j.progresso_msg).slice(0, 70)}` : ''}</span>;
+                            return <span style={{ color: '#38bdf8' }}>rodando {j.progresso ?? 0}%{j.progresso_msg ? ` · ${String(j.progresso_msg).slice(0, 70)}` : ''}</span>;
                           })()}
                         </div>
                         {jmResultado.varredura_id ? (
@@ -1164,13 +1164,13 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                               const st = g?.status || 'aguardando_origem';
                               const mapa = {
                                 aguardando_origem: ['esperando o job-mãe concluir', '#a78bfa'],
-                                pendente: ['na fila', '#6b7691'], planejando: ['preparando', '#0891b2'],
-                                planejado: ['aguardando confirmação', '#fbbf24'], rodando: ['garimpando', '#22d3ee'],
-                                concluido: ['✔ pronto — veja na tela da Varredura', '#10b981'],
+                                pendente: ['na fila', '#6c8689'], planejando: ['preparando', '#0284c7'],
+                                planejado: ['aguardando confirmação', '#fbbf24'], rodando: ['garimpando', '#38bdf8'],
+                                concluido: ['✔ pronto — veja na tela da Varredura', '#2bcdb9'],
                                 erro: [`erro: ${String(g?.erro || '').slice(0, 100)}`, '#f43f5e'],
-                                cancelado: ['cancelado', '#6b7691'],
+                                cancelado: ['cancelado', '#6c8689'],
                               };
-                              const [txt, cor] = mapa[st] || [st, '#6b7691'];
+                              const [txt, cor] = mapa[st] || [st, '#6c8689'];
                               return <span style={{ color: cor }}>{txt}{g?.progresso_msg && st === 'rodando' ? ` · ${String(g.progresso_msg).slice(0, 60)}` : ''}</span>;
                             })()}
                           </div>
@@ -1210,13 +1210,13 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                   onClick={handleUpload}
                   disabled={!arquivo || subindo}
                   className="flex items-center gap-1.5 px-4 py-2 rounded-md text-xs font-bold transition disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{ backgroundColor: (!arquivo || subindo) ? 'rgba(16,185,129,0.2)' : '#10b981', color: (!arquivo || subindo) ? '#6b7691' : '#0b0f1a' }}
+                  style={{ backgroundColor: (!arquivo || subindo) ? 'rgba(43,205,185,0.2)' : '#2bcdb9', color: (!arquivo || subindo) ? '#6c8689' : '#060b0f' }}
                 >
                   {subindo ? <><RefreshCw className="w-3.5 h-3.5 mike-spin" /> Subindo...</> : <><Upload className="w-3.5 h-3.5" /> Subir</>}
                 </button>
               </div>
               {resumo && abaTicks === 'arquivo' && (
-                <div className="mt-3 rounded-md p-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px]" style={{ backgroundColor: 'rgba(16,185,129,0.06)', border: '0.5px solid rgba(16,185,129,0.25)' }}>
+                <div className="mt-3 rounded-md p-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px]" style={{ backgroundColor: 'rgba(43,205,185,0.06)', border: '0.5px solid rgba(43,205,185,0.25)' }}>
                   <span className="flex items-center gap-1 text-emerald-400 font-bold">
                     <CheckCircle2 className="w-3 h-3" /> {(resumo.linhas ?? 0).toLocaleString()} ticks
                   </span>
@@ -1265,7 +1265,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
               <div className="space-y-3">
 
                 {/* GRUPO 1: Aposta */}
-                <Grupo icon={Trophy} cor="#22d3ee" titulo="Aposta" desc="Onde, o quê e qual lado — e a faixa de linha.">
+                <Grupo icon={Trophy} cor="#38bdf8" titulo="Aposta" desc="Onde, o quê e qual lado — e a faixa de linha.">
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <Campo label="Casa"><Select value={casa} onChange={setCasa} options={casasOpcoes} /></Campo>
                     <Campo label="Esporte"><Select value={esporte} onChange={setEsporte} options={ESPORTES} /></Campo>
@@ -1492,7 +1492,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                   </div>
                   <button
                     onClick={adicionarHist}
-                    className="px-3 py-1.5 rounded-md text-[11px] font-bold mike-border-thin text-[--mike-accent] hover:bg-[--mike-accent]/10 transition"
+                    className="px-3 py-1.5 rounded-md text-[11px] font-bold mike-border-thin text-[--mike-accent] hover:bg-mike-accent/10 transition"
                   >
                     + Adicionar filtro de WR
                   </button>
@@ -1533,14 +1533,14 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                   </div>
                   <button
                     onClick={adicionarComp}
-                    className="px-3 py-1.5 rounded-md text-[11px] font-bold mike-border-thin text-[--mike-accent] hover:bg-[--mike-accent]/10 transition"
+                    className="px-3 py-1.5 rounded-md text-[11px] font-bold mike-border-thin text-[--mike-accent] hover:bg-mike-accent/10 transition"
                   >
                     + Adicionar filtro
                   </button>
                   {filtrosComp.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2.5">
                       {filtrosComp.map((f, i) => (
-                        <div key={i} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-mono bg-[--mike-accent]/10 text-[--mike-accent] mike-border-thin">
+                        <div key={i} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-mono bg-mike-accent/10 text-[--mike-accent] mike-border-thin">
                           <span>{_labelChipComp(f)}</span>
                           <button onClick={() => removerComp(i)} className="hover:text-red-400 font-bold leading-none">×</button>
                         </div>
@@ -1570,7 +1570,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                             <button
                               key={q}
                               onClick={() => setQuartos({ ...quartos, [q]: !ativo })}
-                              className={`px-3 py-1.5 rounded-md text-[11px] font-bold font-mono transition ${ativo ? 'bg-[--mike-accent]/15 text-[--mike-accent]' : 'mike-border-thin text-[--mike-fg-muted] hover:text-[--mike-fg]'}`}
+                              className={`px-3 py-1.5 rounded-md text-[11px] font-bold font-mono transition ${ativo ? 'bg-mike-accent/15 text-[--mike-accent]' : 'mike-border-thin text-[--mike-fg-muted] hover:text-[--mike-fg]'}`}
                             >
                               {q.toUpperCase()}
                             </button>
@@ -1610,7 +1610,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                 onClick={handleRodar}
                 disabled={!uploadId || rodando}
                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-sm font-bold transition disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ backgroundColor: (!uploadId || rodando) ? 'rgba(16,185,129,0.2)' : '#10b981', color: (!uploadId || rodando) ? '#6b7691' : '#0b0f1a', boxShadow: (!uploadId || rodando) ? 'none' : '0 4px 12px rgba(16,185,129,0.3)' }}
+                style={{ backgroundColor: (!uploadId || rodando) ? 'rgba(43,205,185,0.2)' : '#2bcdb9', color: (!uploadId || rodando) ? '#6c8689' : '#060b0f', boxShadow: (!uploadId || rodando) ? 'none' : '0 4px 12px rgba(43,205,185,0.3)' }}
               >
                 {rodando ? <><RefreshCw className="w-4 h-4 mike-spin" /> Rodando backtest...</> : <><Play className="w-4 h-4" /> Rodar backtest</>}
               </button>
@@ -1634,9 +1634,9 @@ export default function BacktestAvulso({ onNavegar } = {}) {
               {/* v14: barra de progresso do job */}
               {rodando && (
                 <div className="mt-2.5">
-                  <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(60,85,130,0.25)' }}>
+                  <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(50,100,104,0.25)' }}>
                     <div className="h-full transition-all duration-500"
-                         style={{ width: `${Math.max(2, progresso)}%`, backgroundColor: '#10b981' }} />
+                         style={{ width: `${Math.max(2, progresso)}%`, backgroundColor: '#2bcdb9' }} />
                   </div>
                   <div className="flex items-center justify-between gap-2 mt-1">
                     <span className="text-[10px] text-[--mike-fg-muted] font-mono truncate">
@@ -1691,10 +1691,10 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                   <>
                     {/* HERO (estilo TM): Apostas · Odd média · Lucro · ROI */}
                     <div className="grid grid-cols-2 gap-2">
-                      <StatCard icon={Hash} label="Apostas" valor={num(r.total_apostas) ?? '-'} cor="#0891b2" />
-                      <StatCard icon={Percent} label="Odd média" valor={oddMedia ? oddMedia.toFixed(2) : '-'} cor="#eaeef7" />
-                      <StatCard icon={DollarSign} label="Lucro" valor={pnlU != null ? `${u(pnlU)}u` : u(r.pnl)} cor={pnlN == null ? '#eaeef7' : (pnlN >= 0 ? '#10b981' : '#f43f5e')} />
-                      <StatCard icon={Target} label="ROI" valor={pct(r.roi)} cor={roiN == null ? '#eaeef7' : (roiN >= 0 ? '#10b981' : '#f43f5e')} />
+                      <StatCard icon={Hash} label="Apostas" valor={num(r.total_apostas) ?? '-'} cor="#0284c7" />
+                      <StatCard icon={Percent} label="Odd média" valor={oddMedia ? oddMedia.toFixed(2) : '-'} cor="#eef8f6" />
+                      <StatCard icon={DollarSign} label="Lucro" valor={pnlU != null ? `${u(pnlU)}u` : u(r.pnl)} cor={pnlN == null ? '#eef8f6' : (pnlN >= 0 ? '#2bcdb9' : '#f43f5e')} />
+                      <StatCard icon={Target} label="ROI" valor={pct(r.roi)} cor={roiN == null ? '#eef8f6' : (roiN >= 0 ? '#2bcdb9' : '#f43f5e')} />
                     </div>
                     {pnlU != null && (
                       <div className="text-[9px] text-[--mike-fg-muted] mt-1.5 text-center font-mono">
@@ -1706,7 +1706,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                     <div className="grid grid-cols-3 gap-2 mt-2">
                       {[
                         ['WR', pct(r.win_rate), '#fbbf24'],
-                        ['Drawdown', ddU != null ? `${u(ddU)}u` : u(r.drawdown_max), ddN ? '#f43f5e' : '#eaeef7'],
+                        ['Drawdown', ddU != null ? `${u(ddU)}u` : u(r.drawdown_max), ddN ? '#f43f5e' : '#eef8f6'],
                         ['Streak red', num(r.max_streak_red) ?? '-', '#f43f5e'],
                       ].map(([lbl, val, cor]) => (
                         <div key={lbl} className="rounded-md p-2 text-center mike-border-thin">
@@ -1718,7 +1718,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
 
                     {/* resultados por dia (barras estilo TM) */}
                     {porDia.length > 1 && (
-                      <div className="mt-3 rounded-lg p-3" style={{ backgroundColor: 'rgba(13,17,27,0.5)', border: '0.5px solid rgba(60,85,130,0.28)' }}>
+                      <div className="mt-3 rounded-lg p-3" style={{ backgroundColor: 'rgba(8,14,18,0.5)', border: '0.5px solid rgba(50,100,104,0.28)' }}>
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-[10px] uppercase tracking-wider text-[--mike-fg-muted] font-bold">Resultados por dia</span>
                           <span className="text-[9px] font-mono text-[--mike-fg-muted]">
@@ -1734,7 +1734,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
 
                     {/* evolução da banca (equity) */}
                     {Array.isArray(r.equity_curve) && r.equity_curve.length > 1 && (
-                      <div className="mt-2 rounded-lg p-3" style={{ backgroundColor: 'rgba(13,17,27,0.5)', border: '0.5px solid rgba(60,85,130,0.28)' }}>
+                      <div className="mt-2 rounded-lg p-3" style={{ backgroundColor: 'rgba(8,14,18,0.5)', border: '0.5px solid rgba(50,100,104,0.28)' }}>
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-[10px] uppercase tracking-wider text-[--mike-fg-muted] font-bold">Evolução da banca</span>
                           <span className="text-[9px] font-mono text-[--mike-fg-muted]">banca final: {u(num(r.equity_curve[r.equity_curve.length - 1]?.banca))}</span>
@@ -1745,7 +1745,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
 
                     {/* green/red/void */}
                     <div className="grid grid-cols-3 gap-2 mt-2">
-                      <div className="rounded-md p-2 text-center" style={{ backgroundColor: 'rgba(16,185,129,0.08)', border: '0.5px solid rgba(16,185,129,0.25)' }}>
+                      <div className="rounded-md p-2 text-center" style={{ backgroundColor: 'rgba(43,205,185,0.08)', border: '0.5px solid rgba(43,205,185,0.25)' }}>
                         <div className="text-[9px] uppercase tracking-wider text-emerald-400 font-bold">Green</div>
                         <div className="text-sm font-black font-mono text-emerald-400">{num(r.green) ?? '-'}</div>
                       </div>
@@ -1753,7 +1753,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                         <div className="text-[9px] uppercase tracking-wider text-rose-400 font-bold">Red</div>
                         <div className="text-sm font-black font-mono text-rose-400">{num(r.red) ?? '-'}</div>
                       </div>
-                      <div className="rounded-md p-2 text-center" style={{ backgroundColor: 'rgba(60,85,130,0.1)', border: '0.5px solid rgba(60,85,130,0.3)' }}>
+                      <div className="rounded-md p-2 text-center" style={{ backgroundColor: 'rgba(50,100,104,0.1)', border: '0.5px solid rgba(50,100,104,0.3)' }}>
                         <div className="text-[9px] uppercase tracking-wider text-[--mike-fg-muted] font-bold">Void</div>
                         <div className="text-sm font-black font-mono text-[--mike-fg-soft]">{num(r.void_count) ?? '-'}</div>
                       </div>
@@ -1763,7 +1763,7 @@ export default function BacktestAvulso({ onNavegar } = {}) {
                     <button
                       onClick={baixarPlanilha}
                       disabled={baixando}
-                      className="w-full mt-3 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-[12px] font-bold mike-border-thin text-[--mike-accent] hover:bg-[--mike-accent]/10 transition disabled:opacity-50"
+                      className="w-full mt-3 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-[12px] font-bold mike-border-thin text-[--mike-accent] hover:bg-mike-accent/10 transition disabled:opacity-50"
                     >
                       <Download className="w-3.5 h-3.5" />
                       {baixando ? 'Gerando planilha...' : 'Baixar planilha das apostas'}

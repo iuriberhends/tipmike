@@ -12,6 +12,7 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Ticket, UserPlus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { registroApi } from '../lib/auth.js';
+import AuthLayout, { CampoRotulo, CaixaErro } from '../shared/AuthLayout.jsx';
 
 export default function Registro() {
   const { usuario, carregando, login } = useAuth();
@@ -66,177 +67,126 @@ export default function Registro() {
     if (e.key === 'Enter') criar();
   };
 
-  const estiloInput = {
-    backgroundColor: 'rgba(20, 26, 40, 0.8)',
-    border: '0.5px solid rgba(60, 85, 130, 0.4)',
-    color: '#eaeef7',
-  };
-
   return (
-    <div
-      className="min-h-screen flex items-center justify-center p-4"
-      style={{
-        backgroundColor: '#0b0f1a',
-        color: '#eaeef7',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
-      }}
-    >
-      <div
-        className="w-full max-w-sm rounded-2xl p-8"
-        style={{
-          backgroundColor: 'rgba(20, 26, 40, 0.6)',
-          border: '0.5px solid rgba(60, 85, 130, 0.4)',
-        }}
-      >
-        {/* Logo */}
-        <div className="flex flex-col items-center mb-8">
-          <div
-            className="w-12 h-12 rounded-xl flex items-center justify-center mb-3"
-            style={{
-              background: 'linear-gradient(135deg, var(--mike-accent, #22d3ee), var(--mike-accent-2, #10b981))',
-              boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
-            }}
-          >
-            <span className="font-black leading-none" style={{ fontSize: 22, color: 'var(--mike-bg, #0b0f1a)' }}>M</span>
-          </div>
-          <h1
-            className="text-xl font-black tracking-tight"
-            style={{ fontFamily: 'JetBrains Mono, monospace' }}
-          >
-            TIPMIKE
-          </h1>
-          <p className="text-xs text-slate-400 mt-1">Crie sua conta com um convite</p>
-        </div>
-
-        <div className="flex flex-col gap-3">
-          {/* Convite */}
-          <div>
-            <label className="block text-[11px] font-semibold text-slate-400 mb-1">Código de convite</label>
-            <div className="relative">
-              <Ticket className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
-              <input
-                type="text"
-                autoFocus
-                value={convite}
-                onChange={(e) => setConvite(e.target.value)}
-                onKeyDown={aoTeclar}
-                placeholder="TM-..."
-                className="w-full pl-8 pr-3 py-2 rounded-md text-sm outline-none focus:ring-1 focus:ring-[--mike-accent]/60"
-                style={{ ...estiloInput, fontFamily: 'JetBrains Mono, monospace' }}
-                disabled={enviando}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-semibold text-slate-400 mb-1">Nome</label>
-            <input
-              type="text"
-              autoComplete="name"
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              onKeyDown={aoTeclar}
-              placeholder="Seu nome"
-              className="w-full px-3 py-2 rounded-md text-sm outline-none focus:ring-1 focus:ring-[--mike-accent]/60"
-              style={estiloInput}
-              disabled={enviando}
-            />
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-semibold text-slate-400 mb-1">E-mail</label>
-            <input
-              type="email"
-              autoComplete="username"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onKeyDown={aoTeclar}
-              placeholder="voce@email.com"
-              className="w-full px-3 py-2 rounded-md text-sm outline-none focus:ring-1 focus:ring-[--mike-accent]/60"
-              style={estiloInput}
-              disabled={enviando}
-            />
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-semibold text-slate-400 mb-1">Senha</label>
-            <div className="relative">
-              <input
-                type={mostrarSenha ? 'text' : 'password'}
-                autoComplete="new-password"
-                value={senha}
-                onChange={(e) => setSenha(e.target.value)}
-                onKeyDown={aoTeclar}
-                placeholder="Mín. 10 caracteres, letras e números"
-                className="w-full px-3 py-2 pr-9 rounded-md text-sm outline-none focus:ring-1 focus:ring-[--mike-accent]/60"
-                style={estiloInput}
-                disabled={enviando}
-              />
-              <button
-                type="button"
-                onClick={() => setMostrarSenha(!mostrarSenha)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition"
-                title={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
-                tabIndex={-1}
-              >
-                {mostrarSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-semibold text-slate-400 mb-1">Confirmar senha</label>
-            <input
-              type={mostrarSenha ? 'text' : 'password'}
-              autoComplete="new-password"
-              value={confirma}
-              onChange={(e) => setConfirma(e.target.value)}
-              onKeyDown={aoTeclar}
-              placeholder="••••••••"
-              className="w-full px-3 py-2 rounded-md text-sm outline-none focus:ring-1 focus:ring-[--mike-accent]/60"
-              style={estiloInput}
-              disabled={enviando}
-            />
-          </div>
-
-          {erro && (
-            <div
-              className="px-3 py-2 rounded-md text-xs font-semibold"
-              style={{
-                backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                border: '0.5px solid rgba(239, 68, 68, 0.4)',
-                color: '#fca5a5',
-              }}
-            >
-              {erro}
-            </div>
-          )}
-
-          <button
-            onClick={criar}
-            disabled={enviando}
-            className="mt-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-sm font-bold transition disabled:opacity-60"
-            style={{
-              backgroundColor: '#10b981',
-              color: '#0b0f1a',
-              boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
-            }}
-          >
-            <UserPlus className="w-4 h-4" />
-            {enviando ? 'Criando conta...' : 'Criar conta'}
-          </button>
-        </div>
-
+    <AuthLayout
+      titulo="Criar conta"
+      subtitulo="Crie sua conta com um convite"
+      rodape={(
         <button
           type="button"
           onClick={() => navigate('/login')}
-          className="w-full text-center text-xs font-semibold mt-6 transition"
-          style={{ color: 'var(--mike-accent, #22d3ee)' }}
+          className="text-xs font-semibold px-2 py-1.5 rounded-md transition hover:brightness-125"
+          style={{ color: 'var(--mike-accent)' }}
           disabled={enviando}
         >
           ← Já tem conta? Entrar
         </button>
+      )}
+    >
+      <div className="flex flex-col gap-3.5">
+        <div>
+          <CampoRotulo htmlFor="reg-convite">Código de convite</CampoRotulo>
+          <div className="relative">
+            <Ticket className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+            <input
+              id="reg-convite"
+              type="text"
+              autoFocus
+              autoCapitalize="characters"
+              autoComplete="off"
+              value={convite}
+              onChange={(e) => setConvite(e.target.value)}
+              onKeyDown={aoTeclar}
+              placeholder="TM-..."
+              className="mike-input font-mono"
+              style={{ paddingLeft: '2.25rem' }}
+              disabled={enviando}
+            />
+          </div>
+        </div>
+
+        <div>
+          <CampoRotulo htmlFor="reg-nome">Nome</CampoRotulo>
+          <input
+            id="reg-nome"
+            type="text"
+            autoComplete="name"
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            onKeyDown={aoTeclar}
+            placeholder="Seu nome"
+            className="mike-input"
+            disabled={enviando}
+          />
+        </div>
+
+        <div>
+          <CampoRotulo htmlFor="reg-email">E-mail</CampoRotulo>
+          <input
+            id="reg-email"
+            type="email"
+            inputMode="email"
+            autoComplete="username"
+            autoCapitalize="none"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            onKeyDown={aoTeclar}
+            placeholder="voce@email.com"
+            className="mike-input"
+            disabled={enviando}
+          />
+        </div>
+
+        <div>
+          <CampoRotulo htmlFor="reg-senha">Senha</CampoRotulo>
+          <div className="relative">
+            <input
+              id="reg-senha"
+              type={mostrarSenha ? 'text' : 'password'}
+              autoComplete="new-password"
+              value={senha}
+              onChange={(e) => setSenha(e.target.value)}
+              onKeyDown={aoTeclar}
+              placeholder="Mín. 10 caracteres, letras e números"
+              className="mike-input"
+              style={{ paddingRight: '2.75rem' }}
+              disabled={enviando}
+            />
+            <button
+              type="button"
+              onClick={() => setMostrarSenha(!mostrarSenha)}
+              className="absolute right-1 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-200 transition"
+              title={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
+              aria-label={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
+              tabIndex={-1}
+            >
+              {mostrarSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <CampoRotulo htmlFor="reg-confirma">Confirmar senha</CampoRotulo>
+          <input
+            id="reg-confirma"
+            type={mostrarSenha ? 'text' : 'password'}
+            autoComplete="new-password"
+            value={confirma}
+            onChange={(e) => setConfirma(e.target.value)}
+            onKeyDown={aoTeclar}
+            placeholder="••••••••"
+            className="mike-input"
+            disabled={enviando}
+          />
+        </div>
+
+        <CaixaErro>{erro}</CaixaErro>
+
+        <button type="button" onClick={criar} disabled={enviando} className="mike-btn-primary w-full mt-1">
+          <UserPlus className="w-4 h-4" />
+          {enviando ? 'Criando conta...' : 'Criar conta'}
+        </button>
       </div>
-    </div>
+    </AuthLayout>
   );
 }

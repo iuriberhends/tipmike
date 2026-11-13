@@ -86,12 +86,12 @@ function GraficoBarras({ data }) {
   const yTicks = [0, yMax * 0.25, yMax * 0.5, yMax * 0.75, yMax].map((v) => Math.round(v));
 
   const cores = {
-    devolvidas:  { fill: '#64748b', label: 'Devolvidas' },
-    canceladas:  { fill: '#334155', label: 'Canceladas' },
+    devolvidas:  { fill: '#6c8689', label: 'Devolvidas' },
+    canceladas:  { fill: '#344b50', label: 'Canceladas' },
     reds:        { fill: '#f43f5e', label: 'Reds' },
     meiosReds:   { fill: '#fb923c', label: '1/2 Reds' },
     meiosGreens: { fill: '#86efac', label: '1/2 Greens' },
-    greens:      { fill: '#10b981', label: 'Greens' },
+    greens:      { fill: '#2bcdb9', label: 'Greens' },
   };
   const ordem = ['devolvidas','canceladas','reds','meiosReds','meiosGreens','greens'];
 
@@ -105,7 +105,7 @@ function GraficoBarras({ data }) {
             return (
               <g key={cat}>
                 <rect x={offsetX} y={14} width="9" height="9" fill={c.fill} rx="1" />
-                <text x={offsetX + 14} y={22} fontSize="10" fill="#94a3b8" fontFamily="system-ui">{c.label}</text>
+                <text x={offsetX + 14} y={22} fontSize="10" fill="#8ba5a6" fontFamily="system-ui">{c.label}</text>
               </g>
             );
           })}
@@ -115,13 +115,13 @@ function GraficoBarras({ data }) {
           const y = paddingT + innerH - (tick / yMax) * innerH;
           return (
             <g key={tick}>
-              <line x1={paddingL} y1={y} x2={width - paddingR} y2={y} stroke="#1e293b" strokeWidth="0.7" />
-              <text x={paddingL - 6} y={y + 3} textAnchor="end" fontSize="10" fill="#64748b" fontFamily="system-ui">{tick}</text>
+              <line x1={paddingL} y1={y} x2={width - paddingR} y2={y} stroke="#1c2f34" strokeWidth="0.7" />
+              <text x={paddingL - 6} y={y + 3} textAnchor="end" fontSize="10" fill="#6c8689" fontFamily="system-ui">{tick}</text>
             </g>
           );
         })}
 
-        <line x1={paddingL} y1={paddingT + innerH} x2={width - paddingR} y2={paddingT + innerH} stroke="#334155" strokeWidth="0.7" />
+        <line x1={paddingL} y1={paddingT + innerH} x2={width - paddingR} y2={paddingT + innerH} stroke="#344b50" strokeWidth="0.7" />
 
         {data.map((d, i) => {
           const xCenter = paddingL + i * stepX + stepX / 2;
@@ -158,7 +158,7 @@ function GraficoBarras({ data }) {
                   y={paddingT + innerH + 16}
                   textAnchor="end"
                   fontSize="10"
-                  fill={isHover ? '#10b981' : '#94a3b8'}
+                  fill={isHover ? '#2bcdb9' : '#8ba5a6'}
                   fontFamily="system-ui"
                   transform={`rotate(-45 ${xCenter} ${paddingT + innerH + 16})`}
                 >
@@ -177,7 +177,7 @@ function GraficoBarras({ data }) {
         const xPercent = (xCenter / width) * 100;
         return (
           <div className="absolute pointer-events-none mike-tooltip-in" style={{ left: `${xPercent}%`, top: '8px', transform: 'translateX(-50%)', zIndex: 10 }}>
-            <div className="rounded-md px-3 py-2 shadow-2xl whitespace-nowrap" style={{ backgroundColor: '#0b0f1a', border: '0.5px solid rgba(16, 185, 129, 0.5)', minWidth: '160px' }}>
+            <div className="rounded-md px-3 py-2 shadow-2xl whitespace-nowrap" style={{ backgroundColor: '#060b0f', border: '0.5px solid rgba(43, 205, 185, 0.5)', minWidth: '160px' }}>
               <div className="text-[10px] font-bold text-emerald-400 mb-1.5 uppercase tracking-wider">{d.label}</div>
               <div className="space-y-0.5 text-[10px]">
                 <div className="flex justify-between gap-4"><span className="flex items-center gap-1 text-emerald-400"><span className="w-2 h-2 rounded-sm" style={{ background: cores.greens.fill }}/> Greens</span><span className="font-mono font-bold text-emerald-400">{d.greens}</span></div>
@@ -197,7 +197,7 @@ function GraficoBarras({ data }) {
 // ============================================================
 // 4. GRAFICO LINHA (DARK)
 // ============================================================
-function GraficoLinha({ data, campo, sufixo = '', cor = '#10b981' }) {
+function GraficoLinha({ data, campo, sufixo = '', cor = '#2bcdb9' }) {
   const [hoverIdx, setHoverIdx] = useState(null);
   const width = 540, height = 280;
   const paddingL = 38, paddingR = 12, paddingT = 18, paddingB = 50;
@@ -257,8 +257,8 @@ function GraficoLinha({ data, campo, sufixo = '', cor = '#10b981' }) {
           const y = paddingT + innerH - ((tick - yMin) / Math.max(0.0001, yMax - yMin)) * innerH;
           return (
             <g key={i}>
-              <line x1={paddingL} y1={y} x2={width - paddingR} y2={y} stroke="#1e293b" strokeWidth="0.7" />
-              <text x={paddingL - 6} y={y + 3} textAnchor="end" fontSize="10" fill="#64748b" fontFamily="system-ui">
+              <line x1={paddingL} y1={y} x2={width - paddingR} y2={y} stroke="#1c2f34" strokeWidth="0.7" />
+              <text x={paddingL - 6} y={y + 3} textAnchor="end" fontSize="10" fill="#6c8689" fontFamily="system-ui">
                 {sufixo === '%' ? `${tick.toFixed(0)}%` : tick.toFixed(0)}
               </text>
             </g>
@@ -269,7 +269,7 @@ function GraficoLinha({ data, campo, sufixo = '', cor = '#10b981' }) {
           if (i % 3 !== 0 && i !== data.length - 1) return null;
           const x = paddingL + (i / Math.max(1, data.length - 1)) * innerW;
           return (
-            <text key={i} x={x} y={paddingT + innerH + 14} textAnchor="end" fontSize="10" fill="#94a3b8" fontFamily="system-ui" transform={`rotate(-45 ${x} ${paddingT + innerH + 14})`}>
+            <text key={i} x={x} y={paddingT + innerH + 14} textAnchor="end" fontSize="10" fill="#8ba5a6" fontFamily="system-ui" transform={`rotate(-45 ${x} ${paddingT + innerH + 14})`}>
               {d.label}
             </text>
           );
@@ -287,7 +287,7 @@ function GraficoLinha({ data, campo, sufixo = '', cor = '#10b981' }) {
           <>
             <line x1={pontos[hoverIdx].x} x2={pontos[hoverIdx].x} y1={paddingT} y2={paddingT + innerH} stroke={cor} strokeWidth="0.7" strokeDasharray="3 3" opacity="0.5" />
             <circle cx={pontos[hoverIdx].x} cy={pontos[hoverIdx].y} r="6" fill={cor} opacity="0.25" />
-            <circle cx={pontos[hoverIdx].x} cy={pontos[hoverIdx].y} r="3.5" fill={cor} stroke="#0b0f1a" strokeWidth="2" />
+            <circle cx={pontos[hoverIdx].x} cy={pontos[hoverIdx].y} r="3.5" fill={cor} stroke="#060b0f" strokeWidth="2" />
           </>
         )}
       </svg>
@@ -297,7 +297,7 @@ function GraficoLinha({ data, campo, sufixo = '', cor = '#10b981' }) {
         const xPercent = (p.x / width) * 100;
         return (
           <div className="absolute pointer-events-none mike-tooltip-in" style={{ left: `${xPercent}%`, top: '8px', transform: 'translateX(-50%)' }}>
-            <div className="rounded-md px-3 py-2 shadow-2xl whitespace-nowrap" style={{ backgroundColor: '#0b0f1a', border: `0.5px solid ${cor}80`, minWidth: '120px' }}>
+            <div className="rounded-md px-3 py-2 shadow-2xl whitespace-nowrap" style={{ backgroundColor: '#060b0f', border: `0.5px solid ${cor}80`, minWidth: '120px' }}>
               <div className="text-[10px] font-bold mb-1 uppercase tracking-wider" style={{ color: cor }}>{p.data.label}</div>
               <div className="text-[12px] font-mono font-bold" style={{ color: cor }}>
                 {sufixo === '%' ? `${p.valor.toFixed(2)}%` : `${p.valor >= 0 ? '+' : ''}${p.valor.toFixed(2)}u`}
@@ -317,8 +317,8 @@ function GraficoLinha({ data, campo, sufixo = '', cor = '#10b981' }) {
 function CardMetrica({ icone: Icone, iconeColor, label, valor }) {
   return (
     <div className="rounded-md p-3.5 flex-1 min-w-[140px]" style={{
-      backgroundColor: 'rgba(20, 26, 40, 0.6)',
-      border: '0.5px solid rgba(60, 85, 130, 0.4)',
+      backgroundColor: 'rgba(11, 21, 25, 0.6)',
+      border: '0.5px solid rgba(50, 100, 104, 0.4)',
     }}>
       <div className="flex items-center gap-2 mb-1.5">
         <Icone className="w-3.5 h-3.5" style={{ color: iconeColor }} />
@@ -334,12 +334,12 @@ function CardMetrica({ icone: Icone, iconeColor, label, valor }) {
 // ============================================================
 function ListaDadosGerais({ totais }) {
   const items = [
-    { label: 'Greens',     valor: totais.greens || 0,      bg: '#10b981', text: '#0b0f1a' },
-    { label: '1/2 Greens', valor: totais.meiosGreens || 0, bg: '#86efac', text: '#0b0f1a' },
-    { label: '1/2 Reds',   valor: totais.meiosReds || 0,   bg: '#fb923c', text: '#0b0f1a' },
+    { label: 'Greens',     valor: totais.greens || 0,      bg: '#2bcdb9', text: '#060b0f' },
+    { label: '1/2 Greens', valor: totais.meiosGreens || 0, bg: '#86efac', text: '#060b0f' },
+    { label: '1/2 Reds',   valor: totais.meiosReds || 0,   bg: '#fb923c', text: '#060b0f' },
     { label: 'Reds',       valor: totais.reds || 0,        bg: '#f43f5e', text: '#fff' },
-    { label: 'Devolvidas', valor: totais.devolvidas || 0,  bg: '#64748b', text: '#fff' },
-    { label: 'Pendentes',  valor: totais.pendentes || 0,   bg: '#0891b2', text: '#fff' },
+    { label: 'Devolvidas', valor: totais.devolvidas || 0,  bg: '#6c8689', text: '#fff' },
+    { label: 'Pendentes',  valor: totais.pendentes || 0,   bg: '#0284c7', text: '#fff' },
   ];
   const wrPct = totais.wr || 0;
 
@@ -356,8 +356,8 @@ function ListaDadosGerais({ totais }) {
         ))}
       </div>
 
-      <div className="rounded overflow-hidden flex h-7" style={{ border: '0.5px solid rgba(60, 85, 130, 0.4)' }}>
-        <div className="flex items-center justify-center text-[11px] font-bold text-white" style={{ backgroundColor: '#10b981', width: `${Math.max(8, wrPct)}%` }} title={`Win Rate: ${wrPct.toFixed(1)}%`}>
+      <div className="rounded overflow-hidden flex h-7" style={{ border: '0.5px solid rgba(50, 100, 104, 0.4)' }}>
+        <div className="flex items-center justify-center text-[11px] font-bold" style={{ color: '#03201c', backgroundColor: '#2bcdb9', width: `${Math.max(8, wrPct)}%` }} title={`Win Rate: ${wrPct.toFixed(1)}%`}>
           {wrPct.toFixed(1)}%
         </div>
         <div className="flex items-center justify-center text-[11px] font-bold text-white" style={{ backgroundColor: '#f43f5e', width: `${Math.max(8, 100 - wrPct)}%` }} title={`Loss Rate: ${(100 - wrPct).toFixed(1)}%`}>
@@ -374,11 +374,11 @@ function ListaDadosGerais({ totais }) {
 function TipCard({ tip }) {
   const isGreen = tip.status === 'green';
   const isPendente = tip.status === 'pendente';
-  const cor = isGreen ? '#10b981' : (isPendente ? '#0891b2' : '#f43f5e');
+  const cor = isGreen ? '#2bcdb9' : (isPendente ? '#0284c7' : '#f43f5e');
   return (
     <div className="rounded-md flex items-center overflow-hidden mike-tip-in" style={{
-      backgroundColor: 'rgba(20, 26, 40, 0.4)',
-      border: '0.5px solid rgba(60, 85, 130, 0.3)',
+      backgroundColor: 'rgba(11, 21, 25, 0.4)',
+      border: '0.5px solid rgba(50, 100, 104, 0.3)',
     }}>
       <div className="self-stretch flex-shrink-0" style={{ width: '4px', backgroundColor: cor }} />
       <div className="px-3 py-2.5 text-[11px] text-slate-400 font-mono w-[100px] flex-shrink-0">{tip.dataHora}</div>
@@ -504,20 +504,20 @@ export function ModalHistorico({ botId, aberto = true, onClose = () => {} }) {
         @keyframes mike-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .mike-spin { animation: mike-spin 0.8s linear infinite; }
         .mike-scroll-dark::-webkit-scrollbar { width: 8px; height: 8px; }
-        .mike-scroll-dark::-webkit-scrollbar-track { background: #0b0f1a; border-radius: 10px; }
-        .mike-scroll-dark::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-        .mike-scroll-dark::-webkit-scrollbar-thumb:hover { background: #475569; }
-        .mike-scroll-dark { scrollbar-width: thin; scrollbar-color: #334155 #0b0f1a; }
+        .mike-scroll-dark::-webkit-scrollbar-track { background: #060b0f; border-radius: 10px; }
+        .mike-scroll-dark::-webkit-scrollbar-thumb { background: #344b50; border-radius: 10px; }
+        .mike-scroll-dark::-webkit-scrollbar-thumb:hover { background: #4c666a; }
+        .mike-scroll-dark { scrollbar-width: thin; scrollbar-color: #344b50 #060b0f; }
       `}</style>
 
       <div
         className={`absolute mike-modal-slide overflow-hidden flex flex-col shadow-2xl ${fullscreen ? 'inset-0 rounded-none' : 'inset-4 md:inset-8 lg:inset-x-12 lg:inset-y-6 rounded-xl'}`}
         style={{
-          backgroundColor: '#0b0f1a',
-          border: '0.5px solid rgba(60, 85, 130, 0.5)',
+          backgroundColor: '#060b0f',
+          border: '0.5px solid rgba(50, 100, 104, 0.5)',
           boxShadow: '0 32px 80px rgba(0,0,0,0.6)',
-          fontFamily: 'system-ui, -apple-system, sans-serif',
-          color: '#eaeef7',
+          fontFamily: 'var(--mike-font)',
+          color: '#eef8f6',
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -530,7 +530,7 @@ export function ModalHistorico({ botId, aberto = true, onClose = () => {} }) {
                 onClick={baixarPlanilha}
                 disabled={loading || !bot}
                 className="inline-flex items-center gap-2 px-3.5 py-2 rounded text-[12px] font-semibold uppercase tracking-wider text-slate-300 hover:bg-slate-800/50 hover:text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ border: '0.5px solid rgba(60, 85, 130, 0.5)' }}
+                style={{ border: '0.5px solid rgba(50, 100, 104, 0.5)' }}
               >
                 <Download className="w-3.5 h-3.5" />
                 Baixar planilha
@@ -540,7 +540,7 @@ export function ModalHistorico({ botId, aberto = true, onClose = () => {} }) {
                 disabled={loading || !bot || baixandoXlsx}
                 title="Planilha completa no formato TipManager: Tips Enviadas, Torneios, Grades, Confrontos, Jogadores, Prob. Hist., Horários"
                 className="inline-flex items-center gap-2 px-3.5 py-2 rounded text-[12px] font-semibold uppercase tracking-wider text-emerald-300 hover:bg-emerald-500/10 hover:text-emerald-200 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ border: '0.5px solid rgba(16, 185, 129, 0.45)' }}
+                style={{ border: '0.5px solid rgba(43, 205, 185, 0.45)' }}
               >
                 {baixandoXlsx ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <FileSpreadsheet className="w-3.5 h-3.5" />}
                 {baixandoXlsx ? 'Gerando...' : 'Planilha completa (.xlsx)'}
@@ -582,10 +582,10 @@ export function ModalHistorico({ botId, aberto = true, onClose = () => {} }) {
                 </h1>
 
                 <div className="flex items-center gap-2 mb-5 flex-wrap">
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-[12px] font-medium text-white" style={{ backgroundColor: '#0891b2' }}>
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-[12px] font-medium text-white" style={{ backgroundColor: '#0284c7' }}>
                     {bot.mercado}
                   </span>
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-[12px] font-medium text-white" style={{ backgroundColor: '#334155' }}>
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-[12px] font-medium text-white" style={{ backgroundColor: '#344b50' }}>
                     {bot.casa}
                   </span>
                   {bot.liga && <span className="text-[12px] text-slate-400">{bot.liga}</span>}
@@ -611,14 +611,14 @@ export function ModalHistorico({ botId, aberto = true, onClose = () => {} }) {
                 </div>
 
                 <div className="flex gap-3 flex-wrap mb-4">
-                  <CardMetrica icone={Send} iconeColor="#0891b2" label="Tips enviadas" valor={(totais.total || 0).toLocaleString('pt-BR')} />
+                  <CardMetrica icone={Send} iconeColor="#0284c7" label="Tips enviadas" valor={(totais.total || 0).toLocaleString('pt-BR')} />
                   <CardMetrica icone={Percent} iconeColor="#fb923c" label="Odd média" valor={(totais.oddMedia || 0).toFixed(2)} />
-                  <CardMetrica icone={DollarSign} iconeColor="#10b981" label="Lucro" valor={
+                  <CardMetrica icone={DollarSign} iconeColor="#2bcdb9" label="Lucro" valor={
                     <span className={(totais.lucro || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
                       {(totais.lucro || 0) >= 0 ? '+' : ''}{(totais.lucro || 0).toFixed(2)}u
                     </span>
                   } />
-                  <CardMetrica icone={TrendingUp} iconeColor="#10b981" label="ROI" valor={
+                  <CardMetrica icone={TrendingUp} iconeColor="#2bcdb9" label="ROI" valor={
                     <span className={(totais.roi || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
                       {(totais.roi || 0) >= 0 ? '+' : ''}{(totais.roi || 0).toFixed(1)}%
                     </span>
@@ -626,9 +626,9 @@ export function ModalHistorico({ botId, aberto = true, onClose = () => {} }) {
                 </div>
 
                 <div className="flex items-center gap-2 px-3.5 py-2.5 rounded mb-5 text-[12px]" style={{
-                  backgroundColor: 'rgba(8, 145, 178, 0.1)',
-                  border: '0.5px solid rgba(8, 145, 178, 0.4)',
-                  color: '#67e8f9',
+                  backgroundColor: 'rgba(2, 132, 199, 0.1)',
+                  border: '0.5px solid rgba(2, 132, 199, 0.4)',
+                  color: '#7dd3fc',
                 }}>
                   <Info className="w-3.5 h-3.5 flex-shrink-0" />
                   <span>Todos os gráficos usam os dados dos últimos {dias} dias · Modo: <strong>simulado</strong></span>
@@ -637,33 +637,33 @@ export function ModalHistorico({ botId, aberto = true, onClose = () => {} }) {
                 {resultadosDiarios.length > 0 ? (
                   <>
                     <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4 mb-5">
-                      <div className="rounded-md p-4" style={{ backgroundColor: 'rgba(20, 26, 40, 0.4)', border: '0.5px solid rgba(60, 85, 130, 0.4)' }}>
+                      <div className="rounded-md p-4" style={{ backgroundColor: 'rgba(11, 21, 25, 0.4)', border: '0.5px solid rgba(50, 100, 104, 0.4)' }}>
                         <h3 className="text-[14px] font-bold text-white mb-2">Resultados por dia</h3>
                         <GraficoBarras data={resultadosDiarios} />
                       </div>
 
-                      <div className="rounded-md p-4 flex flex-col" style={{ backgroundColor: 'rgba(20, 26, 40, 0.4)', border: '0.5px solid rgba(60, 85, 130, 0.4)' }}>
+                      <div className="rounded-md p-4 flex flex-col" style={{ backgroundColor: 'rgba(11, 21, 25, 0.4)', border: '0.5px solid rgba(50, 100, 104, 0.4)' }}>
                         <h3 className="text-[14px] font-bold text-white mb-3">Dados gerais</h3>
                         <ListaDadosGerais totais={totais} />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-                      <div className="rounded-md p-4" style={{ backgroundColor: 'rgba(20, 26, 40, 0.4)', border: '0.5px solid rgba(60, 85, 130, 0.4)' }}>
+                      <div className="rounded-md p-4" style={{ backgroundColor: 'rgba(11, 21, 25, 0.4)', border: '0.5px solid rgba(50, 100, 104, 0.4)' }}>
                         <h3 className="text-[14px] font-bold text-white mb-2">ROI Acumulado</h3>
-                        <GraficoLinha data={acumulado} campo="roiAcum" sufixo="%" cor="#10b981" />
+                        <GraficoLinha data={acumulado} campo="roiAcum" sufixo="%" cor="#2bcdb9" />
                       </div>
 
-                      <div className="rounded-md p-4" style={{ backgroundColor: 'rgba(20, 26, 40, 0.4)', border: '0.5px solid rgba(60, 85, 130, 0.4)' }}>
+                      <div className="rounded-md p-4" style={{ backgroundColor: 'rgba(11, 21, 25, 0.4)', border: '0.5px solid rgba(50, 100, 104, 0.4)' }}>
                         <h3 className="text-[14px] font-bold text-white mb-2">Lucro Acumulado</h3>
-                        <GraficoLinha data={acumulado} campo="lucroAcum" sufixo="u" cor="#0891b2" />
+                        <GraficoLinha data={acumulado} campo="lucroAcum" sufixo="u" cor="#0284c7" />
                       </div>
                     </div>
                   </>
                 ) : (
                   <div className="rounded-md p-8 text-center mb-5" style={{
-                    backgroundColor: 'rgba(20, 26, 40, 0.3)',
-                    border: '0.5px solid rgba(60, 85, 130, 0.3)',
+                    backgroundColor: 'rgba(11, 21, 25, 0.3)',
+                    border: '0.5px solid rgba(50, 100, 104, 0.3)',
                   }}>
                     <p className="text-sm text-[--mike-fg-muted]">
                       Nenhuma aposta resolvida no período. O bot precisa rodar e ter apostas finalizadas pra mostrar gráficos.
@@ -703,7 +703,7 @@ export default function App() {
   const [botId, setBotId] = useState(11);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-6 p-8" style={{ backgroundColor: '#0b0f1a', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div className="min-h-screen flex flex-col items-center justify-center gap-6 p-8" style={{ backgroundColor: '#060b0f', fontFamily: 'var(--mike-font)' }}>
       <div className="text-center">
         <div className="flex items-center gap-2 justify-center mb-3">
           <div className="w-10 h-10 rounded-md bg-gradient-to-br from-emerald-500 to-cyan-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
@@ -716,7 +716,7 @@ export default function App() {
         <p className="text-sm text-slate-400">Modal de Histórico do Bot · Demo</p>
       </div>
 
-      <div className="rounded-lg p-4" style={{ backgroundColor: 'rgba(20, 26, 40, 0.6)', border: '0.5px solid rgba(60, 85, 130, 0.4)' }}>
+      <div className="rounded-lg p-4" style={{ backgroundColor: 'rgba(11, 21, 25, 0.6)', border: '0.5px solid rgba(50, 100, 104, 0.4)' }}>
         <label className="block text-[10px] uppercase tracking-wider text-slate-400 mb-2 font-bold">Bot ID</label>
         <input
           type="number"
@@ -729,7 +729,7 @@ export default function App() {
       <button
         onClick={() => setAberto(true)}
         className="flex items-center gap-2 px-6 py-3 rounded-md text-sm font-bold text-slate-950 transition-transform duration-200 hover:scale-105 active:scale-95"
-        style={{ backgroundColor: '#10b981', boxShadow: '0 6px 20px rgba(16, 185, 129, 0.4)' }}
+        style={{ backgroundColor: '#2bcdb9', boxShadow: '0 6px 20px rgba(43, 205, 185, 0.4)' }}
       >
         <History className="w-4 h-4" strokeWidth={2.5} />
         Ver Histórico do Bot

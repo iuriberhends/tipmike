@@ -101,11 +101,11 @@ export function casasReservaDoPais(pais) {
 
 // ---------------------------------------------------------- cor da casa ---
 export const COR_CASA = {
-  emerald: { chip: 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300', hex: '#10b981' },
+  emerald: { chip: 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300', hex: '#2bcdb9' },
   blue:    { chip: 'bg-blue-500/15 border-blue-500/40 text-blue-300',          hex: '#3b82f6' },
   amber:   { chip: 'bg-amber-500/15 border-amber-500/40 text-amber-300',       hex: '#f59e0b' },
   purple:  { chip: 'bg-purple-500/15 border-purple-500/40 text-purple-300',    hex: '#a855f7' },
-  slate:   { chip: 'bg-slate-500/15 border-slate-500/40 text-slate-300',       hex: '#64748b' },
+  slate:   { chip: 'bg-slate-500/15 border-slate-500/40 text-slate-300',       hex: '#6c8689' },
 };
 
 /** {chip, hex} da casa pela família em casa.cor; sem cor (ou desconhecida) = slate. */

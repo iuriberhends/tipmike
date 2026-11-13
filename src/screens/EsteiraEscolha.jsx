@@ -81,25 +81,25 @@ const VIS_PASSO = 60;          // quantas linhas por página de tabela
 const DEBOUNCE_ALERTAS_MS = 700;
 
 const themeVars = {
-  '--mike-bg': '#0b0f1a',
-  '--mike-bg-2': '#070a13',
-  '--mike-card': '#141a28',
-  '--mike-card-2': '#1a2030',
-  '--mike-card-hover': '#1c2336',
-  '--mike-border': '#222a3d',
-  '--mike-fg': '#eaeef7',
-  '--mike-fg-soft': '#b8c0d4',
-  '--mike-fg-muted': '#6b7691',
-  '--mike-accent': '#10b981',
-  '--mike-accent-2': '#0891b2',
+  '--mike-bg': '#060b0f',
+  '--mike-bg-2': '#04080b',
+  '--mike-card': '#0b1519',
+  '--mike-card-2': '#0f1c21',
+  '--mike-card-hover': '#132429',
+  '--mike-border': '#1a2c31',
+  '--mike-fg': '#eef8f6',
+  '--mike-fg-soft': '#b5c9c8',
+  '--mike-fg-muted': '#6c8689',
+  '--mike-accent': '#2bcdb9',
+  '--mike-accent-2': '#0d847a',
 };
 
 const cardStyle = {
-  backgroundColor: 'rgba(20, 26, 40, 0.4)',
-  border: '0.5px solid rgba(60, 85, 130, 0.4)',
+  backgroundColor: 'rgba(11, 21, 25, 0.4)',
+  border: '0.5px solid rgba(50, 100, 104, 0.4)',
 };
 
-const COR = { ok: '#10b981', cy: '#22d3ee', warn: '#fbbf24', bad: '#f87171' };
+const COR = { ok: '#2bcdb9', cy: '#38bdf8', warn: '#fbbf24', bad: '#f87171' };
 
 function numOuNull(v) {
   if (v === '' || v == null) return null;
@@ -133,7 +133,7 @@ function Select({ value, onChange, options }) {
       style={{ appearance: 'none', WebkitAppearance: 'none' }}
     >
       {options.map(o => (
-        <option key={o.value} value={o.value} style={{ background: '#141a28' }}>
+        <option key={o.value} value={o.value} style={{ background: '#0b1519' }}>
           {o.label}
         </option>
       ))}
@@ -435,25 +435,25 @@ export default function EsteiraEscolha({ onNavegar } = {}) {
       ...themeVars,
       backgroundColor: 'var(--mike-bg)',
       color: 'var(--mike-fg)',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontFamily: 'var(--mike-font)',
     }}>
       <style>{`
-        .mike-border-thin { border: 0.5px solid rgba(60, 85, 130, 0.4) !important; }
-        .mike-border-thin:hover { border-color: rgba(80, 110, 170, 0.7) !important; }
-        .mike-border-thin:focus { border-color: rgba(16, 185, 129, 0.7) !important; outline: none; }
+        .mike-border-thin { border: 0.5px solid rgba(50, 100, 104, 0.4) !important; }
+        .mike-border-thin:hover { border-color: rgba(70, 130, 132, 0.7) !important; }
+        .mike-border-thin:focus { border-color: rgba(43, 205, 185, 0.7) !important; outline: none; }
         @keyframes mike-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .mike-spin { animation: mike-spin 0.8s linear infinite; }
         .esc-seg button { border: 0; background: transparent; color: var(--mike-fg-muted);
           font-size: 9.5px; padding: 3px 7px; border-radius: 4px; cursor: pointer; font-weight: 700; }
-        .esc-seg button.on    { background: rgba(6,182,212,.2);  color: #22d3ee; }
-        .esc-seg button.on.hi { background: rgba(16,185,129,.2); color: #10b981; }
+        .esc-seg button.on    { background: rgba(14,165,233,.2);  color: #38bdf8; }
+        .esc-seg button.on.hi { background: rgba(43,205,185,.2); color: #2bcdb9; }
         .esc-seg button.on.lo { background: rgba(251,191,36,.2); color: #fbbf24; }
         .esc-bar { position: relative; display: block; min-width: 64px; height: 15px;
           background: rgba(0,0,0,.3); border-radius: 4px; overflow: hidden; }
         .esc-bar i { position: absolute; inset: 0 auto 0 0; border-radius: 4px; opacity: .28; }
         .esc-bar b { position: absolute; inset: 0; display: flex; align-items: center;
           justify-content: flex-end; padding-right: 5px; font-size: 10px; font-weight: 800; }
-        .esc-row:hover { background: rgba(28, 35, 54, .6); cursor: pointer; }
+        .esc-row:hover { background: rgba(19, 36, 41, .6); cursor: pointer; }
       `}</style>
 
       <MikeHeader telaAtiva="esteira" onNavegar={onNavegar} />
@@ -508,7 +508,7 @@ export default function EsteiraEscolha({ onNavegar } = {}) {
         )}
         {aviso && (
           <div className="rounded-lg p-3 flex items-start gap-2 mb-3"
-               style={{ backgroundColor: 'rgba(16,185,129,0.08)', border: '0.5px solid rgba(16,185,129,0.3)' }}>
+               style={{ backgroundColor: 'rgba(43,205,185,0.08)', border: '0.5px solid rgba(43,205,185,0.3)' }}>
             <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
             <span className="text-xs text-emerald-300 flex-1">{aviso}</span>
             <button onClick={() => onNavegar?.('esteira')}
@@ -546,8 +546,8 @@ export default function EsteiraEscolha({ onNavegar } = {}) {
                     <button key={p} onClick={() => usarPerfil(p)}
                       className="px-2.5 py-1.5 rounded-md text-[10.5px] font-semibold transition"
                       style={p === perfilAtivo
-                        ? { border: '0.5px solid rgba(6,182,212,0.6)', color: '#22d3ee', backgroundColor: 'rgba(6,182,212,0.08)' }
-                        : { border: '0.5px solid rgba(60,85,130,0.28)', color: 'var(--mike-fg-soft)', backgroundColor: 'rgba(13,17,27,0.5)' }}>
+                        ? { border: '0.5px solid rgba(14,165,233,0.6)', color: '#38bdf8', backgroundColor: 'rgba(14,165,233,0.08)' }
+                        : { border: '0.5px solid rgba(50,100,104,0.28)', color: 'var(--mike-fg-soft)', backgroundColor: 'rgba(8,14,18,0.5)' }}>
                       {p}
                     </button>
                   ))}
@@ -571,7 +571,7 @@ export default function EsteiraEscolha({ onNavegar } = {}) {
                     const e = estado[c.k];
                     return (
                       <div key={c.k} className="rounded-md p-2"
-                           style={{ backgroundColor: 'rgba(13,17,27,0.5)', border: '0.5px solid rgba(60,85,130,0.25)' }}>
+                           style={{ backgroundColor: 'rgba(8,14,18,0.5)', border: '0.5px solid rgba(50,100,104,0.25)' }}>
                         <div className="flex items-center gap-2">
                           <span className="flex-1 text-[11px] font-semibold text-[--mike-fg]">{c.n}</span>
                           <span className="esc-seg flex gap-0.5 rounded-md p-0.5" style={{ background: 'rgba(0,0,0,.3)' }}>
@@ -584,7 +584,7 @@ export default function EsteiraEscolha({ onNavegar } = {}) {
                           <div className="flex items-center gap-2 mt-1.5">
                             <input type="range" min="1" max="5" value={e.peso}
                                    onChange={(ev) => setPeso(c.k, ev.target.value)}
-                                   className="flex-1 h-[3px]" style={{ accentColor: '#22d3ee' }} />
+                                   className="flex-1 h-[3px]" style={{ accentColor: '#38bdf8' }} />
                             <span className="text-[9.5px] text-[--mike-fg-muted] w-11 text-right">
                               {['pouco', '', 'médio', '', 'muito'][e.peso - 1] || `peso ${e.peso}`}
                             </span>
@@ -615,8 +615,8 @@ export default function EsteiraEscolha({ onNavegar } = {}) {
                     {(alertas.checks || []).map((c, i) => (
                       <div key={i} className="rounded-md px-2.5 py-1.5 flex items-start gap-2"
                            title={(c.detalhe || '') + (c.o_que_fazer ? `\n\nFAZER: ${c.o_que_fazer}` : '')}
-                           style={{ backgroundColor: c.ok ? 'rgba(16,185,129,0.05)' : 'rgba(244,63,94,0.06)',
-                                    border: `0.5px solid ${c.ok ? 'rgba(16,185,129,0.25)' : 'rgba(244,63,94,0.3)'}` }}>
+                           style={{ backgroundColor: c.ok ? 'rgba(43,205,185,0.05)' : 'rgba(244,63,94,0.06)',
+                                    border: `0.5px solid ${c.ok ? 'rgba(43,205,185,0.25)' : 'rgba(244,63,94,0.3)'}` }}>
                         {c.ok
                           ? <CheckCircle2 className="w-3 h-3 text-emerald-400 flex-shrink-0 mt-0.5" />
                           : <AlertTriangle className="w-3 h-3 text-rose-400 flex-shrink-0 mt-0.5" />}
@@ -653,9 +653,9 @@ export default function EsteiraEscolha({ onNavegar } = {}) {
                 </div>
 
                 <div className="rounded-md overflow-auto max-h-[62vh]"
-                     style={{ border: '0.5px solid rgba(60,85,130,0.28)' }}>
+                     style={{ border: '0.5px solid rgba(50,100,104,0.28)' }}>
                   <table className="w-full text-[10.5px] font-mono" style={{ borderCollapse: 'collapse' }}>
-                    <thead className="sticky top-0 z-10" style={{ backgroundColor: '#111726' }}>
+                    <thead className="sticky top-0 z-10" style={{ backgroundColor: '#0a1317' }}>
                       <tr className="text-[9px] uppercase tracking-wider text-[--mike-fg-muted]">
                         <th className="px-2 py-1.5" />
                         <th className="text-left px-1 py-1.5 font-bold">#</th>
@@ -676,22 +676,22 @@ export default function EsteiraEscolha({ onNavegar } = {}) {
                           <tr key={r} className="esc-row"
                               onClick={() => setFichaR(r)}
                               style={{
-                                borderTop: '0.5px solid rgba(60,85,130,0.18)',
-                                backgroundColor: on ? 'rgba(16,185,129,0.07)'
-                                  : i < 5 ? 'rgba(6,182,212,0.04)' : 'transparent',
+                                borderTop: '0.5px solid rgba(50,100,104,0.18)',
+                                backgroundColor: on ? 'rgba(43,205,185,0.07)'
+                                  : i < 5 ? 'rgba(14,165,233,0.04)' : 'transparent',
                                 opacity: blq ? 0.45 : 1,
                               }}>
                             <td className="px-2 py-1.5" onClick={(e) => e.stopPropagation()}>
                               <input type="checkbox" checked={on} disabled={blq}
                                 title={blq ? irrep[String(r)] : ''}
                                 onChange={(e) => marcar(r, e.target.checked)}
-                                style={{ accentColor: '#10b981', cursor: blq ? 'not-allowed' : 'pointer' }} />
+                                style={{ accentColor: '#2bcdb9', cursor: blq ? 'not-allowed' : 'pointer' }} />
                             </td>
                             <td className="px-1 py-1.5 text-left font-black text-[--mike-fg-muted]">{i + 1}</td>
                             <td className="px-2 py-1.5 text-left whitespace-nowrap">
                               <span className="text-[8.5px] font-black px-1 py-0.5 rounded mr-1.5"
                                     style={d[C.lado]
-                                      ? { color: '#22d3ee', backgroundColor: 'rgba(6,182,212,0.12)' }
+                                      ? { color: '#38bdf8', backgroundColor: 'rgba(14,165,233,0.12)' }
                                       : { color: '#a78bfa', backgroundColor: 'rgba(167,139,250,0.12)' }}>
                                 {d[C.lado] ? 'FAV' : 'ZEB'}
                               </span>
@@ -830,7 +830,7 @@ export default function EsteiraEscolha({ onNavegar } = {}) {
                 <label className="mt-3 flex items-start gap-2 cursor-pointer select-none">
                   <input type="checkbox" checked={variar}
                          onChange={(e) => setVariar(e.target.checked)}
-                         style={{ accentColor: '#22d3ee', marginTop: 2 }} />
+                         style={{ accentColor: '#38bdf8', marginTop: 2 }} />
                   <span className="text-[11px] text-[--mike-fg-soft] leading-snug">
                     <b>Testar variações das marcadas</b> — cada uma ganha vizinhas
                     de largada (chip ±5, linha ±1 passo, teto ±2, folga ±1) e, se
@@ -843,9 +843,9 @@ export default function EsteiraEscolha({ onNavegar } = {}) {
                 <button onClick={handleEnviar}
                   disabled={enviando || marcadas.size === 0 || !fonteArquivo}
                   className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-sm font-bold transition disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{ backgroundColor: (enviando || marcadas.size === 0 || !fonteArquivo) ? 'rgba(16,185,129,0.2)' : '#10b981',
-                           color: (enviando || marcadas.size === 0 || !fonteArquivo) ? '#6b7691' : '#0b0f1a',
-                           boxShadow: (enviando || marcadas.size === 0 || !fonteArquivo) ? 'none' : '0 4px 12px rgba(16,185,129,0.3)' }}>
+                  style={{ backgroundColor: (enviando || marcadas.size === 0 || !fonteArquivo) ? 'rgba(43,205,185,0.2)' : '#2bcdb9',
+                           color: (enviando || marcadas.size === 0 || !fonteArquivo) ? '#6c8689' : '#060b0f',
+                           boxShadow: (enviando || marcadas.size === 0 || !fonteArquivo) ? 'none' : '0 4px 12px rgba(43,205,185,0.3)' }}>
                   {enviando ? <><RefreshCw className="w-4 h-4 mike-spin" /> Criando rodada...</>
                             : <><Play className="w-4 h-4" /> Testar as {marcadas.size || ''} marcadas
                                 {variar ? ' + variações' : ''} na esteira</>}
@@ -866,7 +866,7 @@ export default function EsteiraEscolha({ onNavegar } = {}) {
              style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}
              onClick={() => setFichaR(null)}>
           <div className="rounded-lg p-4 w-full max-w-sm"
-               style={{ backgroundColor: '#141a28', border: '0.5px solid rgba(60,85,130,0.5)' }}
+               style={{ backgroundColor: '#0b1519', border: '0.5px solid rgba(50,100,104,0.5)' }}
                onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-2 mb-3">
               <h3 className="text-[13px] font-black text-[--mike-fg] flex-1">
@@ -904,7 +904,7 @@ export default function EsteiraEscolha({ onNavegar } = {}) {
                 ['corte extra', fichaD[C.extra] || 'nenhum'],
               ].map(([a, b], i) => (
                 <div key={i} className="flex items-center justify-between gap-3 py-0.5"
-                     style={{ borderBottom: '0.5px solid rgba(60,85,130,0.15)' }}>
+                     style={{ borderBottom: '0.5px solid rgba(50,100,104,0.15)' }}>
                   <span className="text-[--mike-fg-muted]">{a}</span>
                   <span className="text-[--mike-fg] font-semibold text-right">{b}</span>
                 </div>

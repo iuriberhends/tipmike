@@ -2,6 +2,47 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   TipMike — tema (nov/2026)
+
+   Tudo nasce da logo: fundo preto azulado, domo em turquesa/menta,
+   estrada escura, texto branco. As variáveis abaixo são a fonte da
+   verdade; as telas que ainda definem as mesmas variáveis no próprio
+   bloco usam exatamente estes valores.
+   ============================================================ */
+:root {
+  /* superfícies */
+  --mike-bg: #060b0f;
+  --mike-bg-2: #04080b;
+  --mike-card: #0b1519;
+  --mike-card-2: #0f1c21;
+  --mike-card-hover: #132429;
+  --mike-border: #1a2c31;
+  --mike-linha: rgba(50, 100, 104, 0.4);   /* borda fina padrão */
+
+  /* texto */
+  --mike-fg: #eef8f6;
+  --mike-fg-soft: #b5c9c8;
+  --mike-fg-muted: #6c8689;
+
+  /* marca */
+  --mike-accent: #2bcdb9;       /* turquesa do domo */
+  --mike-accent-2: #0d847a;     /* petróleo da base do domo */
+  --mike-menta: #8ff1e2;        /* menta do alto do domo / "MIKE" */
+  --mike-sobre-accent: #03201c; /* texto em cima do turquesa */
+
+  /* estados */
+  --mike-erro: #f43f5e;
+  --mike-aviso: #fbbf24;
+  --mike-info: #38bdf8;
+
+  /* tipografia */
+  --mike-font: "Inter Variable", Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mike-font-display: "Unbounded Variable", Unbounded, "Inter Variable", system-ui, sans-serif;
+
+  color-scheme: dark;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -9,8 +50,433 @@
 html, body, #root {
   margin: 0;
   padding: 0;
-  background: #0b0f1a;
-  color: #eaeef7;
-  font-family: system-ui, -apple-system, sans-serif;
+  background: var(--mike-bg);
+  color: var(--mike-fg);
+  font-family: var(--mike-font);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Brilho do domo no alto de cada tela (fica atrás do conteúdo). */
+#root > div.min-h-screen {
+  background-image: radial-gradient(ellipse 70% 420px at 50% -120px, rgba(43, 205, 185, 0.11), transparent 70%);
+  background-repeat: no-repeat;
+}
+
+/* Títulos de página com a letra larga da marca. */
+h1 {
+  font-family: var(--mike-font-display);
+  letter-spacing: -0.015em;
+}
+h1.font-black,
+h1.font-bold {
+  font-weight: 700;
+}
+
+::selection {
+  background: rgba(43, 205, 185, 0.35);
+  color: #fff;
+}
+
+/* Foco visível só para teclado, na cor da marca. */
+:where(button, a, [role='button'], [role='option'], [tabindex]):focus-visible {
+  outline: 2px solid var(--mike-accent);
+  outline-offset: 2px;
+}
+
+/* Barra de rolagem fina, no tom do tema. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(50, 100, 104, 0.55) transparent;
+}
+
+@layer components {
+  /* ── Marca ─────────────────────────────────────────────── */
+  .mike-wordmark {
+    font-family: var(--mike-font-display);
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    line-height: 1;
+    color: #fff;
+  }
+  .mike-wordmark > span {
+    color: var(--mike-menta);
+  }
+
+  /* ── Superfície, botões e campo padrão ─────────────────── */
+  .mike-surface {
+    background-color: rgba(11, 21, 25, 0.72);
+    border: 0.5px solid var(--mike-linha);
+    border-radius: 16px;
+  }
+
+  .mike-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1rem;
+    border-radius: 10px;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--mike-sobre-accent);
+    background: linear-gradient(180deg, #56e2ce 0%, #2bcdb9 55%, #1fb9a6 100%);
+    box-shadow: 0 6px 18px rgba(43, 205, 185, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    transition: filter 0.15s ease, transform 0.15s ease, opacity 0.15s ease;
+  }
+  .mike-btn-primary:hover:not(:disabled) { filter: brightness(1.08); }
+  .mike-btn-primary:active:not(:disabled) { transform: translateY(1px); }
+  .mike-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .mike-btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.875rem;
+    border-radius: 10px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--mike-fg-soft);
+    border: 0.5px solid var(--mike-linha);
+    background: rgba(11, 21, 25, 0.6);
+    transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+  }
+  .mike-btn-ghost:hover {
+    color: var(--mike-accent);
+    border-color: rgba(43, 205, 185, 0.5);
+    background: rgba(43, 205, 185, 0.08);
+  }
+
+  .mike-input {
+    width: 100%;
+    padding: 0.625rem 0.75rem;
+    border-radius: 10px;
+    font-size: 0.875rem;
+    color: var(--mike-fg);
+    background-color: rgba(6, 11, 15, 0.7);
+    border: 0.5px solid var(--mike-linha);
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .mike-input::placeholder { color: var(--mike-fg-muted); }
+  .mike-input:focus {
+    border-color: rgba(43, 205, 185, 0.7);
+    box-shadow: 0 0 0 3px rgba(43, 205, 185, 0.16);
+  }
+  .mike-input:disabled { opacity: 0.6; }
+
+  /* ── Estado "carregando": a logo com um anel girando ───── */
+  .mike-loader {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .mike-loader::before {
+    content: '';
+    position: absolute;
+    inset: -12px;
+    border-radius: 9999px;
+    border: 2px solid rgba(43, 205, 185, 0.16);
+    border-top-color: var(--mike-accent);
+    animation: mike-girar 0.9s linear infinite;
+  }
+}
+
+/* ── Cabeçalho ───────────────────────────────────────────── */
+.mike-logo-botao img {
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.3s ease;
+}
+.mike-logo-botao:hover img {
+  transform: translateY(-1px) rotate(-4deg) scale(1.05);
+  filter: drop-shadow(0 0 10px rgba(43, 205, 185, 0.6));
+}
+
+.mike-nav-item {
+  position: relative;
+  isolation: isolate;
+  color: var(--mike-fg-muted);
+  transition: color 0.15s ease;
+}
+.mike-nav-item::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 11px 2px;
+  border-radius: 8px;
+  background-color: rgba(43, 205, 185, 0);
+  transition: background-color 0.15s ease;
+}
+.mike-nav-item:hover { color: var(--mike-fg); }
+.mike-nav-item:hover::before { background-color: rgba(43, 205, 185, 0.08); }
+.mike-nav-item-ativa,
+.mike-nav-item-ativa:hover { color: var(--mike-menta); }
+
+/* Marcador da tela atual: a faixa tracejada da estrada, andando. */
+.mike-nav-marcador {
+  position: absolute;
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(90deg, var(--mike-menta) 0 7px, transparent 7px 11px);
+  background-size: 11px 2px;
+  box-shadow: 0 0 10px rgba(143, 241, 226, 0.55);
+  transition: left 0.42s cubic-bezier(0.3, 0.9, 0.3, 1), width 0.42s cubic-bezier(0.3, 0.9, 0.3, 1), opacity 0.2s ease;
+  animation: mike-estrada 0.7s linear infinite;
+}
+
+/* em @layer components: assim "hidden md:inline-flex" consegue esconder a tecla no celular */
+@layer components {
+  .mike-kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 5px;
+    font: 600 10px/1 var(--mike-font);
+    color: var(--mike-fg-soft);
+    background: rgba(255, 255, 255, 0.06);
+    border: 0.5px solid var(--mike-linha);
+    box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.45);
+  }
+}
+
+/* O ponto de luz do pico da logo. */
+.mike-ponto-vivo {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: #fff;
+  box-shadow: 0 0 8px 2px rgba(143, 241, 226, 0.8);
+  animation: mike-pulsar 1.8s ease-in-out infinite;
+}
+
+.scrollbar-none { scrollbar-width: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }
+
+/* Cada tela entra com um aparecer suave (só opacidade: não mexe em
+   elementos fixos de dentro da tela). */
+#root > div.min-h-screen > main {
+  animation: mike-aparecer 0.3s ease-out;
+}
+
+/* ── Início: cartões de número, painéis e linhas de partida ── */
+.mike-kpi {
+  position: relative;
+  overflow: hidden;
+  background: var(--mike-card);
+  border: 1px solid var(--mike-border);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.mike-kpi::after {
+  content: '';
+  position: absolute;
+  right: -18%;
+  bottom: -70%;
+  width: 70%;
+  height: 140%;
+  background: radial-gradient(closest-side, var(--mike-kpi-brilho, rgba(43, 205, 185, 0.22)), transparent);
+  opacity: 0.5;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.mike-kpi:hover {
+  transform: translateY(-2px);
+  border-color: rgba(43, 205, 185, 0.45);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+}
+.mike-kpi:hover::after { opacity: 1; }
+
+.mike-painel { position: relative; }
+.mike-painel::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(43, 205, 185, 0.6), transparent);
+  pointer-events: none;
+}
+
+.mike-linha-partida {
+  transition: background-color 0.15s ease;
+  outline: none;
+}
+.mike-linha-partida::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--mike-accent);
+  opacity: 0;
+  transform: scaleY(0.4);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.mike-linha-partida:hover,
+.mike-linha-partida:focus-visible { background-color: var(--mike-card-hover); }
+.mike-linha-partida:hover::before,
+.mike-linha-partida:focus-visible::before { opacity: 1; transform: scaleY(1); }
+
+/* Aviso de tela com dados de demonstração. */
+.mike-aviso-demo {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  padding: 0.625rem 0.875rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: #fde68a;
+  background: rgba(251, 191, 36, 0.09);
+  border: 0.5px solid rgba(251, 191, 36, 0.4);
+}
+
+/* ── Login e cadastro: a cena da marca ───────────────────── */
+.mike-cena {
+  --px: 0;
+  --py: 0;
+}
+.mike-cena-luz {
+  left: 50%;
+  top: -14%;
+  width: min(1100px, 160vw);
+  height: min(820px, 120vw);
+  background: radial-gradient(closest-side, rgba(43, 205, 185, 0.17), rgba(13, 132, 122, 0.06) 55%, transparent 75%);
+  transform: translate(calc(-50% + var(--px) * 46px), calc(var(--py) * 30px));
+  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.mike-cena-logo {
+  transform: perspective(500px) rotateY(calc(var(--px) * 14deg)) rotateX(calc(var(--py) * -12deg));
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  filter: drop-shadow(0 8px 24px rgba(43, 205, 185, 0.35));
+}
+.mike-cena-estrada {
+  transform: translate(calc(var(--px) * -10px), calc(var(--py) * -6px));
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.mike-cena-fundo {
+  transform: translate(calc(var(--px) * -4px), calc(var(--py) * -2px));
+  transition: transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.mike-faixa {
+  animation: mike-faixa 0.9s linear infinite;
+}
+.mike-pico {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mike-pulsar 2.2s ease-in-out infinite;
+}
+.mike-titulo-cena {
+  font-family: var(--mike-font-display);
+  font-weight: 700;
+  font-size: clamp(1.75rem, 2.6vw, 2.5rem);
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  color: #fff;
+  max-width: 15em;
+}
+.mike-titulo-cena > span {
+  background: linear-gradient(90deg, #dffdf7, #56e2ce 55%, #2bcdb9);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.mike-destaque {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 12px;
+  background: rgba(11, 21, 25, 0.6);
+  border: 0.5px solid var(--mike-linha);
+  transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+}
+.mike-destaque:hover {
+  transform: translateY(-2px);
+  border-color: rgba(43, 205, 185, 0.5);
+  background: rgba(43, 205, 185, 0.07);
+}
+.mike-destaque-icone {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  border-radius: 9px;
+  color: var(--mike-menta);
+  background: rgba(43, 205, 185, 0.12);
+  border: 0.5px solid rgba(43, 205, 185, 0.3);
+}
+.mike-cartao-auth {
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(43, 205, 185, 0.04);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.mike-tremer {
+  animation: mike-tremer 0.32s ease-in-out;
+}
+
+/* O iOS dá zoom na página quando a letra do campo é menor que 16px. */
+@media (max-width: 640px) {
+  .mike-input { font-size: 16px; }
+}
+
+@keyframes mike-girar {
+  to { transform: rotate(360deg); }
+}
+@keyframes mike-entrar {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes mike-aparecer {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes mike-estrada {
+  to { background-position: 11px 0; }
+}
+@keyframes mike-faixa {
+  to { stroke-dashoffset: -29; }
+}
+@keyframes mike-pulsar {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.55; transform: scale(0.8); }
+}
+@keyframes mike-tremer {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+.mike-entrar {
+  animation: mike-entrar 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Quem pede menos movimento no sistema fica sem as animações decorativas. */
+@media (prefers-reduced-motion: reduce) {
+  .mike-entrar,
+  .mike-tremer,
+  .mike-faixa,
+  .mike-pico,
+  .mike-ponto-vivo,
+  .mike-nav-marcador,
+  #root > div.min-h-screen > main { animation: none; }
+  .mike-cena-luz,
+  .mike-cena-logo,
+  .mike-cena-estrada,
+  .mike-cena-fundo { transform: none; transition: none; }
 }

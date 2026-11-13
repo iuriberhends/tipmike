@@ -13,11 +13,11 @@ import { cabecalhoPais } from '../lib/pais.js';
 // THEME
 // ============================================================
 const T = {
-  bg: '#0b0f1a', bg2: '#111827', bg3: '#1a2332',
-  border: 'rgba(60,85,130,0.4)', borderLight: 'rgba(60,85,130,0.25)',
-  fg: '#e6edf7', fgDim: '#94a3b8', fgDimmer: '#64748b',
-  accent: '#10b981', accent2: '#0891b2',
-  green: '#10b981', red: '#ef4444', yellow: '#eab308', orange: '#f59e0b',
+  bg: '#060b0f', bg2: '#0b1519', bg3: '#0f1c21',
+  border: 'rgba(50,100,104,0.4)', borderLight: 'rgba(50,100,104,0.25)',
+  fg: '#eef8f6', fgDim: '#8ba5a6', fgDimmer: '#6c8689',
+  accent: '#2bcdb9', accent2: '#0284c7',
+  green: '#2bcdb9', red: '#ef4444', yellow: '#eab308', orange: '#f59e0b',
 };
 
 // ============================================================
@@ -699,11 +699,11 @@ function useDadosPartida(jogA, jogB, filtros, esporte) {
 // COMPONENTES PRIMITIVOS
 // ============================================================
 function Pill({ children, active = false, onClick }) {
-  return <button onClick={onClick} className="px-3 py-1.5 text-sm rounded-full font-medium border transition-colors whitespace-nowrap" style={{ background: active ? T.accent : 'rgba(255,255,255,0.04)', color: active ? '#04130c' : T.fg, borderColor: active ? T.accent : T.borderLight }}>{children}</button>;
+  return <button onClick={onClick} className="px-3 py-1.5 text-sm rounded-full font-medium border transition-colors whitespace-nowrap" style={{ background: active ? T.accent : 'rgba(255,255,255,0.04)', color: active ? '#03201c' : T.fg, borderColor: active ? T.accent : T.borderLight }}>{children}</button>;
 }
 
 function MikeButton({ children, onClick, variant = 'outline', icon: Icon, fullWidth = false }) {
-  const v = { primary: { bg: T.accent, color: '#04130c', border: T.accent }, outline: { bg: 'transparent', color: T.fg, border: T.border }, ghost: { bg: 'rgba(255,255,255,0.03)', color: T.fg, border: T.borderLight } }[variant];
+  const v = { primary: { bg: T.accent, color: '#03201c', border: T.accent }, outline: { bg: 'transparent', color: T.fg, border: T.border }, ghost: { bg: 'rgba(255,255,255,0.03)', color: T.fg, border: T.borderLight } }[variant];
   return <button onClick={onClick} className={`inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-md text-sm font-medium transition-all hover:opacity-90 ${fullWidth ? 'w-full' : ''}`} style={{ background: v.bg, color: v.color, border: `1px solid ${v.border}` }}>{Icon && <Icon size={15} />}{children}</button>;
 }
 
@@ -726,11 +726,11 @@ function PlayerLegend({ name, color }) {
 
 function TabGroup({ tabs, value, onChange, size = 'md' }) {
   const h = size === 'sm' ? 'h-8 text-xs px-3' : 'h-9 text-sm px-3.5';
-  return <div className="flex gap-1.5">{tabs.map(t => <button key={t} onClick={() => onChange(t)} className={`${h} rounded-md font-semibold transition-colors`} style={{ background: value === t ? T.accent : 'rgba(255,255,255,0.04)', color: value === t ? '#04130c' : T.fgDim }}>{t}</button>)}</div>;
+  return <div className="flex gap-1.5">{tabs.map(t => <button key={t} onClick={() => onChange(t)} className={`${h} rounded-md font-semibold transition-colors`} style={{ background: value === t ? T.accent : 'rgba(255,255,255,0.04)', color: value === t ? '#03201c' : T.fgDim }}>{t}</button>)}</div>;
 }
 
 function ToggleOverUnder({ value, onChange }) {
-  return <div className="inline-flex rounded-md overflow-hidden" style={{ border: `1px solid ${T.borderLight}` }}>{['Over', 'Under'].map(v => <button key={v} onClick={() => onChange(v)} className="px-3.5 h-7 text-xs font-semibold transition-colors" style={{ background: value === v ? 'rgba(16,185,129,0.15)' : 'transparent', color: value === v ? T.accent : T.fgDim }}>{v}</button>)}</div>;
+  return <div className="inline-flex rounded-md overflow-hidden" style={{ border: `1px solid ${T.borderLight}` }}>{['Over', 'Under'].map(v => <button key={v} onClick={() => onChange(v)} className="px-3.5 h-7 text-xs font-semibold transition-colors" style={{ background: value === v ? 'rgba(43,205,185,0.15)' : 'transparent', color: value === v ? T.accent : T.fgDim }}>{v}</button>)}</div>;
 }
 
 // ============================================================
@@ -772,7 +772,7 @@ function TeamDropdown({ value, options, onChange, color, placeholderLabel, align
   const sorted = [...(options || [])].sort((a, b) => b.partidas - a.partidas);
   return (
     <div className="relative inline-block" ref={ref}>
-      <button onClick={() => setOpen(o => !o)} className="inline-flex items-center gap-1.5 px-2.5 h-7 rounded-md text-xs transition-colors" style={{ background: open ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${open ? T.accent : T.borderLight}`, color: T.fg }}>
+      <button onClick={() => setOpen(o => !o)} className="inline-flex items-center gap-1.5 px-2.5 h-7 rounded-md text-xs transition-colors" style={{ background: open ? 'rgba(43,205,185,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${open ? T.accent : T.borderLight}`, color: T.fg }}>
         <Users size={12} />
         {placeholderLabel && <span style={{ color: T.fgDim }}>{placeholderLabel}</span>}
         {value}
@@ -780,12 +780,12 @@ function TeamDropdown({ value, options, onChange, color, placeholderLabel, align
       </button>
       {open && (
         <div className={`absolute top-full mt-1 rounded-md overflow-hidden z-20 ${align === 'right' ? 'right-0' : 'left-0'}`} style={{ background: T.bg2, border: `1px solid ${T.border}`, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', minWidth: 220, maxHeight: 300, overflowY: 'auto' }}>
-          <button onClick={() => { onChange(null); setOpen(false); }} className="w-full px-3 py-2 text-xs text-left hover:bg-white/5 flex items-center justify-between gap-3" style={{ color: !value ? color : T.fg, background: !value ? 'rgba(16,185,129,0.06)' : 'transparent', borderBottom: `1px solid ${T.borderLight}` }}>
+          <button onClick={() => { onChange(null); setOpen(false); }} className="w-full px-3 py-2 text-xs text-left hover:bg-white/5 flex items-center justify-between gap-3" style={{ color: !value ? color : T.fg, background: !value ? 'rgba(43,205,185,0.06)' : 'transparent', borderBottom: `1px solid ${T.borderLight}` }}>
             <span className="font-medium">Todos os times</span>
             <span className="text-[10px]" style={{ color: T.fgDim }}>{sorted.reduce((s, t) => s + t.partidas, 0)} partidas</span>
           </button>
           {sorted.map(t => (
-            <button key={t.team} onClick={() => { onChange(t.team); setOpen(false); }} className="w-full px-3 py-2 text-xs text-left hover:bg-white/5 flex items-center justify-between gap-3" style={{ color: t.team === value ? color : T.fg, background: t.team === value ? 'rgba(16,185,129,0.06)' : 'transparent' }}>
+            <button key={t.team} onClick={() => { onChange(t.team); setOpen(false); }} className="w-full px-3 py-2 text-xs text-left hover:bg-white/5 flex items-center justify-between gap-3" style={{ color: t.team === value ? color : T.fg, background: t.team === value ? 'rgba(43,205,185,0.06)' : 'transparent' }}>
               <span className="inline-flex items-center gap-1.5">{t.team === value && <span className="w-1 h-1 rounded-full" style={{ background: color }} />}{t.team}</span>
               <span className="text-[10px]" style={{ color: T.fgDim }}>{t.partidas}j • {t.wr}%</span>
             </button>
@@ -809,9 +809,9 @@ function Last5Badges({ last5, align = 'left' }) {
         const res = isObj ? r.resultado : r;
         return (
           <div key={i} className="relative">
-            <span className="w-5 h-5 grid place-items-center rounded-sm text-[10px] font-bold cursor-default" style={{ background: res === 'V' ? T.accent : T.red, color: '#04130c', transform: hoverIdx === i ? 'scale(1.15)' : 'scale(1)', transition: 'transform 120ms' }} onMouseEnter={() => setHoverIdx(i)} onMouseLeave={() => setHoverIdx(null)}>{res}</span>
+            <span className="w-5 h-5 grid place-items-center rounded-sm text-[10px] font-bold cursor-default" style={{ background: res === 'V' ? T.accent : T.red, color: '#03201c', transform: hoverIdx === i ? 'scale(1.15)' : 'scale(1)', transition: 'transform 120ms' }} onMouseEnter={() => setHoverIdx(i)} onMouseLeave={() => setHoverIdx(null)}>{res}</span>
             {isObj && hoverIdx === i && (
-              <div className="absolute pointer-events-none z-30 rounded-md px-3 py-2.5" style={{ bottom: 'calc(100% + 8px)', [align === 'right' ? 'right' : 'left']: 0, background: 'rgba(11,15,26,0.98)', border: `1px solid ${T.border}`, boxShadow: '0 8px 24px rgba(0,0,0,0.6)', minWidth: 180 }}>
+              <div className="absolute pointer-events-none z-30 rounded-md px-3 py-2.5" style={{ bottom: 'calc(100% + 8px)', [align === 'right' ? 'right' : 'left']: 0, background: 'rgba(6,11,15,0.98)', border: `1px solid ${T.border}`, boxShadow: '0 8px 24px rgba(0,0,0,0.6)', minWidth: 180 }}>
                 <div className="text-base font-bold mb-1" style={{ color: T.fg }}>{r.placarA} x {r.placarB}</div>
                 <div className="text-xs mb-0.5" style={{ color: T.fgDim }}>vs {r.oponenteNome} ({r.oponenteTime})</div>
                 <div className="text-[11px]" style={{ color: T.fgDimmer }}>{r.data}</div>
@@ -833,7 +833,7 @@ function HeroCard({ data, onAlterar, onFiltros, filtrosAtivos = 0, timeASelecion
   const cfg = getConfig(data.esporte);
   return (
     <Card className="overflow-hidden">
-      <div className="relative px-7 pt-6 pb-4" style={{ background: 'radial-gradient(ellipse at center, rgba(16,185,129,0.04) 0%, transparent 60%)' }}>
+      <div className="relative px-7 pt-6 pb-4" style={{ background: 'radial-gradient(ellipse at center, rgba(43,205,185,0.04) 0%, transparent 60%)' }}>
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-2">
@@ -885,9 +885,9 @@ function HeroCard({ data, onAlterar, onFiltros, filtrosAtivos = 0, timeASelecion
           )}
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={onFiltros} className="relative inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-md text-sm font-medium hover:opacity-90" style={{ background: filtrosAtivos > 0 ? 'rgba(16,185,129,0.10)' : 'rgba(255,255,255,0.03)', color: T.fg, border: `1px solid ${filtrosAtivos > 0 ? T.accent : T.borderLight}` }}>
+          <button onClick={onFiltros} className="relative inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-md text-sm font-medium hover:opacity-90" style={{ background: filtrosAtivos > 0 ? 'rgba(43,205,185,0.10)' : 'rgba(255,255,255,0.03)', color: T.fg, border: `1px solid ${filtrosAtivos > 0 ? T.accent : T.borderLight}` }}>
             <Filter size={15} />Filtros
-            {filtrosAtivos > 0 && <span className="ml-1 inline-flex items-center justify-center text-[10px] font-bold rounded-full" style={{ background: T.accent, color: '#04130c', minWidth: 18, height: 18, padding: '0 5px' }}>{filtrosAtivos}</span>}
+            {filtrosAtivos > 0 && <span className="ml-1 inline-flex items-center justify-center text-[10px] font-bold rounded-full" style={{ background: T.accent, color: '#03201c', minWidth: 18, height: 18, padding: '0 5px' }}>{filtrosAtivos}</span>}
           </button>
           <MikeButton variant="ghost" icon={ArrowLeftRight} onClick={onAlterar}>Alterar Jogadores</MikeButton>
         </div>
@@ -1187,19 +1187,19 @@ function AnaliseTimes({ player, data, esporte }) {
       </div>
       <div className="flex items-center justify-between px-5 py-3 border-t" style={{ borderColor: T.border }}>
         <div className="relative" ref={pageSizeRef}>
-          <button onClick={() => setPageSizeOpen(o => !o)} className="inline-flex items-center gap-1.5 px-2.5 h-7 rounded-md text-xs" style={{ background: pageSizeOpen ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${pageSizeOpen ? T.accent : T.borderLight}`, color: T.fg }}>
+          <button onClick={() => setPageSizeOpen(o => !o)} className="inline-flex items-center gap-1.5 px-2.5 h-7 rounded-md text-xs" style={{ background: pageSizeOpen ? 'rgba(43,205,185,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${pageSizeOpen ? T.accent : T.borderLight}`, color: T.fg }}>
             {pageSize} Linhas<ChevronDown size={12} style={{ color: T.fgDim, transform: pageSizeOpen ? 'rotate(180deg)' : 'none', transition: 'transform 180ms' }} />
           </button>
           {pageSizeOpen && (
             <div className="absolute left-0 bottom-full mb-1 rounded-md overflow-hidden" style={{ background: T.bg2, border: `1px solid ${T.border}`, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', minWidth: 100 }}>
-              {[5, 10, 20].map(n => <button key={n} onClick={() => { setPageSize(n); setPage(0); setPageSizeOpen(false); }} className="w-full px-3 py-1.5 text-xs text-left hover:bg-white/5" style={{ color: pageSize === n ? T.accent : T.fg, background: pageSize === n ? 'rgba(16,185,129,0.08)' : 'transparent' }}>{n} Linhas</button>)}
+              {[5, 10, 20].map(n => <button key={n} onClick={() => { setPageSize(n); setPage(0); setPageSizeOpen(false); }} className="w-full px-3 py-1.5 text-xs text-left hover:bg-white/5" style={{ color: pageSize === n ? T.accent : T.fg, background: pageSize === n ? 'rgba(43,205,185,0.08)' : 'transparent' }}>{n} Linhas</button>)}
             </div>
           )}
         </div>
         <div className="text-xs" style={{ color: T.fgDim }}>Exibindo <span style={{ color: T.fg, fontWeight: 600 }}>{inicio + 1} - {fim}</span> ({sorted.length})</div>
         <div className="flex gap-1">
           <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={pageAtual === 0} className="w-7 h-7 rounded grid place-items-center" style={{ border: `1px solid ${T.borderLight}`, background: 'rgba(255,255,255,0.04)', cursor: pageAtual === 0 ? 'not-allowed' : 'pointer', opacity: pageAtual === 0 ? 0.4 : 1 }}><ChevronLeft size={12} style={{ color: T.fgDim }} /></button>
-          <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={pageAtual >= totalPages - 1} className="w-7 h-7 rounded grid place-items-center" style={{ background: pageAtual >= totalPages - 1 ? 'rgba(255,255,255,0.04)' : T.accent, border: pageAtual >= totalPages - 1 ? `1px solid ${T.borderLight}` : 'none', cursor: pageAtual >= totalPages - 1 ? 'not-allowed' : 'pointer', opacity: pageAtual >= totalPages - 1 ? 0.4 : 1 }}><ChevronRight size={12} style={{ color: pageAtual >= totalPages - 1 ? T.fgDim : '#04130c' }} /></button>
+          <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={pageAtual >= totalPages - 1} className="w-7 h-7 rounded grid place-items-center" style={{ background: pageAtual >= totalPages - 1 ? 'rgba(255,255,255,0.04)' : T.accent, border: pageAtual >= totalPages - 1 ? `1px solid ${T.borderLight}` : 'none', cursor: pageAtual >= totalPages - 1 ? 'not-allowed' : 'pointer', opacity: pageAtual >= totalPages - 1 ? 0.4 : 1 }}><ChevronRight size={12} style={{ color: pageAtual >= totalPages - 1 ? T.fgDim : '#03201c' }} /></button>
         </div>
       </div>
     </Card>
@@ -1234,7 +1234,7 @@ function MediaUltimas({ data }) {
           </thead>
           <tbody>
             {data.media_ultimas.map((row, i) => (
-              <tr key={i} className="border-t mike-row-hover" style={{ borderColor: T.borderLight, background: i === 0 ? 'rgba(16,185,129,0.04)' : 'transparent' }}>
+              <tr key={i} className="border-t mike-row-hover" style={{ borderColor: T.borderLight, background: i === 0 ? 'rgba(43,205,185,0.04)' : 'transparent' }}>
                 <td className="px-5 py-3" style={{ color: i === 0 ? T.accent : T.fg, fontWeight: i === 0 ? 600 : 400 }}>{row.label}</td>
                 <td className="px-5 py-3 text-center font-mono" style={{ color: a.color }}><span className="font-bold">{row.a}</span><span className="ml-1 text-xs" style={{ color: T.fgDim }}>({row.a_ht})</span></td>
                 <td className="px-5 py-3 text-center font-mono" style={{ color: b.color }}><span className="font-bold">{row.b}</span><span className="ml-1 text-xs" style={{ color: T.fgDim }}>({row.b_ht})</span></td>
@@ -1290,7 +1290,7 @@ function DistribuicaoDiaria({ data }) {
           })}
         </svg>
         {dH && (
-          <div className="absolute pointer-events-none rounded-md p-3" style={{ left: Math.min(tooltipPos.x + 14, W - 200), top: Math.max(tooltipPos.y - 10, 10), background: 'rgba(11,15,26,0.96)', border: `1px solid ${T.border}`, boxShadow: '0 8px 24px rgba(0,0,0,0.6)', minWidth: 180, zIndex: 20 }}>
+          <div className="absolute pointer-events-none rounded-md p-3" style={{ left: Math.min(tooltipPos.x + 14, W - 200), top: Math.max(tooltipPos.y - 10, 10), background: 'rgba(6,11,15,0.96)', border: `1px solid ${T.border}`, boxShadow: '0 8px 24px rgba(0,0,0,0.6)', minWidth: 180, zIndex: 20 }}>
             <div className="text-[10px] font-semibold tracking-wider mb-2 pb-2 border-b" style={{ color: T.fgDim, borderColor: T.borderLight }}>{fmtDate(dH.dateFull)}</div>
             <div className="space-y-1.5">
               {[{ name: a.name, color: a.color, val: dH.a }, { name: 'Empate', color: T.fgDimmer, val: dH.draw || 0 }, { name: b.name, color: b.color, val: dH.b }].map((item, i) => (
@@ -1364,7 +1364,7 @@ function MediaMovel({ data }) {
           const yMid = (yS(dH.total) + yS(dH.a) + yS(dH.b)) / 3;
           const top = Math.max(8, Math.min(H - 120, yMid - 55));
           return (
-            <div className="absolute pointer-events-none rounded-md p-2.5" style={{ left: xH < W / 2 ? xH + 16 : xH - 180, top, background: 'rgba(11,15,26,0.96)', border: `1px solid ${T.border}`, boxShadow: '0 8px 24px rgba(0,0,0,0.6)', minWidth: 170, zIndex: 20 }}>
+            <div className="absolute pointer-events-none rounded-md p-2.5" style={{ left: xH < W / 2 ? xH + 16 : xH - 180, top, background: 'rgba(6,11,15,0.96)', border: `1px solid ${T.border}`, boxShadow: '0 8px 24px rgba(0,0,0,0.6)', minWidth: 170, zIndex: 20 }}>
               <div className="text-[11px] mb-1.5" style={{ color: T.fgDim }}>Janela de {hoverIdx + 5} partidas</div>
               <div className="space-y-1">
                 {[{ label: 'Total', color: totalDotColor, val: dH.total }, { label: a.name, color: a.color, val: dH.a }, { label: b.name, color: b.color, val: dH.b }].map((item, i) => (
@@ -1434,19 +1434,19 @@ function HistoricoPartidas({ data }) {
       </div>
       <div className="flex items-center justify-between px-5 py-3 border-t" style={{ borderColor: T.border }}>
         <div className="relative" ref={pageSizeRef}>
-          <button onClick={() => setPageSizeOpen(o => !o)} className="inline-flex items-center gap-1.5 px-2.5 h-7 rounded-md text-xs" style={{ background: pageSizeOpen ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${pageSizeOpen ? T.accent : T.borderLight}`, color: T.fg }}>
+          <button onClick={() => setPageSizeOpen(o => !o)} className="inline-flex items-center gap-1.5 px-2.5 h-7 rounded-md text-xs" style={{ background: pageSizeOpen ? 'rgba(43,205,185,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${pageSizeOpen ? T.accent : T.borderLight}`, color: T.fg }}>
             {pageSize} Linhas<ChevronDown size={12} style={{ color: T.fgDim, transform: pageSizeOpen ? 'rotate(180deg)' : 'none', transition: 'transform 180ms' }} />
           </button>
           {pageSizeOpen && (
             <div className="absolute left-0 bottom-full mb-1 rounded-md overflow-hidden" style={{ background: T.bg2, border: `1px solid ${T.border}`, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', minWidth: 100 }}>
-              {[5, 10, 20].map(n => <button key={n} onClick={() => { setPageSize(n); setPage(0); setPageSizeOpen(false); }} className="w-full px-3 py-1.5 text-xs text-left hover:bg-white/5" style={{ color: pageSize === n ? T.accent : T.fg, background: pageSize === n ? 'rgba(16,185,129,0.08)' : 'transparent' }}>{n} Linhas</button>)}
+              {[5, 10, 20].map(n => <button key={n} onClick={() => { setPageSize(n); setPage(0); setPageSizeOpen(false); }} className="w-full px-3 py-1.5 text-xs text-left hover:bg-white/5" style={{ color: pageSize === n ? T.accent : T.fg, background: pageSize === n ? 'rgba(43,205,185,0.08)' : 'transparent' }}>{n} Linhas</button>)}
             </div>
           )}
         </div>
         <div className="text-xs" style={{ color: T.fgDim }}>Exibindo <span style={{ color: T.fg, fontWeight: 600 }}>{inicio + 1} - {fim}</span> ({data.historico.length})</div>
         <div className="flex gap-1">
           <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={pageAtual === 0} className="w-7 h-7 rounded grid place-items-center" style={{ border: `1px solid ${T.borderLight}`, background: 'rgba(255,255,255,0.04)', cursor: pageAtual === 0 ? 'not-allowed' : 'pointer', opacity: pageAtual === 0 ? 0.4 : 1 }}><ChevronLeft size={12} style={{ color: T.fgDim }} /></button>
-          <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={pageAtual >= totalPages - 1} className="w-7 h-7 rounded grid place-items-center" style={{ background: pageAtual >= totalPages - 1 ? 'rgba(255,255,255,0.04)' : T.accent, border: pageAtual >= totalPages - 1 ? `1px solid ${T.borderLight}` : 'none', cursor: pageAtual >= totalPages - 1 ? 'not-allowed' : 'pointer', opacity: pageAtual >= totalPages - 1 ? 0.4 : 1 }}><ChevronRight size={12} style={{ color: pageAtual >= totalPages - 1 ? T.fgDim : '#04130c' }} /></button>
+          <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={pageAtual >= totalPages - 1} className="w-7 h-7 rounded grid place-items-center" style={{ background: pageAtual >= totalPages - 1 ? 'rgba(255,255,255,0.04)' : T.accent, border: pageAtual >= totalPages - 1 ? `1px solid ${T.borderLight}` : 'none', cursor: pageAtual >= totalPages - 1 ? 'not-allowed' : 'pointer', opacity: pageAtual >= totalPages - 1 ? 0.4 : 1 }}><ChevronRight size={12} style={{ color: pageAtual >= totalPages - 1 ? T.fgDim : '#03201c' }} /></button>
         </div>
       </div>
     </Card>
@@ -1519,7 +1519,7 @@ function Footer() {
   return (
     <footer className="mt-12 pt-10 pb-6 border-t" style={{ borderColor: T.border }}>
       <div className="text-center mb-8">
-        <div className="inline-flex items-center gap-2 mb-3"><div className="w-8 h-8 rounded grid place-items-center font-bold" style={{ background: T.accent, color: '#04130c' }}>M</div><span className="font-bold tracking-wider" style={{ color: T.fg }}>TIPMIKE</span></div>
+        <div className="inline-flex items-center gap-2 mb-3"><div className="w-8 h-8 rounded grid place-items-center font-bold" style={{ background: T.accent, color: '#03201c' }}>M</div><span className="font-bold tracking-wider" style={{ color: T.fg }}>TIPMIKE</span></div>
         <p className="text-xs max-w-md mx-auto" style={{ color: T.fgDim }}>O TipMike é uma plataforma avançada de análise esportiva que oferece estatísticas detalhadas, análises em tempo real e insights profundos para apostadores e entusiastas do esporte.</p>
       </div>
       <div className="grid grid-cols-5 gap-6 px-6">{cols.map((c, i) => <div key={i}><div className="text-xs font-semibold mb-3" style={{ color: T.fg }}>{c.icon} {c.titulo}</div><ul className="space-y-1.5">{c.items.map((item, j) => <li key={j} className="text-xs cursor-pointer hover:opacity-80" style={{ color: T.fgDim }}>{item}</li>)}</ul></div>)}</div>
@@ -1558,13 +1558,13 @@ function SimpleDropdown({ value, options, onChange }) {
   }, [open]);
   return (
     <div className="relative" ref={ref}>
-      <button onClick={() => setOpen(o => !o)} className="w-full inline-flex items-center justify-between px-3 h-9 rounded-md text-sm" style={{ background: open ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${open ? T.accent : T.borderLight}`, color: value ? T.fg : T.fgDim }}>
+      <button onClick={() => setOpen(o => !o)} className="w-full inline-flex items-center justify-between px-3 h-9 rounded-md text-sm" style={{ background: open ? 'rgba(43,205,185,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${open ? T.accent : T.borderLight}`, color: value ? T.fg : T.fgDim }}>
         <span className="truncate">{value}</span>
         <ChevronDown size={14} style={{ color: T.fgDim, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 180ms' }} />
       </button>
       {open && (
         <div className="absolute left-0 right-0 top-full mt-1.5 rounded-md overflow-hidden z-10" style={{ background: T.bg2, border: `1px solid ${T.border}`, boxShadow: '0 12px 32px rgba(0,0,0,0.5)', maxHeight: 240, overflowY: 'auto' }}>
-          {options.map(opt => <button key={opt} onClick={() => { onChange(opt); setOpen(false); }} className="w-full px-3 py-2 text-sm text-left hover:bg-white/5" style={{ color: opt === value ? T.accent : T.fg, background: opt === value ? 'rgba(16,185,129,0.08)' : 'transparent' }}>{opt}</button>)}
+          {options.map(opt => <button key={opt} onClick={() => { onChange(opt); setOpen(false); }} className="w-full px-3 py-2 text-sm text-left hover:bg-white/5" style={{ color: opt === value ? T.accent : T.fg, background: opt === value ? 'rgba(43,205,185,0.08)' : 'transparent' }}>{opt}</button>)}
         </div>
       )}
     </div>
@@ -1596,7 +1596,7 @@ function DrawerFiltros({ open, onClose, onAplicar, filtrosAtuais, esporte }) {
     <Drawer open={open} onClose={onClose} title="Filtros" footer={
       <div className="grid grid-cols-2 gap-3">
         <MikeButton variant="outline" onClick={() => { setJanela('Todas'); setCampeonatos([]); setVersao('Todas as versões'); setHoraInicio('00:00'); setHoraFim('24:00'); }}>Resetar</MikeButton>
-        <button onClick={() => { if (onAplicar) onAplicar({ janela, campeonatos, versao, horaInicio, horaFim }); onClose(); }} disabled={horaInvalida} className="inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-md text-sm font-medium" style={{ background: horaInvalida ? 'rgba(16,185,129,0.25)' : T.accent, color: horaInvalida ? 'rgba(4,19,12,0.5)' : '#04130c', border: `1px solid ${horaInvalida ? 'rgba(16,185,129,0.25)' : T.accent}`, cursor: horaInvalida ? 'not-allowed' : 'pointer' }}>Aplicar</button>
+        <button onClick={() => { if (onAplicar) onAplicar({ janela, campeonatos, versao, horaInicio, horaFim }); onClose(); }} disabled={horaInvalida} className="inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-md text-sm font-medium" style={{ background: horaInvalida ? 'rgba(43,205,185,0.25)' : T.accent, color: horaInvalida ? 'rgba(3,32,28,0.5)' : '#03201c', border: `1px solid ${horaInvalida ? 'rgba(43,205,185,0.25)' : T.accent}`, cursor: horaInvalida ? 'not-allowed' : 'pointer' }}>Aplicar</button>
       </div>
     }>
       <div className="space-y-2"><label className="text-sm font-medium" style={{ color: T.fg }}>Versão do jogo</label><SimpleDropdown value={versao} options={VERSOES_JOGO} onChange={setVersao} /></div>
@@ -1637,7 +1637,7 @@ function ComboboxDrawer({ label, value, options, onChange, placeholder }) {
       <label className="text-sm font-medium" style={{ color: T.fg }}>{label}</label>
       <div className="relative">
         <div className="flex gap-2">
-          <button onClick={() => setOpen(o => !o)} className="flex-1 inline-flex items-center justify-between px-3 h-9 rounded-md text-sm text-left" style={{ background: open ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${open ? T.accent : T.borderLight}`, color: value ? T.fg : T.fgDim }}>
+          <button onClick={() => setOpen(o => !o)} className="flex-1 inline-flex items-center justify-between px-3 h-9 rounded-md text-sm text-left" style={{ background: open ? 'rgba(43,205,185,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${open ? T.accent : T.borderLight}`, color: value ? T.fg : T.fgDim }}>
             <span className="truncate">{value || placeholder}</span>
             <ChevronDown size={14} style={{ color: T.fgDim, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 180ms' }} />
           </button>
@@ -1654,7 +1654,7 @@ function ComboboxDrawer({ label, value, options, onChange, placeholder }) {
             <div className="max-h-56 overflow-y-auto py-1">
               {filtered.length === 0
                 ? <div className="px-3 py-3 text-xs text-center" style={{ color: T.fgDim }}>Nenhum resultado</div>
-                : filtered.map(opt => <button key={opt} onClick={() => { onChange(opt); setOpen(false); setQuery(''); }} className="w-full px-3 py-2 text-sm text-left hover:bg-white/5" style={{ color: opt === value ? T.accent : T.fg, background: opt === value ? 'rgba(16,185,129,0.08)' : 'transparent' }}>{opt}</button>)}
+                : filtered.map(opt => <button key={opt} onClick={() => { onChange(opt); setOpen(false); setQuery(''); }} className="w-full px-3 py-2 text-sm text-left hover:bg-white/5" style={{ color: opt === value ? T.accent : T.fg, background: opt === value ? 'rgba(43,205,185,0.08)' : 'transparent' }}>{opt}</button>)}
             </div>
           </div>
         )}
@@ -1684,14 +1684,14 @@ function DrawerAlterarJogadores({ open, onClose, onAplicar, torneioInicial, jog1
     <Drawer open={open} onClose={onClose} title="Alterar Jogadores" footer={
       <div className="grid grid-cols-2 gap-3">
         <MikeButton variant="outline" onClick={onClose}>Cancelar</MikeButton>
-        <button onClick={aplicar} disabled={!podeAnalisar} className="inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-md text-sm font-medium" style={{ background: podeAnalisar ? T.accent : 'rgba(16,185,129,0.25)', color: podeAnalisar ? '#04130c' : 'rgba(4,19,12,0.5)', border: `1px solid ${podeAnalisar ? T.accent : 'rgba(16,185,129,0.25)'}`, cursor: podeAnalisar ? 'pointer' : 'not-allowed' }}>Analisar</button>
+        <button onClick={aplicar} disabled={!podeAnalisar} className="inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-md text-sm font-medium" style={{ background: podeAnalisar ? T.accent : 'rgba(43,205,185,0.25)', color: podeAnalisar ? '#03201c' : 'rgba(3,32,28,0.5)', border: `1px solid ${podeAnalisar ? T.accent : 'rgba(43,205,185,0.25)'}`, cursor: podeAnalisar ? 'pointer' : 'not-allowed' }}>Analisar</button>
       </div>
     }>
       <ComboboxDrawer label="Torneio" value={torneio} options={cfg.torneios} onChange={setTorneio} placeholder="Selecione um torneio" />
       <ComboboxDrawer label="Jogador 1" value={jog1} options={jogadoresDisponiveis.filter(j => j !== jog2)} onChange={setJog1} placeholder={torneio ? 'Selecione jogador 1' : 'Selecione um torneio primeiro'} />
       <ComboboxDrawer label="Jogador 2" value={jog2} options={jogadoresDisponiveis.filter(j => j !== jog1)} onChange={setJog2} placeholder="Jogador 2 (opcional — vazio = vs Oponentes)" />
       {jog1 && (
-        <div className="mt-2 p-3 rounded-md" style={{ background: 'rgba(16,185,129,0.05)', border: `1px solid ${T.borderLight}` }}>
+        <div className="mt-2 p-3 rounded-md" style={{ background: 'rgba(43,205,185,0.05)', border: `1px solid ${T.borderLight}` }}>
           <div className="text-[11px] mb-2" style={{ color: T.fgDim }}>{!jog2 ? 'Análise solo:' : 'Confronto:'}</div>
           <div className="flex items-center justify-center gap-3 text-sm">
             <span className="font-bold" style={{ color: T.accent }}>{jog1}</span>
@@ -1759,7 +1759,7 @@ export default function TipMikePartidaIndividual({ partida, onNavegar } = {}) {
   );
 
   return (
-    <div style={{ background: T.bg, color: T.fg, minHeight: '100vh', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div style={{ background: T.bg, color: T.fg, minHeight: '100vh', fontFamily: 'var(--mike-font)' }}>
       <style>{`
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
@@ -1770,11 +1770,11 @@ export default function TipMikePartidaIndividual({ partida, onNavegar } = {}) {
         ::-webkit-scrollbar-thumb:hover { background: ${T.fgDimmer}; }
         .mike-scroll::-webkit-scrollbar { width: 4px; }
         .mike-scroll::-webkit-scrollbar-track { background: transparent; }
-        .mike-scroll::-webkit-scrollbar-thumb { background: rgba(60,85,130,0.35); border-radius: 2px; }
-        .mike-scroll::-webkit-scrollbar-thumb:hover { background: rgba(60,85,130,0.6); }
-        .mike-scroll { scrollbar-width: thin; scrollbar-color: rgba(60,85,130,0.35) transparent; }
+        .mike-scroll::-webkit-scrollbar-thumb { background: rgba(50,100,104,0.35); border-radius: 2px; }
+        .mike-scroll::-webkit-scrollbar-thumb:hover { background: rgba(50,100,104,0.6); }
+        .mike-scroll { scrollbar-width: thin; scrollbar-color: rgba(50,100,104,0.35) transparent; }
         .mike-row-hover { transition: background-color 140ms ease; }
-        .mike-row-hover:hover { background-color: rgba(80, 110, 160, 0.10) !important; }
+        .mike-row-hover:hover { background-color: rgba(70, 130, 132, 0.10) !important; }
       `}</style>
 
       <MikeHeader telaAtiva="partida" onNavegar={onNavegar} />
@@ -1791,6 +1791,17 @@ export default function TipMikePartidaIndividual({ partida, onNavegar } = {}) {
 
       {!loadingData && data && (
         <main className="max-w-[1280px] mx-auto px-6 py-5 space-y-4">
+          {/* nov/2026: esta tela ainda monta os números por simulação (USE_MOCK_PARTIDA),
+              sem consultar a API. O aviso fica até ela ser ligada aos dados reais. */}
+          {USE_MOCK_PARTIDA && (
+            <div className="mike-aviso-demo" role="note">
+              <span aria-hidden style={{ fontSize: 14, lineHeight: 1.2 }}>⚠️</span>
+              <span>
+                <strong>Dados de demonstração.</strong> Os números desta tela são simulados e ainda não vêm
+                das partidas reais. Não use esta análise para decidir aposta.
+              </span>
+            </div>
+          )}
           {/* Breadcrumb */}
           <nav className="flex items-center gap-2 text-xs" style={{ color: T.fgDim }}>
             <Home size={12} /><span>Início</span><ChevronRight size={12} />

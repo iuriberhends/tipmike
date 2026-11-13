@@ -96,14 +96,14 @@ function MappedRangeSlider({ vals, valueMin, valueMax, onChange, primeiroInner }
 
   return (
     <div className="w-full space-y-2">
-      <div className="flex items-center justify-between text-[11px] font-mono font-bold" style={{ color: '#10b981' }}>
+      <div className="flex items-center justify-between text-[11px] font-mono font-bold" style={{ color: '#2bcdb9' }}>
         <span>{fmtLinha(valueMin, primeiroInner)}</span>
-        <span style={{ color: '#6b7691', fontSize: '10px' }}>até</span>
+        <span style={{ color: '#6c8689', fontSize: '10px' }}>até</span>
         <span>{fmtLinha(valueMax, primeiroInner)}</span>
       </div>
       <div className="relative h-6 flex items-center w-full">
-        <div className="absolute inset-x-0 h-1 rounded-full" style={{ backgroundColor: 'rgba(60,85,130,0.4)' }} />
-        <div className="absolute h-1 rounded-full" style={{ left: `${pctMin}%`, right: `${100 - pctMax}%`, backgroundColor: '#10b981' }} />
+        <div className="absolute inset-x-0 h-1 rounded-full" style={{ backgroundColor: 'rgba(50,100,104,0.4)' }} />
+        <div className="absolute h-1 rounded-full" style={{ left: `${pctMin}%`, right: `${100 - pctMax}%`, backgroundColor: '#2bcdb9' }} />
         <input type="range" min={0} max={vals.length - 1} step={1} value={safeIdxMin}
           onChange={(e) => { const i = parseInt(e.target.value); if (i <= safeIdxMax) onChange(vals[i], valueMax); }}
           className="mf-range absolute inset-x-0 w-full" />
@@ -111,7 +111,7 @@ function MappedRangeSlider({ vals, valueMin, valueMax, onChange, primeiroInner }
           onChange={(e) => { const i = parseInt(e.target.value); if (i >= safeIdxMin) onChange(valueMin, vals[i]); }}
           className="mf-range absolute inset-x-0 w-full" />
       </div>
-      <div className="flex items-center justify-between text-[10px] font-mono" style={{ color: '#4a5470' }}>
+      <div className="flex items-center justify-between text-[10px] font-mono" style={{ color: '#3f5a60' }}>
         <span>{fmtLinha(vals[0], primeiroInner)}</span>
         <span>apenas .5</span>
         <span>{fmtLinha(vals[vals.length - 1], primeiroInner)}</span>
@@ -125,14 +125,14 @@ function ContinuousRangeSlider({ min, max, step, valueMin, valueMax, onChange, p
   const pctMax = ((valueMax - min) / (max - min)) * 100;
   return (
     <div className="w-full space-y-2">
-      <div className="flex items-center justify-between text-[11px] font-mono font-bold" style={{ color: '#10b981' }}>
+      <div className="flex items-center justify-between text-[11px] font-mono font-bold" style={{ color: '#2bcdb9' }}>
         <span>{fmtLinha(valueMin, primeiroInner)}</span>
-        <span style={{ color: '#6b7691', fontSize: '10px' }}>até</span>
+        <span style={{ color: '#6c8689', fontSize: '10px' }}>até</span>
         <span>{fmtLinha(valueMax, primeiroInner)}</span>
       </div>
       <div className="relative h-6 flex items-center w-full">
-        <div className="absolute inset-x-0 h-1 rounded-full" style={{ backgroundColor: 'rgba(60,85,130,0.4)' }} />
-        <div className="absolute h-1 rounded-full" style={{ left: `${pctMin}%`, right: `${100 - pctMax}%`, backgroundColor: '#10b981' }} />
+        <div className="absolute inset-x-0 h-1 rounded-full" style={{ backgroundColor: 'rgba(50,100,104,0.4)' }} />
+        <div className="absolute h-1 rounded-full" style={{ left: `${pctMin}%`, right: `${100 - pctMax}%`, backgroundColor: '#2bcdb9' }} />
         <input type="range" min={min} max={max} step={step} value={valueMin}
           onChange={(e) => { const v = parseFloat(e.target.value); if (v <= valueMax) onChange(v, valueMax); }}
           className="mf-range absolute inset-x-0 w-full" />
@@ -140,7 +140,7 @@ function ContinuousRangeSlider({ min, max, step, valueMin, valueMax, onChange, p
           onChange={(e) => { const v = parseFloat(e.target.value); if (v >= valueMin) onChange(valueMin, v); }}
           className="mf-range absolute inset-x-0 w-full" />
       </div>
-      <div className="flex items-center justify-between text-[10px] font-mono" style={{ color: '#4a5470' }}>
+      <div className="flex items-center justify-between text-[10px] font-mono" style={{ color: '#3f5a60' }}>
         <span>{fmtLinha(min, primeiroInner)}</span>
         <span>step {step}</span>
         <span>{fmtLinha(max, primeiroInner)}</span>
@@ -154,33 +154,33 @@ const sliderStyle = `
   .mf-range::-webkit-slider-thumb {
     -webkit-appearance: none; appearance: none;
     width: 16px; height: 16px; border-radius: 50%;
-    background: #10b981; cursor: pointer; pointer-events: auto;
-    border: 2px solid #0b0f1a;
-    box-shadow: 0 0 0 1px rgba(16,185,129,0.5), 0 2px 6px rgba(0,0,0,0.3);
+    background: #2bcdb9; cursor: pointer; pointer-events: auto;
+    border: 2px solid #060b0f;
+    box-shadow: 0 0 0 1px rgba(43,205,185,0.5), 0 2px 6px rgba(0,0,0,0.3);
     transition: transform 0.15s ease, box-shadow 0.15s ease;
   }
-  .mf-range::-webkit-slider-thumb:hover { transform: scale(1.2); box-shadow: 0 0 0 3px rgba(16,185,129,0.25), 0 2px 8px rgba(0,0,0,0.4); }
-  .mf-range::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #10b981; cursor: pointer; pointer-events: auto; border: 2px solid #0b0f1a; }
+  .mf-range::-webkit-slider-thumb:hover { transform: scale(1.2); box-shadow: 0 0 0 3px rgba(43,205,185,0.25), 0 2px 8px rgba(0,0,0,0.4); }
+  .mf-range::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #2bcdb9; cursor: pointer; pointer-events: auto; border: 2px solid #060b0f; }
 
   .mf-check {
     appearance: none;
     width: 16px; height: 16px;
     border-radius: 4px;
-    border: 1.5px solid rgba(80, 110, 170, 0.7);
+    border: 1.5px solid rgba(70, 130, 132, 0.7);
     background: transparent;
     cursor: pointer;
     position: relative;
     transition: all 0.18s cubic-bezier(0.22, 1, 0.36, 1);
     flex-shrink: 0;
   }
-  .mf-check:hover { border-color: rgba(16, 185, 129, 0.7); background: rgba(16, 185, 129, 0.05); }
-  .mf-check:checked { background: #10b981; border-color: #10b981; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15); }
+  .mf-check:hover { border-color: rgba(43, 205, 185, 0.7); background: rgba(43, 205, 185, 0.05); }
+  .mf-check:checked { background: #2bcdb9; border-color: #2bcdb9; box-shadow: 0 0 0 3px rgba(43, 205, 185, 0.15); }
   .mf-check:checked::after {
     content: '';
     position: absolute;
     left: 5px; top: 1.5px;
     width: 4px; height: 9px;
-    border: solid #0b0f1a;
+    border: solid #060b0f;
     border-width: 0 2px 2px 0;
     transform: rotate(45deg);
   }
@@ -197,8 +197,8 @@ const sliderStyle = `
     border: none;
     padding: 0;
   }
-  .mf-switch.off { background-color: #4a5470; }
-  .mf-switch.on  { background-color: #10b981; box-shadow: 0 0 10px rgba(16, 185, 129, 0.35); }
+  .mf-switch.off { background-color: #3f5a60; }
+  .mf-switch.on  { background-color: #2bcdb9; box-shadow: 0 0 10px rgba(43, 205, 185, 0.35); }
   .mf-switch::after {
     content: '';
     position: absolute;
@@ -212,7 +212,7 @@ const sliderStyle = `
   }
   .mf-switch.on::after {
     transform: translateX(14px);
-    box-shadow: 0 2px 5px rgba(16, 185, 129, 0.45);
+    box-shadow: 0 2px 5px rgba(43, 205, 185, 0.45);
   }
 `;
 
@@ -307,7 +307,7 @@ export default function MercadoFiltros({
     <span
       className="text-[10px] font-bold px-2 py-1 rounded flex-shrink-0 transition"
       style={{
-        backgroundColor: ativo ? '#10b981' : '#4a5470',
+        backgroundColor: ativo ? '#2bcdb9' : '#3f5a60',
         color: '#fff',
         opacity: ativo ? 1 : 0.7,
       }}
@@ -347,8 +347,8 @@ export default function MercadoFiltros({
 
       {mostrarDescricao && cfg.descricao && (
         <div className="flex items-start gap-2 px-3 py-2 rounded-md text-[11px] leading-relaxed"
-          style={{ backgroundColor: 'rgba(16,185,129,0.05)', border: '0.5px solid rgba(16,185,129,0.25)', color: '#6b7691' }}>
-          <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" style={{ color: '#10b981' }} />
+          style={{ backgroundColor: 'rgba(43,205,185,0.05)', border: '0.5px solid rgba(43,205,185,0.25)', color: '#6c8689' }}>
+          <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" style={{ color: '#2bcdb9' }} />
           <span>{cfg.descricao}</span>
         </div>
       )}
@@ -385,7 +385,7 @@ export default function MercadoFiltros({
                       onChange={() => toggleOpcao(op)}
                       disabled={!selecaoAtivoEff}
                     />
-                    <span className="text-[11px] font-semibold" style={{ color: ativo ? '#10b981' : '#b8c0d4' }}>
+                    <span className="text-[11px] font-semibold" style={{ color: ativo ? '#2bcdb9' : '#b5c9c8' }}>
                       {op}
                     </span>
                   </label>
@@ -397,8 +397,8 @@ export default function MercadoFiltros({
             className="text-[10px] italic ml-[78px] transition"
             style={{
               color: !selecaoAtivoEff
-                ? '#6b7691'
-                : (innerArr.length === 0 ? '#6b7691' : '#10b981'),
+                ? '#6c8689'
+                : (innerArr.length === 0 ? '#6c8689' : '#2bcdb9'),
               opacity: 0.85,
             }}
           >
@@ -432,7 +432,7 @@ export default function MercadoFiltros({
             </div>
           </div>
           {hintLinha && (
-            <div className="text-[10px] italic ml-[78px]" style={{ color: '#6b7691', opacity: 0.85 }}>
+            <div className="text-[10px] italic ml-[78px]" style={{ color: '#6c8689', opacity: 0.85 }}>
               {hintLinha}
             </div>
           )}
@@ -440,7 +440,7 @@ export default function MercadoFiltros({
       )}
 
       {!cfg.inner && !cfg.range && (
-        <p className="text-[11px] italic" style={{ color: '#6b7691' }}>Nenhuma linha ou seleção necessária para este mercado.</p>
+        <p className="text-[11px] italic" style={{ color: '#6c8689' }}>Nenhuma linha ou seleção necessária para este mercado.</p>
       )}
     </div>
   );

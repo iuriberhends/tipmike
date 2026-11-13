@@ -24,15 +24,15 @@ const POLL_MS = 1500;
 const POLL_TIMEOUT_MS = 20 * 60 * 1000; // preenchimento grande (24x) demora
 
 const card = {
-  backgroundColor: 'rgba(30,41,59,0.35)',
-  border: '1px solid rgba(60,85,130,0.25)',
+  backgroundColor: 'rgba(28,47,52,0.35)',
+  border: '1px solid rgba(50,100,104,0.25)',
 };
 
 function Barra({ pct, msg }) {
   return (
     <div className="mt-2">
       <div className="h-1.5 rounded-full overflow-hidden"
-           style={{ backgroundColor: 'rgba(60,85,130,0.25)' }}>
+           style={{ backgroundColor: 'rgba(50,100,104,0.25)' }}>
         <div className="h-full transition-all duration-500"
              style={{ width: `${Math.max(2, pct || 0)}%`, backgroundColor: '#38bdf8' }} />
       </div>
@@ -52,13 +52,13 @@ function Barra({ pct, msg }) {
 // divergem.
 // ---------------------------------------------------------------
 const SELO = {
-  confiavel:    { cor: '#10b981', fundo: 'rgba(16,185,129,0.10)', borda: 'rgba(16,185,129,0.35)',
+  confiavel:    { cor: '#2bcdb9', fundo: 'rgba(43,205,185,0.10)', borda: 'rgba(43,205,185,0.35)',
                   icone: CheckCircle2, titulo: 'DADO CONFIÁVEL' },
   atencao:      { cor: '#fbbf24', fundo: 'rgba(251,191,36,0.10)', borda: 'rgba(251,191,36,0.35)',
                   icone: AlertTriangle, titulo: 'ATENÇÃO' },
   nao_use:      { cor: '#f87171', fundo: 'rgba(248,113,113,0.10)', borda: 'rgba(248,113,113,0.35)',
                   icone: AlertTriangle, titulo: 'NÃO USE ESTES NÚMEROS' },
-  indisponivel: { cor: '#6b7691', fundo: 'rgba(107,118,145,0.10)', borda: 'rgba(107,118,145,0.30)',
+  indisponivel: { cor: '#6c8689', fundo: 'rgba(108,134,137,0.10)', borda: 'rgba(108,134,137,0.30)',
                   icone: AlertTriangle, titulo: 'NÃO CONSEGUI CONFERIR' },
 };
 
@@ -82,8 +82,8 @@ function Veredito({ d }) {
               <div className="flex items-baseline gap-2 text-[11px]">
                 <span className="flex-1 text-[--mike-fg-soft]">{c.pergunta}</span>
                 <span className="font-mono font-bold"
-                      style={{ color: c.ok ? '#10b981' : '#fbbf24' }}>{c.valor}</span>
-                <span style={{ color: c.ok ? '#10b981' : '#fbbf24' }}>{c.ok ? '✓' : '⚠'}</span>
+                      style={{ color: c.ok ? '#2bcdb9' : '#fbbf24' }}>{c.valor}</span>
+                <span style={{ color: c.ok ? '#2bcdb9' : '#fbbf24' }}>{c.ok ? '✓' : '⚠'}</span>
               </div>
               {c.detalhe && (
                 <div className="text-[10px] text-[--mike-fg-muted] pl-1">{c.detalhe}</div>
@@ -141,7 +141,7 @@ function Filtros({ d }) {
       {d.filtros.map((f, i) => (
         <div key={i} className="flex items-baseline gap-2 text-[11px]">
           <span className="flex-1 text-[--mike-fg-soft]">{f.nome}</span>
-          <span className="font-mono" style={{ color: f.ok ? '#10b981' : '#fbbf24' }}>
+          <span className="font-mono" style={{ color: f.ok ? '#2bcdb9' : '#fbbf24' }}>
             {f.pct}% dos jogos
           </span>
         </div>
@@ -292,7 +292,7 @@ export default function H2hSyncPanel({
           <button onClick={analisar} disabled={ocupado}
             className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-bold transition disabled:opacity-40"
             style={{ backgroundColor: ocupado ? 'rgba(56,189,248,0.2)' : 'rgba(56,189,248,0.15)',
-                     color: ocupado ? '#6b7691' : '#38bdf8', border: '1px solid rgba(56,189,248,0.4)' }}>
+                     color: ocupado ? '#6c8689' : '#38bdf8', border: '1px solid rgba(56,189,248,0.4)' }}>
             {fase === 'analisando'
               ? <><RefreshCw className="w-4 h-4 mike-spin" /> Analisando...</>
               : <><Search className="w-4 h-4" /> Analisar</>}
@@ -302,7 +302,7 @@ export default function H2hSyncPanel({
 
           {/* RELATORIO DA ANALISE */}
           {relatorio && fase !== 'analisando' && (
-            <div className="mt-3 rounded-md p-3 text-xs" style={{ backgroundColor: 'rgba(15,23,42,0.5)' }}>
+            <div className="mt-3 rounded-md p-3 text-xs" style={{ backgroundColor: 'rgba(15,28,33,0.5)' }}>
               {/* v3: o veredito primeiro — a resposta antes dos numeros. */}
               <Veredito d={relatorio.diagnostico} />
               <Fontes d={relatorio.diagnostico} />
@@ -348,18 +348,18 @@ export default function H2hSyncPanel({
                     <label className="text-[10px] text-[--mike-fg-muted]">máx pares/lote</label>
                     <input type="number" min="1" max="500" value={limitePares}
                            onChange={e => setLimitePares(e.target.value)}
-                           className="w-16 px-2 py-1 rounded bg-black/30 border border-[rgba(60,85,130,0.4)] text-xs font-mono" />
+                           className="w-16 px-2 py-1 rounded bg-black/30 border border-[rgba(50,100,104,0.4)] text-xs font-mono" />
                   </div>
                   <div className="mt-2 grid grid-cols-2 gap-2">
                     <button onClick={() => rodarPreenchimento(true)} disabled={ocupado}
                       className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-bold transition disabled:opacity-40"
-                      style={{ backgroundColor: 'rgba(148,163,184,0.15)', color: '#cbd5e1', border: '1px solid rgba(148,163,184,0.3)' }}>
+                      style={{ backgroundColor: 'rgba(139,165,166,0.15)', color: '#b3c8c7', border: '1px solid rgba(139,165,166,0.3)' }}>
                       <Search className="w-3.5 h-3.5" /> Simular
                     </button>
                     <button onClick={() => rodarPreenchimento(false)} disabled={ocupado}
                       className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-bold transition disabled:opacity-40"
                       style={{ backgroundColor: ocupado ? 'rgba(56,189,248,0.2)' : '#38bdf8',
-                               color: ocupado ? '#6b7691' : '#0b0f1a' }}>
+                               color: ocupado ? '#6c8689' : '#060b0f' }}>
                       <Play className="w-3.5 h-3.5" /> Preencher
                     </button>
                   </div>
@@ -372,9 +372,9 @@ export default function H2hSyncPanel({
 
           {/* RESULTADO DO PREENCHIMENTO */}
           {resultado && fase === 'feito' && (
-            <div className="mt-3 rounded-md p-3 text-xs" style={{ backgroundColor: 'rgba(15,23,42,0.5)' }}>
+            <div className="mt-3 rounded-md p-3 text-xs" style={{ backgroundColor: 'rgba(15,28,33,0.5)' }}>
               <div className="flex items-center gap-2 mb-2 font-bold"
-                   style={{ color: resultado.dry_run ? '#cbd5e1' : '#34d399' }}>
+                   style={{ color: resultado.dry_run ? '#b3c8c7' : '#56e2ce' }}>
                 <CheckCircle2 className="w-4 h-4" />
                 {resultado.dry_run
                   ? `Simulação: ${resultado.jogos_que_entrariam ?? 0} jogos entrariam`

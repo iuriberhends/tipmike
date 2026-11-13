@@ -35,8 +35,8 @@ import { cabecalhoPais } from '../lib/pais.js';
 
 const ESPORTES = [
   { id: 'nba2k',       label: 'NBA 2K',           icon: '🏀', cor: '#f97316' },
-  { id: 'fifa',        label: 'Fifa (e-Soccer)',  icon: '⚽', cor: '#10b981' },
-  { id: 'ehockey',     label: 'e-Hockey',         icon: '🏒', cor: '#06b6d4' },
+  { id: 'fifa',        label: 'Fifa (e-Soccer)',  icon: '⚽', cor: '#2bcdb9' },
+  { id: 'ehockey',     label: 'e-Hockey',         icon: '🏒', cor: '#0ea5e9' },
   { id: 'enfl',        label: 'e-NFL',            icon: '🏈', cor: '#a855f7' },
   { id: 'tabletennis', label: 'Tênis de Mesa',    icon: '🏓', cor: '#eab308' },
   { id: 'tennis',      label: 'Tênis',            icon: '🎾', cor: '#84cc16' },
@@ -493,7 +493,8 @@ const apiRouter = {
   '/stats/distribuicoes':   (p) => ApiStats.distribuicoes(p.esporte),
   '/stats/jogadores':       (p) => ApiStats.jogadores(p.esporte, p.busca),
   '/stats/torneios':        (p) => ApiStats.torneios(p.esporte),
-  '/stats/preview-jogador': (p) => ApiStats.previewJogador(p.esporte, p.nome),
+  // sem jogador escolhido não há o que consultar (a API respondia 422 a cada carga da tela)
+  '/stats/preview-jogador': (p) => (p.nome ? ApiStats.previewJogador(p.esporte, p.nome) : Promise.resolve({ preview: null })),
 };
 
 async function apiGet(endpoint, params) {
@@ -619,7 +620,7 @@ function MikeSelect({ value, onChange, options, placeholder = 'Selecione', width
       {open && (
         <div className="absolute top-full left-0 right-0 mt-1 rounded-md z-30" style={{
           backgroundColor: 'var(--mike-card)',
-          border: '0.5px solid rgba(60, 85, 130, 0.6)',
+          border: '0.5px solid rgba(50, 100, 104, 0.6)',
           boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)',
           maxHeight: '360px',
           overflowY: 'auto',
@@ -627,7 +628,7 @@ function MikeSelect({ value, onChange, options, placeholder = 'Selecione', width
           scrollbarWidth: 'thin',
         }}>
           {searchable && (
-            <div className="sticky top-0 p-2" style={{ backgroundColor: 'var(--mike-card)', borderBottom: '0.5px solid rgba(60,85,130,0.4)' }}>
+            <div className="sticky top-0 p-2" style={{ backgroundColor: 'var(--mike-card)', borderBottom: '0.5px solid rgba(50,100,104,0.4)' }}>
               <div className="flex items-center gap-2 px-2 py-1 rounded mike-border-thin">
                 <Search className="w-3 h-3 text-[--mike-fg-muted]" />
                 <input
@@ -648,7 +649,7 @@ function MikeSelect({ value, onChange, options, placeholder = 'Selecione', width
               onClick={() => { onChange(opt.value); setOpen(false); setBusca(''); }}
               className={`w-full text-left px-3 py-2 text-xs transition flex items-center gap-2 ${
                 opt.value === value
-                  ? 'bg-[--mike-accent]/10 text-[--mike-accent]'
+                  ? 'bg-mike-accent/10 text-[--mike-accent]'
                   : 'text-[--mike-fg-soft] hover:bg-[--mike-card-hover] hover:text-[--mike-fg]'
               }`}
             >
@@ -666,16 +667,16 @@ function MikeSelect({ value, onChange, options, placeholder = 'Selecione', width
 
 function CardKPI({ icon: Icon, label, valor, sublabel, cor = 'text-[--mike-accent]', loading }) {
   return (
-    <div className="rounded-lg p-3 min-w-0 transition hover:bg-[--mike-card-2]/40" style={{
-      backgroundColor: 'rgba(20, 26, 40, 0.4)',
-      border: '0.5px solid rgba(60, 85, 130, 0.4)',
+    <div className="rounded-lg p-3 min-w-0 transition hover:bg-mike-card-2/40" style={{
+      backgroundColor: 'rgba(11, 21, 25, 0.4)',
+      border: '0.5px solid rgba(50, 100, 104, 0.4)',
     }}>
       <div className="flex items-center gap-1.5 mb-1.5">
         <Icon className={`w-3 h-3 flex-shrink-0 ${cor}`} />
         <span className="text-[9px] uppercase tracking-wider text-[--mike-fg-muted] font-bold truncate">{label}</span>
       </div>
       {loading ? (
-        <div className="h-6 rounded animate-pulse" style={{ background: 'rgba(60,85,130,0.2)' }} />
+        <div className="h-6 rounded animate-pulse" style={{ background: 'rgba(50,100,104,0.2)' }} />
       ) : (
         <>
           <div className={`text-lg font-black font-mono leading-tight truncate ${cor}`}>{valor}</div>
@@ -691,9 +692,9 @@ function CardKPI({ icon: Icon, label, valor, sublabel, cor = 'text-[--mike-accen
 // ============================================================
 function CardProximoLiga({ jogo, onAnalisar }) {
   return (
-    <div className="rounded-lg p-2.5 transition hover:bg-[--mike-card-2]/60 cursor-pointer relative" style={{
-      backgroundColor: 'rgba(20, 26, 40, 0.5)',
-      border: '0.5px solid rgba(60, 85, 130, 0.4)',
+    <div className="rounded-lg p-2.5 transition hover:bg-mike-card-2/60 cursor-pointer relative" style={{
+      backgroundColor: 'rgba(11, 21, 25, 0.5)',
+      border: '0.5px solid rgba(50, 100, 104, 0.4)',
     }} onClick={onAnalisar}>
       {/* Linha 1: horário + liga */}
       <div className="flex items-center gap-2 mb-1.5">
@@ -718,7 +719,7 @@ function CardProximoLiga({ jogo, onAnalisar }) {
 
       {/* Linha 3: indicadores (WR, sequência, HOT) */}
       {(jogo.wrPrev || jogo.sequencia !== 0 || jogo.isHot) && (
-        <div className="flex items-center justify-center gap-2 pt-1.5" style={{ borderTop: '0.5px solid rgba(60,85,130,0.2)' }}>
+        <div className="flex items-center justify-center gap-2 pt-1.5" style={{ borderTop: '0.5px solid rgba(50,100,104,0.2)' }}>
           {jogo.wrPrev && (
             <span className="flex items-center gap-0.5 text-[9px] font-bold text-amber-400 font-mono" title={`WR previsto: ${jogo.wrPrev}%`}>
               <Target className="w-2.5 h-2.5" />
@@ -752,19 +753,19 @@ function LinhaProximoJogo({ jogo, onAnalisar, busca = '' }) {
   return (
     <div
       onClick={onAnalisar}
-      className="group grid grid-cols-12 gap-2 items-center px-3 py-2 rounded transition hover:bg-[--mike-card-2]/40 cursor-pointer mike-row-hover"
-      style={{ borderBottom: '0.5px solid rgba(60,85,130,0.15)' }}
+      className="group grid grid-cols-12 gap-2 items-center px-3 py-2 rounded transition hover:bg-mike-card-2/40 cursor-pointer mike-row-hover"
+      style={{ borderBottom: '0.5px solid rgba(50,100,104,0.15)' }}
     >
       <div className="col-span-3 sm:col-span-2 text-[10px] text-[--mike-fg-muted] font-mono truncate">
         {jogo.data}
       </div>
       <div className="col-span-9 sm:col-span-7 flex items-center gap-2 text-xs min-w-0">
-        <div className="flex-1 min-w-0 text-right">
+        <div className="flex-1 min-w-0 text-right truncate">
           <HighlightText texto={jogo.jogadorA} termo={busca} className="font-bold text-[--mike-fg]" />
           {jogo.timeA && <span className="text-[--mike-fg-muted] ml-1 text-[10px]"><HighlightText texto={jogo.timeA} termo={busca} /></span>}
         </div>
         <span className="text-[--mike-fg-muted] font-bold flex-shrink-0">×</span>
-        <div className="flex-1 min-w-0 text-left">
+        <div className="flex-1 min-w-0 text-left truncate">
           <HighlightText texto={jogo.jogadorB} termo={busca} className="font-bold text-[--mike-fg]" />
           {jogo.timeB && <span className="text-[--mike-fg-muted] ml-1 text-[10px]"><HighlightText texto={jogo.timeB} termo={busca} /></span>}
         </div>
@@ -791,31 +792,31 @@ function LinhaUltimoJogo({ jogo, onAnalisar, busca = '' }) {
   return (
     <div
       onClick={onAnalisar}
-      className="group grid grid-cols-12 gap-2 items-center px-3 py-2 rounded transition hover:bg-[--mike-card-2]/40 cursor-pointer mike-row-hover"
-      style={{ borderBottom: '0.5px solid rgba(60,85,130,0.15)' }}
+      className="group grid grid-cols-12 gap-2 items-center px-3 py-2 rounded transition hover:bg-mike-card-2/40 cursor-pointer mike-row-hover"
+      style={{ borderBottom: '0.5px solid rgba(50,100,104,0.15)' }}
     >
       <div className="col-span-3 sm:col-span-2 text-[10px] text-[--mike-fg-muted] font-mono truncate">
         {jogo.data}
       </div>
       <div className="col-span-9 sm:col-span-9 flex items-center gap-2 text-xs min-w-0">
-        <div className="flex-1 min-w-0 text-right">
+        <div className="flex-1 min-w-0 text-right truncate">
           <HighlightText texto={jogo.jogadorA} termo={busca} className="font-bold text-[--mike-fg]" />
           {jogo.timeA && <span className="text-[--mike-fg-muted] ml-1 text-[10px]"><HighlightText texto={jogo.timeA} termo={busca} /></span>}
         </div>
         <span className="px-2 py-0.5 rounded font-mono font-bold text-[11px]" style={{
-          background: jogo.placarA > jogo.placarB ? 'rgba(16,185,129,0.15)' : 'rgba(244,63,94,0.15)',
-          color: jogo.placarA > jogo.placarB ? '#10b981' : '#f43f5e',
+          background: jogo.placarA > jogo.placarB ? 'rgba(43,205,185,0.15)' : 'rgba(244,63,94,0.15)',
+          color: jogo.placarA > jogo.placarB ? '#2bcdb9' : '#f43f5e',
         }}>
           {jogo.placarA}
         </span>
         <span className="text-[--mike-fg-muted] font-bold flex-shrink-0 text-[10px]">:</span>
         <span className="px-2 py-0.5 rounded font-mono font-bold text-[11px]" style={{
-          background: jogo.placarB > jogo.placarA ? 'rgba(16,185,129,0.15)' : 'rgba(244,63,94,0.15)',
-          color: jogo.placarB > jogo.placarA ? '#10b981' : '#f43f5e',
+          background: jogo.placarB > jogo.placarA ? 'rgba(43,205,185,0.15)' : 'rgba(244,63,94,0.15)',
+          color: jogo.placarB > jogo.placarA ? '#2bcdb9' : '#f43f5e',
         }}>
           {jogo.placarB}
         </span>
-        <div className="flex-1 min-w-0 text-left">
+        <div className="flex-1 min-w-0 text-left truncate">
           <HighlightText texto={jogo.jogadorB} termo={busca} className="font-bold text-[--mike-fg]" />
           {jogo.timeB && <span className="text-[--mike-fg-muted] ml-1 text-[10px]"><HighlightText texto={jogo.timeB} termo={busca} /></span>}
         </div>
@@ -848,23 +849,23 @@ function Heatmap({ matriz, onCriarBot }) {
       const v = cell.wr;
       if (v < 40) return 'rgba(244,63,94,0.45)';
       if (v < 50) return 'rgba(244,63,94,0.20)';
-      if (v < 55) return 'rgba(60,85,130,0.15)';
-      if (v < 65) return 'rgba(16,185,129,0.30)';
-      if (v < 75) return 'rgba(16,185,129,0.55)';
-      return 'rgba(16,185,129,0.90)';
+      if (v < 55) return 'rgba(50,100,104,0.15)';
+      if (v < 65) return 'rgba(43,205,185,0.30)';
+      if (v < 75) return 'rgba(43,205,185,0.55)';
+      return 'rgba(43,205,185,0.90)';
     }
     if (metrica === 'roi') {
       const v = cell.roi;
       if (v < -10) return 'rgba(244,63,94,0.60)';
       if (v < -3) return 'rgba(244,63,94,0.30)';
-      if (v < 3) return 'rgba(60,85,130,0.15)';
-      if (v < 10) return 'rgba(16,185,129,0.40)';
-      if (v < 20) return 'rgba(16,185,129,0.65)';
-      return 'rgba(16,185,129,0.95)';
+      if (v < 3) return 'rgba(50,100,104,0.15)';
+      if (v < 10) return 'rgba(43,205,185,0.40)';
+      if (v < 20) return 'rgba(43,205,185,0.65)';
+      return 'rgba(43,205,185,0.95)';
     }
     // qtd
     const v = cell.qtd;
-    if (v < 3) return 'rgba(60,85,130,0.10)';
+    if (v < 3) return 'rgba(50,100,104,0.10)';
     if (v < 6) return 'rgba(251,191,36,0.20)';
     if (v < 10) return 'rgba(251,191,36,0.40)';
     if (v < 15) return 'rgba(251,191,36,0.70)';
@@ -900,7 +901,7 @@ function Heatmap({ matriz, onCriarBot }) {
               onClick={() => setMetrica(m.id)}
               className={`flex items-center gap-1 px-2.5 py-1 rounded text-[10px] font-bold transition ${
                 ativo
-                  ? 'bg-[--mike-accent]/15 text-[--mike-accent]'
+                  ? 'bg-mike-accent/15 text-[--mike-accent]'
                   : 'mike-border-thin text-[--mike-fg-muted] hover:text-[--mike-fg]'
               }`}
             >
@@ -969,7 +970,7 @@ function Heatmap({ matriz, onCriarBot }) {
           const melhorROI = sortedROI[0];
           return (
             <>
-              <div className="rounded-md p-2.5 flex flex-col" style={{ backgroundColor: 'rgba(16,185,129,0.08)', border: '0.5px solid rgba(16,185,129,0.3)' }}>
+              <div className="rounded-md p-2.5 flex flex-col" style={{ backgroundColor: 'rgba(43,205,185,0.08)', border: '0.5px solid rgba(43,205,185,0.3)' }}>
                 <div className="text-[9px] text-emerald-400 font-bold uppercase tracking-wider mb-1">🏆 Melhor WR</div>
                 <div className="text-[--mike-fg] font-bold text-xs">{melhorWR.dia} {melhorWR.hora}h</div>
                 <div className="text-emerald-400 font-mono font-bold text-sm mt-0.5">{melhorWR.wr}%</div>
@@ -983,7 +984,7 @@ function Heatmap({ matriz, onCriarBot }) {
                   </button>
                 )}
               </div>
-              <div className="rounded-md p-2.5 flex flex-col" style={{ backgroundColor: 'rgba(16,185,129,0.08)', border: '0.5px solid rgba(16,185,129,0.3)' }}>
+              <div className="rounded-md p-2.5 flex flex-col" style={{ backgroundColor: 'rgba(43,205,185,0.08)', border: '0.5px solid rgba(43,205,185,0.3)' }}>
                 <div className="text-[9px] text-emerald-400 font-bold uppercase tracking-wider mb-1">💰 Melhor ROI</div>
                 <div className="text-[--mike-fg] font-bold text-xs">{melhorROI.dia} {melhorROI.hora}h</div>
                 <div className="text-emerald-400 font-mono font-bold text-sm mt-0.5">+{melhorROI.roi}u</div>
@@ -1013,7 +1014,7 @@ function Heatmap({ matriz, onCriarBot }) {
 // ============================================================
 // 10. DISTRIBUIÇÕES (histogramas)
 // ============================================================
-function Histograma({ data, titulo, cor = '#10b981', sufixo = '' }) {
+function Histograma({ data, titulo, cor = '#2bcdb9', sufixo = '' }) {
   if (!data || data.length === 0) return null;
   const max = Math.max(...data.map(d => d.qtd));
 
@@ -1057,26 +1058,26 @@ function PreviewMiniJogador({ nome, preview, loading, lado = 'A', onVerPerfil })
   if (!nome) return null;
   if (loading) {
     return (
-      <div className="rounded p-2" style={{ backgroundColor: 'rgba(60,85,130,0.10)' }}>
-        <div className="h-3 w-16 rounded animate-pulse mb-1.5" style={{ background: 'rgba(60,85,130,0.3)' }} />
-        <div className="h-2 w-full rounded animate-pulse" style={{ background: 'rgba(60,85,130,0.2)' }} />
+      <div className="rounded p-2" style={{ backgroundColor: 'rgba(50,100,104,0.10)' }}>
+        <div className="h-3 w-16 rounded animate-pulse mb-1.5" style={{ background: 'rgba(50,100,104,0.3)' }} />
+        <div className="h-2 w-full rounded animate-pulse" style={{ background: 'rgba(50,100,104,0.2)' }} />
       </div>
     );
   }
   if (!preview) return null;
 
-  const corLado = lado === 'A' ? '#10b981' : '#0891b2';
+  const corLado = lado === 'A' ? '#2bcdb9' : '#0284c7';
 
   return (
     <div className="rounded p-2 space-y-1.5" style={{
-      backgroundColor: 'rgba(20, 26, 40, 0.4)',
+      backgroundColor: 'rgba(11, 21, 25, 0.4)',
       border: `0.5px solid ${corLado}40`,
     }}>
       {/* Linha: WR10 + sequência */}
       <div className="flex items-center justify-between gap-1">
         <div className="flex items-baseline gap-1">
           <span className="text-[8px] uppercase tracking-wider text-[--mike-fg-muted] font-bold">WR10</span>
-          <span className="text-[11px] font-mono font-bold" style={{ color: preview.wr10 >= 60 ? '#10b981' : preview.wr10 >= 50 ? '#fbbf24' : '#f43f5e' }}>
+          <span className="text-[11px] font-mono font-bold" style={{ color: preview.wr10 >= 60 ? '#2bcdb9' : preview.wr10 >= 50 ? '#fbbf24' : '#f43f5e' }}>
             {preview.wr10}%
           </span>
         </div>
@@ -1093,7 +1094,7 @@ function PreviewMiniJogador({ nome, preview, loading, lado = 'A', onVerPerfil })
           <div
             key={i}
             className="flex-1 h-1.5 rounded-sm"
-            style={{ background: r === 'W' ? '#10b981' : '#f43f5e' }}
+            style={{ background: r === 'W' ? '#2bcdb9' : '#f43f5e' }}
             title={r === 'W' ? 'Vitória' : 'Derrota'}
           />
         ))}
@@ -1277,17 +1278,17 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
   }, [modalAcao]);
 
   const themeVars = {
-    '--mike-bg': '#0b0f1a',
-    '--mike-bg-2': '#070a13',
-    '--mike-card': '#141a28',
-    '--mike-card-2': '#1a2030',
-    '--mike-card-hover': '#1c2336',
-    '--mike-border': '#222a3d',
-    '--mike-fg': '#eaeef7',
-    '--mike-fg-soft': '#b8c0d4',
-    '--mike-fg-muted': '#6b7691',
-    '--mike-accent': '#10b981',
-    '--mike-accent-2': '#0891b2',
+    '--mike-bg': '#060b0f',
+    '--mike-bg-2': '#04080b',
+    '--mike-card': '#0b1519',
+    '--mike-card-2': '#0f1c21',
+    '--mike-card-hover': '#132429',
+    '--mike-border': '#1a2c31',
+    '--mike-fg': '#eef8f6',
+    '--mike-fg-soft': '#b5c9c8',
+    '--mike-fg-muted': '#6c8689',
+    '--mike-accent': '#2bcdb9',
+    '--mike-accent-2': '#0d847a',
   };
 
   return (
@@ -1295,12 +1296,12 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
       ...themeVars,
       backgroundColor: 'var(--mike-bg)',
       color: 'var(--mike-fg)',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontFamily: 'var(--mike-font)',
     }}>
       <style>{`
-        .mike-border-thin { border: 0.5px solid rgba(60, 85, 130, 0.4) !important; }
-        .mike-border-thin:hover { border-color: rgba(80, 110, 170, 0.7) !important; }
-        .mike-border-thin:focus { border-color: rgba(16, 185, 129, 0.7) !important; outline: none; }
+        .mike-border-thin { border: 0.5px solid rgba(50, 100, 104, 0.4) !important; }
+        .mike-border-thin:hover { border-color: rgba(70, 130, 132, 0.7) !important; }
+        .mike-border-thin:focus { border-color: rgba(43, 205, 185, 0.7) !important; outline: none; }
 
         .mike-row-hover { transition: background-color 140ms ease; }
 
@@ -1337,7 +1338,7 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
 
         {/* Header da tela com seletor de esporte */}
         <div className="flex flex-wrap items-center gap-3 mb-5">
-          <div className="flex-1 min-w-0">
+          <div className="w-full sm:w-auto sm:flex-1 min-w-0">
             <h1 className="text-xl font-black text-[--mike-fg] flex items-center gap-2">
               <BarChart3 className="w-5 h-5 text-cyan-400" />
               Hub de Estatísticas
@@ -1359,24 +1360,24 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
         </div>
 
         {/* Layout: sidebar esquerda + conteúdo direito */}
-        <div className="flex flex-row gap-3 items-start" style={{ width: '100%' }}>
+        <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-start" style={{ width: '100%' }}>
 
           {/* COLUNA ESQUERDA — Sidebar Comparador (largura fixa) */}
-          <aside style={{ width: '220px', flexShrink: 0, position: 'sticky', top: '4rem', alignSelf: 'flex-start' }}>
+          <aside className="w-full lg:w-[220px] lg:flex-shrink-0 lg:sticky lg:top-16 lg:self-start">
             <div className="rounded-lg" style={{
-              backgroundColor: 'rgba(20, 26, 40, 0.5)',
-              border: '0.5px solid rgba(60, 85, 130, 0.4)',
+              backgroundColor: 'rgba(11, 21, 25, 0.5)',
+              border: '0.5px solid rgba(50, 100, 104, 0.4)',
             }}>
               {/* Header destacado */}
               <div className="flex items-center gap-2 px-3 py-2.5" style={{
-                backgroundColor: 'rgba(40, 50, 75, 0.6)',
-                borderBottom: '0.5px solid rgba(60, 85, 130, 0.4)',
+                backgroundColor: 'rgba(30, 52, 57, 0.6)',
+                borderBottom: '0.5px solid rgba(50, 100, 104, 0.4)',
                 borderTopLeftRadius: '0.5rem',
                 borderTopRightRadius: '0.5rem',
               }}>
                 <div className="w-8 h-8 rounded-full flex items-center justify-center text-base flex-shrink-0" style={{
-                  backgroundColor: 'rgba(20, 26, 40, 0.8)',
-                  border: '0.5px solid rgba(60, 85, 130, 0.4)',
+                  backgroundColor: 'rgba(11, 21, 25, 0.8)',
+                  border: '0.5px solid rgba(50, 100, 104, 0.4)',
                 }}>
                   {esporteAtual.icon}
                 </div>
@@ -1483,9 +1484,9 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
                     title={!jogadorA ? 'Selecione pelo menos o Jogador 1 pra analisar' : `Analisar ${jogadorA}${jogadorB ? ` × ${jogadorB}` : ' (modo solo)'}`}
                     className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-md text-sm font-bold transition disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{
-                      backgroundColor: jogadorA ? '#10b981' : 'rgba(16,185,129,0.2)',
-                      color: jogadorA ? '#0b0f1a' : '#6b7691',
-                      boxShadow: jogadorA ? '0 4px 12px rgba(16,185,129,0.3)' : 'none',
+                      backgroundColor: jogadorA ? '#2bcdb9' : 'rgba(43,205,185,0.2)',
+                      color: jogadorA ? '#060b0f' : '#6c8689',
+                      boxShadow: jogadorA ? '0 4px 12px rgba(43,205,185,0.3)' : 'none',
                     }}
                   >
                     Analisar
@@ -1511,7 +1512,7 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
 
             {/* Loading bar global (aparece quando algum hook tá carregando) */}
             {(loadingOverview || loadingProximos || loadingUltimos || loadingHeatmap || loadingDist) && (
-              <div className="absolute top-0 left-0 right-0 h-0.5 overflow-hidden rounded-full" style={{ background: 'rgba(60,85,130,0.2)', zIndex: 5 }}>
+              <div className="absolute top-0 left-0 right-0 h-0.5 overflow-hidden rounded-full" style={{ background: 'rgba(50,100,104,0.2)', zIndex: 5 }}>
                 <div className="h-full bg-gradient-to-r from-transparent via-cyan-400 to-transparent" style={{
                   animation: 'mike-loading-slide 1.2s ease-in-out infinite',
                   width: '40%',
@@ -1521,11 +1522,11 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
 
             {/* Stats bar compacta */}
             <div className="rounded-lg p-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5" style={{
-              backgroundColor: 'rgba(20, 26, 40, 0.4)',
-              border: '0.5px solid rgba(60, 85, 130, 0.4)',
+              backgroundColor: 'rgba(11, 21, 25, 0.4)',
+              border: '0.5px solid rgba(50, 100, 104, 0.4)',
             }}>
               {loadingOverview ? (
-                <div className="h-4 w-full rounded animate-pulse" style={{ background: 'rgba(60,85,130,0.2)' }} />
+                <div className="h-4 w-full rounded animate-pulse" style={{ background: 'rgba(50,100,104,0.2)' }} />
               ) : overview?.kpis && (
                 <>
                   <div className="flex items-center gap-1.5">
@@ -1564,9 +1565,9 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
               <div className="grid grid-cols-3 gap-2">
                 {loadingOverview ? (
                   <>
-                    <div className="rounded-lg p-3 h-28 animate-pulse" style={{ background: 'rgba(20,26,40,0.4)', border: '0.5px solid rgba(60,85,130,0.2)' }} />
-                    <div className="rounded-lg p-3 h-28 animate-pulse" style={{ background: 'rgba(20,26,40,0.4)', border: '0.5px solid rgba(60,85,130,0.2)' }} />
-                    <div className="rounded-lg p-3 h-28 animate-pulse" style={{ background: 'rgba(20,26,40,0.4)', border: '0.5px solid rgba(60,85,130,0.2)' }} />
+                    <div className="rounded-lg p-3 h-28 animate-pulse" style={{ background: 'rgba(11,21,25,0.4)', border: '0.5px solid rgba(50,100,104,0.2)' }} />
+                    <div className="rounded-lg p-3 h-28 animate-pulse" style={{ background: 'rgba(11,21,25,0.4)', border: '0.5px solid rgba(50,100,104,0.2)' }} />
+                    <div className="rounded-lg p-3 h-28 animate-pulse" style={{ background: 'rgba(11,21,25,0.4)', border: '0.5px solid rgba(50,100,104,0.2)' }} />
                   </>
                 ) : overview?.ligas?.map(jogo => (
                   <CardProximoLiga key={jogo.id} jogo={jogo} onAnalisar={() => handleAnalisar(jogo)} />
@@ -1577,7 +1578,7 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
             {/* Tabs + lista */}
             <section>
               {/* Tabs */}
-              <div className="flex items-center gap-1 mb-3 flex-wrap" style={{ borderBottom: '0.5px solid rgba(60,85,130,0.4)' }}>
+              <div className="flex items-center gap-1 mb-3 flex-wrap" style={{ borderBottom: '0.5px solid rgba(50,100,104,0.4)' }}>
                 {[
                   { id: 'proximos', label: 'Próximos', icon: Calendar, count: totalProximos },
                   { id: 'ultimos', label: 'Últimos', icon: Clock, count: totalUltimos },
@@ -1590,20 +1591,20 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
                     <button
                       key={tab.id}
                       onClick={() => setTabAtiva(tab.id)}
-                      className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition relative whitespace-nowrap ${ativa ? 'text-[--mike-accent] bg-[--mike-accent]/[0.06]' : 'text-[--mike-fg-muted] hover:text-[--mike-fg] hover:bg-[--mike-card-2]/30'}`}
+                      className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition relative whitespace-nowrap ${ativa ? 'text-[--mike-accent] bg-[--mike-accent]/[0.06]' : 'text-[--mike-fg-muted] hover:text-[--mike-fg] hover:bg-mike-card-2/30'}`}
                     >
                       <Icon className="w-3.5 h-3.5" />
                       {tab.label}
                       {tab.count !== undefined && (
                         <span className="text-[9px] px-1.5 py-0 rounded-full font-mono" style={{
-                          background: ativa ? 'rgba(16,185,129,0.15)' : 'rgba(60,85,130,0.2)',
-                          color: ativa ? '#10b981' : '#6b7691',
+                          background: ativa ? 'rgba(43,205,185,0.15)' : 'rgba(50,100,104,0.2)',
+                          color: ativa ? '#2bcdb9' : '#6c8689',
                         }}>
                           {tab.count}
                         </span>
                       )}
                       {tab.hint && (
-                        <span className="text-[8px] font-mono uppercase tracking-wider" style={{ color: ativa ? '#10b981' : '#6b7691', opacity: 0.7 }}>
+                        <span className="text-[8px] font-mono uppercase tracking-wider" style={{ color: ativa ? '#2bcdb9' : '#6c8689', opacity: 0.7 }}>
                           {tab.hint}
                         </span>
                       )}
@@ -1623,7 +1624,7 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
                       value={busca}
                       onChange={(e) => setBusca(e.target.value)}
                       placeholder="Buscar jogador, time..."
-                      className="flex-1 bg-transparent text-xs text-[--mike-fg] outline-none placeholder:text-[--mike-fg-muted]"
+                      className="flex-1 min-w-0 bg-transparent text-xs text-[--mike-fg] outline-none placeholder:text-[--mike-fg-muted]"
                     />
                     {busca && (
                       <button onClick={() => setBusca('')} className="text-[--mike-fg-muted] hover:text-[--mike-fg]" title="Limpar busca">
@@ -1635,9 +1636,9 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
                   {/* Chip de torneio ativo (vem da sidebar) */}
                   {ligaFiltro !== 'todas' && (
                     <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-bold" style={{
-                      backgroundColor: 'rgba(16, 185, 129, 0.12)',
-                      border: '0.5px solid rgba(16, 185, 129, 0.4)',
-                      color: '#10b981',
+                      backgroundColor: 'rgba(43, 205, 185, 0.12)',
+                      border: '0.5px solid rgba(43, 205, 185, 0.4)',
+                      color: '#2bcdb9',
                     }}>
                       <Trophy className="w-3 h-3" />
                       <span>Torneio: {ligaFiltro}</span>
@@ -1672,11 +1673,11 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
                       className="bg-transparent text-[10px] font-mono text-[--mike-fg-soft] outline-none cursor-pointer mike-border-thin px-1 py-0.5 rounded"
                       style={{ appearance: 'none', WebkitAppearance: 'none' }}
                     >
-                      <option value="horario" style={{ background: '#141a28' }}>Horário</option>
-                      <option value="wr_desc" style={{ background: '#141a28' }}>WR ↓</option>
-                      <option value="wr_asc" style={{ background: '#141a28' }}>WR ↑</option>
-                      <option value="liga" style={{ background: '#141a28' }}>Liga A-Z</option>
-                      <option value="sequencia" style={{ background: '#141a28' }}>Sequência</option>
+                      <option value="horario" style={{ background: '#0b1519' }}>Horário</option>
+                      <option value="wr_desc" style={{ background: '#0b1519' }}>WR ↓</option>
+                      <option value="wr_asc" style={{ background: '#0b1519' }}>WR ↑</option>
+                      <option value="liga" style={{ background: '#0b1519' }}>Liga A-Z</option>
+                      <option value="sequencia" style={{ background: '#0b1519' }}>Sequência</option>
                     </select>
                   </div>
 
@@ -1689,7 +1690,7 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
                         onClick={() => { setPageSize(n); setPage(1); }}
                         className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold transition ${
                           pageSize === n
-                            ? 'bg-[--mike-accent]/15 text-[--mike-accent]'
+                            ? 'bg-mike-accent/15 text-[--mike-accent]'
                             : 'text-[--mike-fg-muted] hover:text-[--mike-fg]'
                         }`}
                       >
@@ -1702,8 +1703,8 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
 
               {/* Conteúdo do tab */}
               <div className="rounded-lg p-3" style={{
-                backgroundColor: 'rgba(20, 26, 40, 0.3)',
-                border: '0.5px solid rgba(60, 85, 130, 0.4)',
+                backgroundColor: 'rgba(11, 21, 25, 0.3)',
+                border: '0.5px solid rgba(50, 100, 104, 0.4)',
                 minHeight: '200px',
               }}>
                 {(tabAtiva === 'proximos' || tabAtiva === 'ultimos') && (
@@ -1738,7 +1739,7 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
                         </div>
 
                         {totalPaginas > 1 && (
-                          <div className="flex items-center justify-between mt-4 pt-3 px-2" style={{ borderTop: '0.5px solid rgba(60,85,130,0.2)' }}>
+                          <div className="flex items-center justify-between mt-4 pt-3 px-2" style={{ borderTop: '0.5px solid rgba(50,100,104,0.2)' }}>
                             <span className="text-[10px] text-[--mike-fg-muted] font-mono">
                               {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, totalAtivo)} de {totalAtivo}
                             </span>
@@ -1810,7 +1811,7 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
                     ) : (
                       <div className="space-y-6 pt-2">
                         <Histograma data={distribuicoes?.wr} titulo="Distribuição de Win Rate" cor="#fbbf24" />
-                        <Histograma data={distribuicoes?.roi} titulo="Distribuição de ROI" cor="#10b981" />
+                        <Histograma data={distribuicoes?.roi} titulo="Distribuição de ROI" cor="#2bcdb9" />
                       </div>
                     )}
                   </>
@@ -1831,7 +1832,7 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
         <div onClick={() => setModalAcao(null)} className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}>
           <div onClick={e => e.stopPropagation()} className="rounded-2xl p-6 max-w-md w-full" style={{
             backgroundColor: 'var(--mike-card)',
-            border: '0.5px solid rgba(60, 85, 130, 0.6)',
+            border: '0.5px solid rgba(50, 100, 104, 0.6)',
             animation: 'mike-modal-fade 200ms ease-out',
           }}>
             <div className="flex items-start justify-between mb-4">

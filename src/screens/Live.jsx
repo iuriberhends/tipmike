@@ -15,7 +15,7 @@ import { corDaCasa, COR_CASA } from '../lib/pais.js';
 const TEMA = {
   'E-Football': {
     icone: Gamepad2, label: 'e-Soccer',
-    cardBorder: 'rgba(16,185,129,0.5)', headerBg: 'bg-emerald-900/40',
+    cardBorder: 'rgba(43,205,185,0.5)', headerBg: 'bg-emerald-900/40',
     headerText: 'text-emerald-300', dot: 'bg-emerald-400',
     timerText: 'text-emerald-300', timerIcon: 'text-emerald-400/80',
     btnActive: 'bg-emerald-500/15 border-emerald-500 text-emerald-300',
@@ -29,7 +29,7 @@ const TEMA = {
   },
   'E-Hockey': {
     icone: Snowflake, label: 'e-Hockey',
-    cardBorder: 'rgba(6,182,212,0.5)', headerBg: 'bg-cyan-950/50',
+    cardBorder: 'rgba(14,165,233,0.5)', headerBg: 'bg-cyan-950/50',
     headerText: 'text-cyan-300', dot: 'bg-cyan-400',
     timerText: 'text-cyan-300', timerIcon: 'text-cyan-400/80',
     btnActive: 'bg-cyan-500/15 border-cyan-500 text-cyan-300',
@@ -169,8 +169,8 @@ function BookmakerChip({ casa }) {
 function TabelaMercado({ mercado }) {
   const maxOdd = Math.max(...mercado.linhas.map(l => l.odd || 0));
   return (
-    <div className="rounded-md overflow-hidden" style={{ backgroundColor: '#0d1220', border: '0.5px solid rgba(60,85,130,0.4)' }}>
-      <div className="px-2 py-1 text-center" style={{ backgroundColor: '#1a2540', borderBottom: '0.5px solid rgba(60,85,130,0.4)' }}>
+    <div className="rounded-md overflow-hidden" style={{ backgroundColor: '#0a1216', border: '0.5px solid rgba(50,100,104,0.4)' }}>
+      <div className="px-2 py-1 text-center" style={{ backgroundColor: '#122329', borderBottom: '0.5px solid rgba(50,100,104,0.4)' }}>
         <span className="text-[10px] font-bold text-[--mike-fg]">{mercado.nome}</span>
       </div>
       <div className="px-2 py-1">
@@ -213,14 +213,14 @@ function PainelH2H({ ja, jb }) {
   const { data, loading } = useH2H(ja, jb, true);
 
   if (loading) return (
-    <div className="px-3 py-2 border-t border-[--mike-border]/30 flex items-center justify-center gap-2">
+    <div className="px-3 py-2 border-t border-mike-border/30 flex items-center justify-center gap-2">
       <Activity className="w-3.5 h-3.5 text-[--mike-fg-muted] animate-pulse" />
       <span className="text-[10px] text-[--mike-fg-muted]">Carregando H2H...</span>
     </div>
   );
 
   if (!data || data.total_jogos === 0) return (
-    <div className="px-3 py-2 border-t border-[--mike-border]/30 text-center">
+    <div className="px-3 py-2 border-t border-mike-border/30 text-center">
       <p className="text-[10px] text-[--mike-fg-muted]">Sem histórico H2H disponível</p>
     </div>
   );
@@ -240,7 +240,7 @@ function PainelH2H({ ja, jb }) {
   const pctB = Math.round((vB / total) * 100);
 
   return (
-    <div className="px-3 py-3 border-t border-[--mike-border]/30 space-y-2.5">
+    <div className="px-3 py-3 border-t border-mike-border/30 space-y-2.5">
       {/* Header */}
       <div className="flex items-center justify-between">
         <span className="text-[9px] font-bold text-[--mike-fg-muted] uppercase tracking-wider flex items-center gap-1">
@@ -283,7 +283,7 @@ function PainelH2H({ ja, jb }) {
           const gols = (j.score_home || 0) + (j.score_away || 0);
           const corGols = gols >= 7 ? 'text-emerald-400' : gols >= 4 ? 'text-amber-400' : 'text-rose-400';
           return (
-            <div key={i} className="flex items-center justify-between text-[9px] px-2 py-1 rounded bg-[--mike-card-2]/60">
+            <div key={i} className="flex items-center justify-between text-[9px] px-2 py-1 rounded bg-mike-card-2/60">
               <span className="text-[--mike-fg-soft] truncate max-w-[32%]">{j.jogador_a}</span>
               <div className="flex items-center gap-1.5">
                 <span className="font-mono font-black text-[--mike-fg]">{j.score_home} — {j.score_away}</span>
@@ -360,8 +360,9 @@ function CardLive({ ev, onAbrirPartida }) {
       </div>
 
       {/* CONFRONTO */}
-      <button onClick={() => onAbrirPartida?.(ev)}
-        className="w-full px-4 py-3 flex items-center justify-between gap-3 hover:bg-[--mike-card-hover]/40 transition">
+      {/* sem onAbrirPartida (tela de Partida desligada em config/paineis.js) o confronto não é clicável */}
+      <button type="button" onClick={() => onAbrirPartida?.(ev)} disabled={!onAbrirPartida}
+        className="w-full px-4 py-3 flex items-center justify-between gap-3 hover:bg-mike-card-hover/40 transition disabled:cursor-default disabled:hover:bg-transparent">
         <div className="text-right min-w-0 flex-1">
           <div className="text-[14px] font-black text-[--mike-fg] truncate">{ev.jogador_a || '?'}</div>
           {ev.score_home > ev.score_away && (
@@ -404,8 +405,8 @@ function CardLive({ ev, onAbrirPartida }) {
         <button onClick={() => setH2hAberto(!h2hAberto)}
           className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition border ${
             h2hAberto
-              ? 'bg-[--mike-accent]/15 border-[--mike-accent]/50 text-[--mike-accent]'
-              : 'bg-[--mike-card-2] border-[--mike-border] text-[--mike-fg-soft] hover:text-[--mike-accent] hover:border-[--mike-accent]/40'
+              ? 'bg-mike-accent/15 border-mike-accent/50 text-[--mike-accent]'
+              : 'bg-[--mike-card-2] border-[--mike-border] text-[--mike-fg-soft] hover:text-[--mike-accent] hover:border-mike-accent/40'
           }`}>
           <BarChart2 className="w-3 h-3" />
           H2H
@@ -417,7 +418,7 @@ function CardLive({ ev, onAbrirPartida }) {
       {h2hAberto && <PainelH2H ja={ev.jogador_a} jb={ev.jogador_b} />}
 
       {/* DIVISOR */}
-      <div className="mx-3" style={{ height: '0.5px', backgroundColor: 'rgba(60,85,130,0.3)' }} />
+      <div className="mx-3" style={{ height: '0.5px', backgroundColor: 'rgba(50,100,104,0.3)' }} />
 
       {/* MERCADOS */}
       <div className="px-3 py-2.5">
@@ -445,8 +446,8 @@ function CardLive({ ev, onAbrirPartida }) {
 
 function CardSkeleton() {
   return (
-    <div className="rounded-xl overflow-hidden bg-[--mike-card]" style={{ border: '0.5px solid rgba(60,85,130,0.3)' }}>
-      <div className="px-3 py-2 flex items-center justify-between" style={{ backgroundColor: 'rgba(16,24,40,0.6)' }}>
+    <div className="rounded-xl overflow-hidden bg-[--mike-card]" style={{ border: '0.5px solid rgba(50,100,104,0.3)' }}>
+      <div className="px-3 py-2 flex items-center justify-between" style={{ backgroundColor: 'rgba(10,20,24,0.6)' }}>
         <div className="mike-skeleton h-3 w-32" /><div className="mike-skeleton h-3 w-16" />
       </div>
       <div className="px-4 py-3 flex items-center justify-between gap-3">
@@ -457,7 +458,7 @@ function CardSkeleton() {
       <div className="px-3 pb-2 flex gap-1">
         <div className="mike-skeleton h-5 w-14 rounded" /><div className="mike-skeleton h-5 w-14 rounded" />
       </div>
-      <div className="mx-3 h-px" style={{ backgroundColor: 'rgba(60,85,130,0.3)' }} />
+      <div className="mx-3 h-px" style={{ backgroundColor: 'rgba(50,100,104,0.3)' }} />
       <div className="px-3 py-2 grid grid-cols-2 gap-1.5">
         {[1,2,3,4].map(i => <div key={i} className="mike-skeleton h-16 rounded-md" />)}
       </div>
@@ -481,10 +482,10 @@ function MikeSelect({ value, onChange, options }) {
         <ChevronDown className={`w-3 h-3 text-[--mike-fg-muted] flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className="absolute z-40 left-0 mt-1 rounded-lg overflow-y-auto min-w-full" style={{ backgroundColor: '#0d1220', border: '0.5px solid rgba(60,85,130,0.4)', maxHeight: 220, boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+        <div className="absolute z-40 left-0 mt-1 rounded-lg overflow-y-auto min-w-full" style={{ backgroundColor: '#0a1216', border: '0.5px solid rgba(50,100,104,0.4)', maxHeight: 220, boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
           {options.map(o => (
             <button key={o.value} onClick={() => { onChange(o.value); setOpen(false); }}
-              className={`w-full flex items-center justify-between px-3 py-1.5 text-xs text-left transition ${value === o.value ? 'bg-[--mike-accent]/15 text-[--mike-accent] font-semibold' : 'text-[--mike-fg-soft] hover:bg-[--mike-card-2]/60'}`}>
+              className={`w-full flex items-center justify-between px-3 py-1.5 text-xs text-left transition ${value === o.value ? 'bg-mike-accent/15 text-[--mike-accent] font-semibold' : 'text-[--mike-fg-soft] hover:bg-mike-card-2/60'}`}>
               <span>{o.label}</span>
               {value === o.value && <Check className="w-3 h-3" />}
             </button>
@@ -578,20 +579,20 @@ export default function Live({ onNavegar, onAbrirPartida }) {
   const algumFiltro = torneio !== 'todos' || busca;
 
   const themeVars = {
-    '--mike-bg': '#0b0f1a', '--mike-bg-2': '#070a13', '--mike-card': '#141a28',
-    '--mike-card-2': '#1a2030', '--mike-card-hover': '#1d2434', '--mike-border': '#222a3d',
-    '--mike-fg': '#eaeef7', '--mike-fg-soft': '#a8b3c9', '--mike-fg-muted': '#6b7691',
-    '--mike-accent': '#10b981', '--mike-accent-2': '#0891b2',
+    '--mike-bg': '#060b0f', '--mike-bg-2': '#04080b', '--mike-card': '#0b1519',
+    '--mike-card-2': '#0f1c21', '--mike-card-hover': '#132429', '--mike-border': '#1a2c31',
+    '--mike-fg': '#eef8f6', '--mike-fg-soft': '#a9bfbf', '--mike-fg-muted': '#6c8689',
+    '--mike-accent': '#2bcdb9', '--mike-accent-2': '#0d847a',
   };
 
   return (
-    <div className="min-h-screen" style={{ ...themeVars, backgroundColor: 'var(--mike-bg)', color: 'var(--mike-fg)', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div className="min-h-screen" style={{ ...themeVars, backgroundColor: 'var(--mike-bg)', color: 'var(--mike-fg)', fontFamily: 'var(--mike-font)' }}>
       <style>{`
-        .mike-border-thin { border: 0.5px solid rgba(60,85,130,0.4) !important; }
-        .mike-border-thin:hover { border-color: rgba(80,110,170,0.7) !important; }
-        .mike-border-thin:focus { border-color: rgba(16,185,129,0.7) !important; outline: none; }
+        .mike-border-thin { border: 0.5px solid rgba(50,100,104,0.4) !important; }
+        .mike-border-thin:hover { border-color: rgba(70,130,132,0.7) !important; }
+        .mike-border-thin:focus { border-color: rgba(43,205,185,0.7) !important; outline: none; }
         @keyframes mike-shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-        .mike-skeleton { background: linear-gradient(90deg, rgba(60,85,130,0.1) 0%, rgba(60,85,130,0.25) 50%, rgba(60,85,130,0.1) 100%); background-size: 200% 100%; animation: mike-shimmer 1.5s infinite linear; border-radius: 4px; }
+        .mike-skeleton { background: linear-gradient(90deg, rgba(50,100,104,0.1) 0%, rgba(50,100,104,0.25) 50%, rgba(50,100,104,0.1) 100%); background-size: 200% 100%; animation: mike-shimmer 1.5s infinite linear; border-radius: 4px; }
         @keyframes mike-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .mike-spin { animation: mike-spin 0.8s linear infinite; }
         @keyframes mike-pulse-dot { 0%,100% { opacity:0.5; transform:scale(1); } 50% { opacity:1; transform:scale(1.3); } }
@@ -621,12 +622,12 @@ export default function Live({ onNavegar, onAbrirPartida }) {
               { label: 'Gols ao vivo', value: stats.gols, Icon: Zap, cor: 'text-emerald-400', bg: 'bg-emerald-500/15 border-emerald-500/30' },
               { label: 'Casas monitoradas', value: stats.casas, Icon: BarChart2, cor: 'text-blue-400', bg: 'bg-blue-500/15 border-blue-500/30' },
             ].map(({ label, value, Icon, cor, bg }) => (
-              <div key={label} className="rounded-xl bg-[--mike-card] mike-border-thin px-4 py-3 flex items-center gap-3">
+              <div key={label} className="rounded-xl bg-[--mike-card] mike-border-thin p-3 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 min-w-0">
                 <div className={`w-9 h-9 rounded-lg border flex items-center justify-center flex-shrink-0 ${bg}`}>
                   <Icon className={`w-4 h-4 ${cor}`} />
                 </div>
-                <div>
-                  <div className="text-[9px] text-[--mike-fg-muted] uppercase tracking-wider">{label}</div>
+                <div className="min-w-0">
+                  <div className="text-[9px] text-[--mike-fg-muted] uppercase tracking-wider truncate" title={label}>{label}</div>
                   <div className="text-2xl font-black text-[--mike-fg] leading-tight">{value}</div>
                 </div>
               </div>

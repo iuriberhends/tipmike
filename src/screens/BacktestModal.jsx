@@ -67,11 +67,11 @@ function hoje() {
 
 function CardMetrica({ titulo, valor, sub, cor = 'cyan', Icon }) {
   const corMap = {
-    cyan:    { bg: 'rgba(6,182,212,0.08)',  border: 'rgba(6,182,212,0.3)',  text: '#22d3ee' },
-    emerald: { bg: 'rgba(16,185,129,0.08)', border: 'rgba(16,185,129,0.3)', text: '#10b981' },
+    cyan:    { bg: 'rgba(14,165,233,0.08)',  border: 'rgba(14,165,233,0.3)',  text: '#38bdf8' },
+    emerald: { bg: 'rgba(43,205,185,0.08)', border: 'rgba(43,205,185,0.3)', text: '#2bcdb9' },
     rose:    { bg: 'rgba(244,63,94,0.08)',  border: 'rgba(244,63,94,0.3)',  text: '#f43f5e' },
     amber:   { bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.3)', text: '#f59e0b' },
-    slate:   { bg: 'rgba(60,85,130,0.12)',  border: 'rgba(60,85,130,0.3)',  text: '#94a3b8' },
+    slate:   { bg: 'rgba(50,100,104,0.12)',  border: 'rgba(50,100,104,0.3)',  text: '#8ba5a6' },
   };
   const c = corMap[cor] || corMap.cyan;
   return (
@@ -119,8 +119,8 @@ function ChartEquity({ pontos }) {
   if (!dados) {
     return (
       <div className="flex items-center justify-center h-48 rounded-md text-[11px] text-[--mike-fg-muted]" style={{
-        backgroundColor: 'rgba(60,85,130,0.08)',
-        border: '0.5px dashed rgba(60,85,130,0.4)',
+        backgroundColor: 'rgba(50,100,104,0.08)',
+        border: '0.5px dashed rgba(50,100,104,0.4)',
       }}>
         Sem dados de equity para plotar
       </div>
@@ -156,7 +156,7 @@ function ChartEquity({ pontos }) {
     + ` L ${xScale(data[0].n).toFixed(1)},${yBaseline.toFixed(1)} Z`;
 
   const ehPositivo = data[data.length - 1].banca >= banca0;
-  const corLinha = ehPositivo ? '#10b981' : '#f43f5e';
+  const corLinha = ehPositivo ? '#2bcdb9' : '#f43f5e';
 
   const yLabels = [];
   for (let i = 0; i <= 4; i++) {
@@ -192,7 +192,7 @@ function ChartEquity({ pontos }) {
   return (
     <div className="rounded-md p-3" style={{
       backgroundColor: 'rgba(0,0,0,0.25)',
-      border: '0.5px solid rgba(60,85,130,0.4)',
+      border: '0.5px solid rgba(50,100,104,0.4)',
     }}>
       <div className="flex items-center justify-between mb-2">
         <span className="text-[11px] font-bold text-[--mike-fg]">Curva de Equity</span>
@@ -213,15 +213,15 @@ function ChartEquity({ pontos }) {
         {yLabels.map((lab, i) => (
           <g key={i}>
             <line x1={PAD_L} x2={W - PAD_R} y1={lab.y} y2={lab.y}
-              stroke="rgba(60,85,130,0.25)" strokeWidth="0.5" strokeDasharray="2,2" />
-            <text x={PAD_L - 6} y={lab.y + 3} fill="#6b7691" fontSize="9" textAnchor="end">
+              stroke="rgba(50,100,104,0.25)" strokeWidth="0.5" strokeDasharray="2,2" />
+            <text x={PAD_L - 6} y={lab.y + 3} fill="#6c8689" fontSize="9" textAnchor="end">
               {lab.valor >= 1000 ? `${(lab.valor/1000).toFixed(1)}k` : lab.valor.toFixed(0)}
             </text>
           </g>
         ))}
 
         <line x1={PAD_L} x2={W - PAD_R} y1={yBaseline} y2={yBaseline}
-          stroke="#6b7691" strokeWidth="0.5" strokeDasharray="3,3" opacity="0.5" />
+          stroke="#6c8689" strokeWidth="0.5" strokeDasharray="3,3" opacity="0.5" />
 
         <path d={pathArea} fill={corLinha} opacity="0.1" />
 
@@ -233,11 +233,11 @@ function ChartEquity({ pontos }) {
             <line x1={hover.x} x2={hover.x} y1={PAD_T} y2={H - PAD_B}
               stroke="rgba(255,255,255,0.3)" strokeWidth="0.5" strokeDasharray="2,2" />
             <circle cx={hover.x} cy={hover.y} r="4" fill={corLinha}
-              stroke="#0d1220" strokeWidth="2" />
+              stroke="#0a1216" strokeWidth="2" />
             <g transform={`translate(${Math.min(W - 130, Math.max(PAD_L, hover.x + 8))}, ${Math.max(PAD_T + 4, hover.y - 30)})`}>
-              <rect width="120" height="34" rx="4" fill="#0d1220"
-                stroke="rgba(16,185,129,0.5)" strokeWidth="0.5" />
-              <text x="6" y="14" fontSize="9" fill="#94a3b8">Aposta #{hover.n}</text>
+              <rect width="120" height="34" rx="4" fill="#0a1216"
+                stroke="rgba(43,205,185,0.5)" strokeWidth="0.5" />
+              <text x="6" y="14" fontSize="9" fill="#8ba5a6">Aposta #{hover.n}</text>
               <text x="6" y="27" fontSize="11" fill={corLinha} fontWeight="bold">
                 {formatarMoeda(hover.banca)}
               </text>
@@ -245,10 +245,10 @@ function ChartEquity({ pontos }) {
           </g>
         )}
 
-        <text x={PAD_L} y={H - 8} fill="#6b7691" fontSize="9" textAnchor="start">
+        <text x={PAD_L} y={H - 8} fill="#6c8689" fontSize="9" textAnchor="start">
           #{data[0].n}
         </text>
-        <text x={W - PAD_R} y={H - 8} fill="#6b7691" fontSize="9" textAnchor="end">
+        <text x={W - PAD_R} y={H - 8} fill="#6c8689" fontSize="9" textAnchor="end">
           #{data[data.length - 1].n}
         </text>
       </svg>
@@ -283,7 +283,7 @@ function HistoricoJobs({ botId, onSelecionar }) {
   }, [aberto, carregar]);
 
   return (
-    <div className="rounded-md" style={{ border: '0.5px solid rgba(60,85,130,0.4)' }}>
+    <div className="rounded-md" style={{ border: '0.5px solid rgba(50,100,104,0.4)' }}>
       <button
         onClick={() => setAberto(!aberto)}
         className="w-full flex items-center gap-2 px-3 py-2 text-[11px] font-semibold text-[--mike-fg-soft] hover:text-[--mike-fg] transition"
@@ -301,9 +301,9 @@ function HistoricoJobs({ botId, onSelecionar }) {
           {!loading && jobs.length > 0 && (
             <div className="space-y-1">
               {jobs.map(j => {
-                const corStatus = j.status === 'concluido' ? '#10b981'
+                const corStatus = j.status === 'concluido' ? '#2bcdb9'
                   : j.status === 'erro' ? '#f43f5e'
-                  : j.status === 'rodando' ? '#f59e0b' : '#6b7691';
+                  : j.status === 'rodando' ? '#f59e0b' : '#6c8689';
                 return (
                   <button
                     key={j.id}
@@ -562,8 +562,8 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
       <div
         className="rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden"
         style={{
-          backgroundColor: '#141a28',
-          border: '0.5px solid rgba(60, 85, 130, 0.6)',
+          backgroundColor: '#0b1519',
+          border: '0.5px solid rgba(50, 100, 104, 0.6)',
           boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
           animation: 'mike-modal-fade 200ms ease-out',
         }}
@@ -583,7 +583,7 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
           .mike-pulse-bar { animation: mike-pulse-bar 1.2s ease-in-out infinite; }
         `}</style>
 
-        <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: '0.5px solid rgba(60,85,130,0.4)' }}>
+        <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: '0.5px solid rgba(50,100,104,0.4)' }}>
           <div className="w-8 h-8 rounded-md bg-cyan-500/15 border border-cyan-500/40 flex items-center justify-center">
             <BarChart3 className="w-4 h-4 text-cyan-400" />
           </div>
@@ -605,7 +605,7 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
               <div className="flex items-start gap-2 px-3 py-2 rounded-md text-[11px] leading-relaxed" style={{
                 backgroundColor: 'rgba(245,158,11,0.06)',
                 border: '0.5px solid rgba(245,158,11,0.3)',
-                color: '#94a3b8',
+                color: '#8ba5a6',
               }}>
                 <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-amber-400" />
                 <span>
@@ -625,7 +625,7 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
                     className={`flex-1 px-3 py-2 rounded-md text-[11px] font-semibold transition ${
                       fonte === 'banco' ? 'bg-cyan-500/15 text-cyan-300' : 'text-[--mike-fg-muted]'
                     }`}
-                    style={{ border: '0.5px solid', borderColor: fonte === 'banco' ? 'rgba(6,182,212,0.5)' : 'rgba(60,85,130,0.4)' }}
+                    style={{ border: '0.5px solid', borderColor: fonte === 'banco' ? 'rgba(14,165,233,0.5)' : 'rgba(50,100,104,0.4)' }}
                   >
                     Banco (período)
                   </button>
@@ -634,7 +634,7 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
                     className={`flex-1 px-3 py-2 rounded-md text-[11px] font-semibold transition ${
                       fonte === 'arquivo' ? 'bg-cyan-500/15 text-cyan-300' : 'text-[--mike-fg-muted]'
                     }`}
-                    style={{ border: '0.5px solid', borderColor: fonte === 'arquivo' ? 'rgba(6,182,212,0.5)' : 'rgba(60,85,130,0.4)' }}
+                    style={{ border: '0.5px solid', borderColor: fonte === 'arquivo' ? 'rgba(14,165,233,0.5)' : 'rgba(50,100,104,0.4)' }}
                   >
                     Arquivo (.parquet)
                   </button>
@@ -654,7 +654,7 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
                         if (f) subirArquivo(f);
                       }}
                       className="w-full px-3 py-2 rounded-md text-[11px] text-white bg-transparent outline-none file:mr-3 file:px-2 file:py-1 file:rounded file:border-0 file:text-[10px] file:bg-cyan-500/20 file:text-cyan-300"
-                      style={{ border: '0.5px solid rgba(60,85,130,0.4)' }}
+                      style={{ border: '0.5px solid rgba(50,100,104,0.4)' }}
                     />
 
                     {subindo && (
@@ -667,7 +667,7 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
                     {resumoUpload && !subindo && (
                       <div
                         className="mt-2 p-2.5 rounded-md text-[10px]"
-                        style={{ backgroundColor: 'rgba(6,182,212,0.06)', border: '0.5px solid rgba(6,182,212,0.25)' }}
+                        style={{ backgroundColor: 'rgba(14,165,233,0.06)', border: '0.5px solid rgba(14,165,233,0.25)' }}
                       >
                         <div className="flex items-center gap-1.5 text-cyan-300 font-semibold mb-1">
                           <CheckCircle2 className="w-3 h-3" />
@@ -687,8 +687,8 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
                       <div
                         className="mt-2 p-2.5 rounded-md text-[10px]"
                         style={{
-                          backgroundColor: validacao.ok ? 'rgba(16,185,129,0.06)' : 'rgba(245,158,11,0.08)',
-                          border: `0.5px solid ${validacao.ok ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.4)'}`,
+                          backgroundColor: validacao.ok ? 'rgba(43,205,185,0.06)' : 'rgba(245,158,11,0.08)',
+                          border: `0.5px solid ${validacao.ok ? 'rgba(43,205,185,0.3)' : 'rgba(245,158,11,0.4)'}`,
                         }}
                       >
                         <div className={`flex items-center gap-1.5 font-semibold mb-1 ${validacao.ok ? 'text-emerald-300' : 'text-amber-300'}`}>
@@ -720,7 +720,7 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
                       type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)}
                       max={dataFim}
                       className="w-full px-3 py-2 rounded-md text-xs text-white bg-transparent outline-none"
-                      style={{ border: '0.5px solid rgba(60,85,130,0.4)' }}
+                      style={{ border: '0.5px solid rgba(50,100,104,0.4)' }}
                     />
                   </div>
                   <div>
@@ -729,7 +729,7 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
                       type="date" value={dataFim} onChange={e => setDataFim(e.target.value)}
                       min={dataInicio} max={hoje()}
                       className="w-full px-3 py-2 rounded-md text-xs text-white bg-transparent outline-none"
-                      style={{ border: '0.5px solid rgba(60,85,130,0.4)' }}
+                      style={{ border: '0.5px solid rgba(50,100,104,0.4)' }}
                     />
                   </div>
                 </div>
@@ -740,9 +740,9 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
                       onClick={() => { setDataInicio(dataAtras(d)); setDataFim(hoje()); }}
                       className="px-2 py-1 rounded text-[9px] font-semibold transition"
                       style={{
-                        backgroundColor: 'rgba(6,182,212,0.08)',
-                        border: '0.5px solid rgba(6,182,212,0.3)',
-                        color: '#22d3ee',
+                        backgroundColor: 'rgba(14,165,233,0.08)',
+                        border: '0.5px solid rgba(14,165,233,0.3)',
+                        color: '#38bdf8',
                       }}
                     >
                       Últ. {d}d
@@ -763,7 +763,7 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
                     className={`flex-1 px-3 py-2 rounded-md text-[11px] font-semibold transition ${
                       stakeModo === 'fixo' ? 'bg-emerald-500/15 text-emerald-300' : 'text-[--mike-fg-muted]'
                     }`}
-                    style={{ border: '0.5px solid', borderColor: stakeModo === 'fixo' ? 'rgba(16,185,129,0.5)' : 'rgba(60,85,130,0.4)' }}
+                    style={{ border: '0.5px solid', borderColor: stakeModo === 'fixo' ? 'rgba(43,205,185,0.5)' : 'rgba(50,100,104,0.4)' }}
                   >
                     Fixo
                   </button>
@@ -772,7 +772,7 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
                     className={`flex-1 px-3 py-2 rounded-md text-[11px] font-semibold transition ${
                       stakeModo === 'ratchet' ? 'bg-emerald-500/15 text-emerald-300' : 'text-[--mike-fg-muted]'
                     }`}
-                    style={{ border: '0.5px solid', borderColor: stakeModo === 'ratchet' ? 'rgba(16,185,129,0.5)' : 'rgba(60,85,130,0.4)' }}
+                    style={{ border: '0.5px solid', borderColor: stakeModo === 'ratchet' ? 'rgba(43,205,185,0.5)' : 'rgba(50,100,104,0.4)' }}
                   >
                     Ratchet (% banca pico)
                   </button>
@@ -786,7 +786,7 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
                       value={stakeValor}
                       onChange={e => setStakeValor(parseFloat(e.target.value) || 0)}
                       className="w-full px-3 py-2 rounded-md text-xs text-white bg-transparent outline-none"
-                      style={{ border: '0.5px solid rgba(60,85,130,0.4)' }}
+                      style={{ border: '0.5px solid rgba(50,100,104,0.4)' }}
                     />
                   </div>
                 ) : (
@@ -798,7 +798,7 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
                         value={stakeValor}
                         onChange={e => setStakeValor(parseFloat(e.target.value) || 0)}
                         className="w-full px-3 py-2 rounded-md text-xs text-white bg-transparent outline-none"
-                        style={{ border: '0.5px solid rgba(60,85,130,0.4)' }}
+                        style={{ border: '0.5px solid rgba(50,100,104,0.4)' }}
                       />
                     </div>
                     <div>
@@ -808,7 +808,7 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
                         value={bancaInicial}
                         onChange={e => setBancaInicial(parseFloat(e.target.value) || 0)}
                         className="w-full px-3 py-2 rounded-md text-xs text-white bg-transparent outline-none"
-                        style={{ border: '0.5px solid rgba(60,85,130,0.4)' }}
+                        style={{ border: '0.5px solid rgba(50,100,104,0.4)' }}
                       />
                     </div>
                   </div>
@@ -841,15 +841,15 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
               </div>
 
               <div className="rounded-md overflow-hidden mike-pulse-bar" style={{
-                backgroundColor: 'rgba(60,85,130,0.2)',
-                border: '0.5px solid rgba(60,85,130,0.4)',
+                backgroundColor: 'rgba(50,100,104,0.2)',
+                border: '0.5px solid rgba(50,100,104,0.4)',
                 height: 8,
               }}>
                 <div
                   className="h-full transition-all duration-500"
                   style={{
                     width: `${job?.progresso || 0}%`,
-                    background: 'linear-gradient(90deg, #06b6d4, #10b981)',
+                    background: 'linear-gradient(90deg, #0ea5e9, #2bcdb9)',
                   }}
                 />
               </div>
@@ -936,14 +936,14 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
               </div>
 
               <div className="rounded-md p-4 text-center" style={{
-                backgroundColor: (job.pnl || 0) >= 0 ? 'rgba(16,185,129,0.06)' : 'rgba(244,63,94,0.06)',
-                border: `0.5px solid ${(job.pnl || 0) >= 0 ? 'rgba(16,185,129,0.3)' : 'rgba(244,63,94,0.3)'}`,
+                backgroundColor: (job.pnl || 0) >= 0 ? 'rgba(43,205,185,0.06)' : 'rgba(244,63,94,0.06)',
+                border: `0.5px solid ${(job.pnl || 0) >= 0 ? 'rgba(43,205,185,0.3)' : 'rgba(244,63,94,0.3)'}`,
               }}>
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-[--mike-fg-muted]">
                   Lucro/Prejuízo Total
                 </div>
                 <div className="text-2xl font-black mt-1" style={{
-                  color: (job.pnl || 0) >= 0 ? '#10b981' : '#f43f5e',
+                  color: (job.pnl || 0) >= 0 ? '#2bcdb9' : '#f43f5e',
                 }}>
                   {(job.pnl || 0) >= 0 ? '+' : ''}{formatarMoeda(job.pnl)}
                 </div>
@@ -989,7 +989,7 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
               <button
                 onClick={() => { setEstado('config'); setErroMsg(null); }}
                 className="px-3 py-1.5 rounded-md text-[11px] font-semibold text-[--mike-fg-soft] hover:text-white transition"
-                style={{ border: '0.5px solid rgba(60,85,130,0.4)' }}
+                style={{ border: '0.5px solid rgba(50,100,104,0.4)' }}
               >
                 Tentar novamente
               </button>
@@ -997,13 +997,13 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
           )}
         </div>
 
-        <div className="flex items-center gap-2 px-4 py-3" style={{ borderTop: '0.5px solid rgba(60,85,130,0.4)' }}>
+        <div className="flex items-center gap-2 px-4 py-3" style={{ borderTop: '0.5px solid rgba(50,100,104,0.4)' }}>
           {estado === 'config' && (
             <>
               <button
                 onClick={onFechar}
                 className="px-3 py-1.5 rounded-md text-[11px] font-medium text-[--mike-fg-soft] hover:text-white transition"
-                style={{ border: '0.5px solid rgba(60,85,130,0.4)' }}
+                style={{ border: '0.5px solid rgba(50,100,104,0.4)' }}
               >
                 Cancelar
               </button>
@@ -1024,7 +1024,7 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
                 <button
                   onClick={() => { setEstado('config'); setJobId(null); setJob(null); }}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-semibold text-cyan-300 hover:bg-cyan-500/10 transition"
-                  style={{ border: '0.5px solid rgba(6,182,212,0.4)' }}
+                  style={{ border: '0.5px solid rgba(14,165,233,0.4)' }}
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                   Novo backtest
@@ -1037,7 +1037,7 @@ export default function BacktestModal({ aberto, bot, onFechar }) {
                   onClick={baixarPlanilha}
                   disabled={baixando}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-semibold text-emerald-300 hover:bg-emerald-500/10 transition disabled:opacity-40"
-                  style={{ border: '0.5px solid rgba(16,185,129,0.4)' }}
+                  style={{ border: '0.5px solid rgba(43,205,185,0.4)' }}
                 >
                   <Download className="w-3.5 h-3.5" />
                   {baixando ? 'Gerando planilha...' : 'Baixar planilha das apostas'}

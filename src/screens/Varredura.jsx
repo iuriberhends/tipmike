@@ -46,37 +46,37 @@ const MODOS = [
 ];
 
 const STATUS = {
-  pendente:   { rotulo: 'Na fila',    cor: '#6b7691' },
+  pendente:   { rotulo: 'Na fila',    cor: '#6c8689' },
   // v34: garimpo engatado num job-mae — solta sozinho quando ele concluir
   aguardando_origem: { rotulo: 'Esperando job-mãe', cor: '#a78bfa', girando: true },
-  planejando: { rotulo: 'Preparando', cor: '#0891b2', girando: true },
+  planejando: { rotulo: 'Preparando', cor: '#0284c7', girando: true },
   planejado:  { rotulo: 'Aguardando', cor: '#fbbf24' },
-  rodando:    { rotulo: 'Garimpando', cor: '#22d3ee', girando: true },
-  concluido:  { rotulo: 'Pronto',     cor: '#10b981' },
+  rodando:    { rotulo: 'Garimpando', cor: '#38bdf8', girando: true },
+  concluido:  { rotulo: 'Pronto',     cor: '#2bcdb9' },
   erro:       { rotulo: 'Erro',       cor: '#f43f5e' },
-  cancelado:  { rotulo: 'Cancelado',  cor: '#6b7691' },
+  cancelado:  { rotulo: 'Cancelado',  cor: '#6c8689' },
 };
 const ATIVO = ['pendente', 'planejando', 'rodando', 'aguardando_origem'];
 
 const POLL_MS = 4000;
 
 const themeVars = {
-  '--mike-bg': '#0b0f1a',
-  '--mike-bg-2': '#070a13',
-  '--mike-card': '#141a28',
-  '--mike-card-2': '#1a2030',
-  '--mike-card-hover': '#1c2336',
-  '--mike-border': '#222a3d',
-  '--mike-fg': '#eaeef7',
-  '--mike-fg-soft': '#b8c0d4',
-  '--mike-fg-muted': '#6b7691',
-  '--mike-accent': '#10b981',
-  '--mike-accent-2': '#0891b2',
+  '--mike-bg': '#060b0f',
+  '--mike-bg-2': '#04080b',
+  '--mike-card': '#0b1519',
+  '--mike-card-2': '#0f1c21',
+  '--mike-card-hover': '#132429',
+  '--mike-border': '#1a2c31',
+  '--mike-fg': '#eef8f6',
+  '--mike-fg-soft': '#b5c9c8',
+  '--mike-fg-muted': '#6c8689',
+  '--mike-accent': '#2bcdb9',
+  '--mike-accent-2': '#0d847a',
 };
 
 const cardStyle = {
-  backgroundColor: 'rgba(20, 26, 40, 0.4)',
-  border: '0.5px solid rgba(60, 85, 130, 0.4)',
+  backgroundColor: 'rgba(11, 21, 25, 0.4)',
+  border: '0.5px solid rgba(50, 100, 104, 0.4)',
 };
 
 function numOuNull(v) {
@@ -147,7 +147,7 @@ function Select({ value, onChange, options }) {
       style={{ appearance: 'none', WebkitAppearance: 'none' }}
     >
       {options.map(o => (
-        <option key={o.value} value={o.value} style={{ background: '#141a28' }}>
+        <option key={o.value} value={o.value} style={{ background: '#0b1519' }}>
           {o.label}
         </option>
       ))}
@@ -184,8 +184,8 @@ function SecaoTitulo({ icon: Icon, children }) {
 function Grupo({ icon: Icon, cor, titulo, desc, children }) {
   return (
     <div className="rounded-lg p-3.5" style={{
-      backgroundColor: 'rgba(13,17,27,0.5)',
-      border: '0.5px solid rgba(60,85,130,0.28)',
+      backgroundColor: 'rgba(8,14,18,0.5)',
+      border: '0.5px solid rgba(50,100,104,0.28)',
     }}>
       <div className="flex items-start gap-2.5 mb-3">
         <div className="w-[3px] self-stretch rounded-full flex-shrink-0" style={{ backgroundColor: cor }} />
@@ -211,10 +211,10 @@ function SubLabel({ children }) {
 }
 
 function DivFina() {
-  return <div className="h-px my-3.5" style={{ backgroundColor: 'rgba(60,85,130,0.18)' }} />;
+  return <div className="h-px my-3.5" style={{ backgroundColor: 'rgba(50,100,104,0.18)' }} />;
 }
 
-function StatCard({ icon: Icon, label, valor, cor = '#eaeef7' }) {
+function StatCard({ icon: Icon, label, valor, cor = '#eef8f6' }) {
   return (
     <div className="rounded-lg p-3" style={cardStyle}>
       <div className="flex items-center gap-1.5 mb-1.5">
@@ -398,12 +398,12 @@ export default function Varredura({ onNavegar } = {}) {
       ...themeVars,
       backgroundColor: 'var(--mike-bg)',
       color: 'var(--mike-fg)',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontFamily: 'var(--mike-font)',
     }}>
       <style>{`
-        .mike-border-thin { border: 0.5px solid rgba(60, 85, 130, 0.4) !important; }
-        .mike-border-thin:hover { border-color: rgba(80, 110, 170, 0.7) !important; }
-        .mike-border-thin:focus { border-color: rgba(16, 185, 129, 0.7) !important; outline: none; }
+        .mike-border-thin { border: 0.5px solid rgba(50, 100, 104, 0.4) !important; }
+        .mike-border-thin:hover { border-color: rgba(70, 130, 132, 0.7) !important; }
+        .mike-border-thin:focus { border-color: rgba(43, 205, 185, 0.7) !important; outline: none; }
         @keyframes mike-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .mike-spin { animation: mike-spin 0.8s linear infinite; }
       `}</style>
@@ -562,14 +562,14 @@ export default function Varredura({ onNavegar } = {}) {
               </p>
 
               <div className="space-y-3">
-                <Grupo icon={Target} cor="#22d3ee" titulo="Profundidade"
+                <Grupo icon={Target} cor="#38bdf8" titulo="Profundidade"
                        desc="Grosso é sonda; completo é o do dia a dia; total varre tudo — se a estimativa for alta, o job para e pede confirmação.">
                   <div className="flex items-center gap-1">
                     {MODOS.map((m) => (
                       <button key={m.value} onClick={() => setModo(m.value)}
                         className="px-3 py-1.5 rounded-md text-[11px] font-bold transition"
                         style={modo === m.value
-                          ? { backgroundColor: 'rgba(6,182,212,0.15)', color: '#22d3ee', border: '0.5px solid rgba(6,182,212,0.4)' }
+                          ? { backgroundColor: 'rgba(14,165,233,0.15)', color: '#38bdf8', border: '0.5px solid rgba(14,165,233,0.4)' }
                           : { color: 'var(--mike-fg-muted)', border: '0.5px solid rgba(255,255,255,0.07)' }}>
                         {m.label}
                       </button>
@@ -613,9 +613,9 @@ export default function Varredura({ onNavegar } = {}) {
                 onClick={handleGarimpar}
                 disabled={!origem || criando}
                 className="w-full mt-4 flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-sm font-bold transition disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ backgroundColor: (!origem || criando) ? 'rgba(16,185,129,0.2)' : '#10b981',
-                         color: (!origem || criando) ? '#6b7691' : '#0b0f1a',
-                         boxShadow: (!origem || criando) ? 'none' : '0 4px 12px rgba(16,185,129,0.3)' }}
+                style={{ backgroundColor: (!origem || criando) ? 'rgba(43,205,185,0.2)' : '#2bcdb9',
+                         color: (!origem || criando) ? '#6c8689' : '#060b0f',
+                         boxShadow: (!origem || criando) ? 'none' : '0 4px 12px rgba(43,205,185,0.3)' }}
               >
                 {criando ? <><RefreshCw className="w-4 h-4 mike-spin" /> Criando...</>
                          : <><Play className="w-4 h-4" /> Garimpar</>}
@@ -655,8 +655,8 @@ export default function Varredura({ onNavegar } = {}) {
                     <button key={j.id} onClick={() => selecionar(j.id)}
                       className="w-full text-left rounded-md px-3 py-2.5 transition"
                       style={on
-                        ? { backgroundColor: 'rgba(6,182,212,0.10)', border: '0.5px solid rgba(6,182,212,0.4)' }
-                        : { backgroundColor: 'rgba(13,17,27,0.5)', border: '0.5px solid rgba(60,85,130,0.28)' }}>
+                        ? { backgroundColor: 'rgba(14,165,233,0.10)', border: '0.5px solid rgba(14,165,233,0.4)' }
+                        : { backgroundColor: 'rgba(8,14,18,0.5)', border: '0.5px solid rgba(50,100,104,0.28)' }}>
                       <div className="flex items-center gap-2.5">
                         <span className="text-[11px] font-black font-mono flex-shrink-0 w-7"
                               style={{ color: s.cor }}>#{j.id}</span>
@@ -674,9 +674,9 @@ export default function Varredura({ onNavegar } = {}) {
                       {ATIVO.includes(j.status) && (
                         <div className="mt-2 pl-[38px]">
                           <div className="h-1.5 rounded-full overflow-hidden"
-                               style={{ backgroundColor: 'rgba(60,85,130,0.25)' }}>
+                               style={{ backgroundColor: 'rgba(50,100,104,0.25)' }}>
                             <div className="h-full transition-all duration-500"
-                                 style={{ width: `${Math.max(2, j.progresso || 0)}%`, backgroundColor: '#10b981' }} />
+                                 style={{ width: `${Math.max(2, j.progresso || 0)}%`, backgroundColor: '#2bcdb9' }} />
                           </div>
                           <div className="flex items-center justify-between gap-2 mt-1">
                             <span className="text-[10px] text-[--mike-fg-muted] font-mono truncate">
@@ -712,7 +712,7 @@ export default function Varredura({ onNavegar } = {}) {
 
               {aviso && (
                 <div className="rounded-lg p-3 flex items-start gap-2"
-                     style={{ backgroundColor: 'rgba(16,185,129,0.08)', border: '0.5px solid rgba(16,185,129,0.3)' }}>
+                     style={{ backgroundColor: 'rgba(43,205,185,0.08)', border: '0.5px solid rgba(43,205,185,0.3)' }}>
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
                   <span className="text-xs text-emerald-300 flex-1">{aviso}</span>
                   <button onClick={() => setAviso(null)} className="text-emerald-400/60 hover:text-emerald-300">
@@ -758,8 +758,8 @@ export default function Varredura({ onNavegar } = {}) {
 
                     {d.status === 'concluido' && (
                       <div className="grid grid-cols-2 gap-2 mb-3">
-                        <StatCard icon={Hash} label="Configs" valor={fmt(res.linhas_saida) ?? '-'} cor="#0891b2" />
-                        <StatCard icon={Clock} label="Duração" valor={duracao(res.segundos) || '-'} cor="#eaeef7" />
+                        <StatCard icon={Hash} label="Configs" valor={fmt(res.linhas_saida) ?? '-'} cor="#0284c7" />
+                        <StatCard icon={Clock} label="Duração" valor={duracao(res.segundos) || '-'} cor="#eef8f6" />
                       </div>
                     )}
 
@@ -785,7 +785,7 @@ export default function Varredura({ onNavegar } = {}) {
                       <div className="mt-3 rounded-md p-2.5 flex items-start gap-2"
                            style={gate.passou === false
                              ? { backgroundColor: 'rgba(244,63,94,0.08)', border: '0.5px solid rgba(244,63,94,0.3)' }
-                             : { backgroundColor: 'rgba(16,185,129,0.06)', border: '0.5px solid rgba(16,185,129,0.25)' }}>
+                             : { backgroundColor: 'rgba(43,205,185,0.06)', border: '0.5px solid rgba(43,205,185,0.25)' }}>
                         {gate.passou === false
                           ? <AlertTriangle className="w-3.5 h-3.5 text-rose-400 flex-shrink-0 mt-0.5" />
                           : <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0 mt-0.5" />}
@@ -800,7 +800,7 @@ export default function Varredura({ onNavegar } = {}) {
                       {d.status === 'planejado' && (
                         <button onClick={() => handleAcao(d.id, 'confirmar')}
                           className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md text-[12px] font-bold transition"
-                          style={{ backgroundColor: '#fbbf24', color: '#0b0f1a' }}>
+                          style={{ backgroundColor: '#fbbf24', color: '#060b0f' }}>
                           <Play className="w-3.5 h-3.5" /> Confirmar e rodar
                         </button>
                       )}
@@ -814,7 +814,7 @@ export default function Varredura({ onNavegar } = {}) {
                       {d.tem_saida && (
                         <>
                           <button onClick={() => handleDownload(d.id, 'xlsx')}
-                            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md text-[12px] font-bold mike-border-thin text-[--mike-accent] hover:bg-[--mike-accent]/10 transition">
+                            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md text-[12px] font-bold mike-border-thin text-[--mike-accent] hover:bg-mike-accent/10 transition">
                             <Download className="w-3.5 h-3.5" /> Baixar rankings (.xlsx)
                           </button>
                           <div className="grid grid-cols-2 gap-2">

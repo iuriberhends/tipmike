@@ -39,12 +39,12 @@ import { corDaCasa } from '../lib/pais.js';
 // nov/2026: rótulo e cor vêm do cadastro de casas do país (PaisContext).
 // Esta lista fica só de reserva.
 const CASAS = {
-  betano:     { id: 'betano',     label: 'BETANO',     color: '#10b981' },
-  superbet:   { id: 'superbet',   label: 'SUPERBET',   color: '#10b981' },
-  bet365:     { id: 'bet365',     label: 'BET365',     color: '#10b981' },
-  estrelabet: { id: 'estrelabet', label: 'ESTRELABET', color: '#10b981' },
-  novibet:    { id: 'novibet',    label: 'NOVIBET',    color: '#10b981' },
-  vupi:       { id: 'vupi',       label: 'VUPI',       color: '#10b981' },
+  betano:     { id: 'betano',     label: 'BETANO',     color: '#2bcdb9' },
+  superbet:   { id: 'superbet',   label: 'SUPERBET',   color: '#2bcdb9' },
+  bet365:     { id: 'bet365',     label: 'BET365',     color: '#2bcdb9' },
+  estrelabet: { id: 'estrelabet', label: 'ESTRELABET', color: '#2bcdb9' },
+  novibet:    { id: 'novibet',    label: 'NOVIBET',    color: '#2bcdb9' },
+  vupi:       { id: 'vupi',       label: 'VUPI',       color: '#2bcdb9' },
 };
 
 const ESPORTES = {
@@ -77,7 +77,10 @@ const MERCADOS_LABEL = {
 };
 
 // v50: paleta dos grupos (mesmas cores do resto do sistema)
-const CORES_GRUPO = ['#10b981', '#0891b2', '#3b82f6', '#8b5cf6', '#f59e0b', '#f43f5e', '#64748b'];
+// Botões do card que ainda não têm função ("em breve"): escondidos por enquanto.
+const MOSTRAR_BOTOES_EM_BREVE = false;
+
+const CORES_GRUPO = ['#2bcdb9', '#0284c7', '#3b82f6', '#8b5cf6', '#f59e0b', '#f43f5e', '#6c8689'];
 
 function normaliza(s) {
   return (s || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -96,10 +99,10 @@ function fmtNum(n, opts = {}) {
 // ============================================================
 
 function CardStat({ label, valor, negativo = false, loading = false }) {
-  const bgValor = negativo ? '#fde2e7' : '#e2e8f0';
-  const colorValor = negativo ? '#9f1239' : '#0f172a';
-  const bgLabel = negativo ? '#fecdd3' : '#cbd5e1';
-  const colorLabel = negativo ? '#881337' : '#334155';
+  const bgValor = negativo ? '#fde2e7' : '#cfdfde';
+  const colorValor = negativo ? '#9f1239' : '#0f1c21';
+  const bgLabel = negativo ? '#fecdd3' : '#b3c8c7';
+  const colorLabel = negativo ? '#881337' : '#344b50';
 
   return (
     <div className="rounded-md overflow-hidden" style={{ minWidth: '74px' }}>
@@ -126,8 +129,8 @@ function CorpoExpandido({ bot, stats, statsLoading, onAcao, loadingAcao, isAtivo
 
   return (
     <div className="px-4 py-4 flex items-stretch gap-4" style={{
-      borderTop: '0.5px solid rgba(60, 85, 130, 0.4)',
-      backgroundColor: 'rgba(20, 26, 40, 0.3)',
+      borderTop: '0.5px solid rgba(50, 100, 104, 0.4)',
+      backgroundColor: 'rgba(11, 21, 25, 0.3)',
     }}>
       <div className="flex-1 min-w-0 flex flex-col items-center justify-center gap-3">
         <p className="text-[11px] italic text-[--mike-fg-muted] text-center max-w-2xl leading-relaxed">
@@ -147,8 +150,8 @@ function CorpoExpandido({ bot, stats, statsLoading, onAcao, loadingAcao, isAtivo
 
       <div className="flex-shrink-0 flex flex-col items-stretch gap-2 w-[160px]">
         <div className="rounded-md px-3 py-2 flex items-center justify-between" style={{
-          backgroundColor: 'rgba(16, 185, 129, 0.08)',
-          border: '0.5px solid rgba(16, 185, 129, 0.3)',
+          backgroundColor: 'rgba(43, 205, 185, 0.08)',
+          border: '0.5px solid rgba(43, 205, 185, 0.3)',
         }}>
           <div>
             <div className="text-[9px] uppercase tracking-wider text-[--mike-fg-muted]">Stake</div>
@@ -162,8 +165,8 @@ function CorpoExpandido({ bot, stats, statsLoading, onAcao, loadingAcao, isAtivo
           disabled={loadingAcao}
           className="px-3 py-2 rounded-md text-[11px] font-bold uppercase tracking-wider transition disabled:opacity-50"
           style={{
-            backgroundColor: isAtivo ? '#f59e0b' : '#10b981',
-            color: '#0b0f1a',
+            backgroundColor: isAtivo ? '#f59e0b' : '#2bcdb9',
+            color: '#060b0f',
           }}
         >
           {isAtivo ? 'Desativar' : 'Ativar'}
@@ -190,9 +193,9 @@ function CorpoExpandido({ bot, stats, statsLoading, onAcao, loadingAcao, isAtivo
           disabled={loadingAcao}
           className="px-3 py-2 rounded-md text-[11px] font-bold uppercase tracking-wider transition disabled:opacity-50 flex items-center justify-center gap-1.5"
           style={{
-            backgroundColor: 'rgba(6, 182, 212, 0.15)',
-            border: '0.5px solid rgba(6, 182, 212, 0.4)',
-            color: '#22d3ee',
+            backgroundColor: 'rgba(14, 165, 233, 0.15)',
+            border: '0.5px solid rgba(14, 165, 233, 0.4)',
+            color: '#38bdf8',
           }}
           title="Rodar backtest deste bot (banco ou upload de arquivo)"
         >
@@ -230,22 +233,22 @@ function LinhaBot({ bot, expandido, onToggleExpand, onAcao, loadingAcao, onAbrir
   const casaCad = buscarCasa(bot.casa);
   const casa = casaCad
     ? { label: String(casaCad.nome || bot.casa).toUpperCase(), color: corDaCasa(casaCad).hex }
-    : (CASAS[bot.casa] || { label: (bot.casa || '').toUpperCase(), color: '#64748b' });
-  const esporte = ESPORTES[bot.esporte] || { label: (bot.esporte || '').toUpperCase(), cor: '#64748b' };
+    : (CASAS[bot.casa] || { label: (bot.casa || '').toUpperCase(), color: '#6c8689' });
+  const esporte = ESPORTES[bot.esporte] || { label: (bot.esporte || '').toUpperCase(), cor: '#6c8689' };
   const isAtivo = bot.status === 'ativo';
   const mercadoLabel = MERCADOS_LABEL[bot.mercado] || bot.mercado;
 
   const lucro = stats?.lucro;
   const tendUp = lucro !== undefined && parseFloat(lucro) >= 0;
   const TendIcon = tendUp ? TrendingUp : TrendingDown;
-  const tendColor = lucro === undefined ? '#64748b' : (tendUp ? '#10b981' : '#f43f5e');
+  const tendColor = lucro === undefined ? '#6c8689' : (tendUp ? '#2bcdb9' : '#f43f5e');
 
-  const borderColor = isAtivo ? '#10b981' : 'rgba(60, 85, 130, 0.4)';
+  const borderColor = isAtivo ? '#2bcdb9' : 'rgba(50, 100, 104, 0.4)';
 
   return (
     <div className="rounded-md overflow-hidden transition" style={{
       backgroundColor: 'transparent',
-      border: '0.5px solid rgba(60, 85, 130, 0.4)',
+      border: '0.5px solid rgba(50, 100, 104, 0.4)',
       borderLeft: `3px solid ${borderColor}`,
     }}>
       <div className="flex items-center gap-2 px-3 py-2.5 flex-wrap">
@@ -274,9 +277,9 @@ function LinhaBot({ bot, expandido, onToggleExpand, onAcao, loadingAcao, onAbrir
         </div>
 
         <div className="px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 flex-shrink-0" style={{
-          backgroundColor: isAtivo ? 'rgba(16, 185, 129, 0.15)' : 'rgba(60, 85, 130, 0.2)',
-          color: isAtivo ? '#10b981' : '#94a3b8',
-          border: `0.5px solid ${isAtivo ? 'rgba(16, 185, 129, 0.4)' : 'rgba(60, 85, 130, 0.5)'}`,
+          backgroundColor: isAtivo ? 'rgba(43, 205, 185, 0.15)' : 'rgba(50, 100, 104, 0.2)',
+          color: isAtivo ? '#2bcdb9' : '#8ba5a6',
+          border: `0.5px solid ${isAtivo ? 'rgba(43, 205, 185, 0.4)' : 'rgba(50, 100, 104, 0.5)'}`,
         }}>
           {isAtivo ? <Activity className="w-3 h-3" /> : <Power className="w-3 h-3" />}
           {isAtivo ? 'Apostando' : 'Automatizar'}
@@ -308,8 +311,8 @@ function LinhaBot({ bot, expandido, onToggleExpand, onAcao, loadingAcao, onAbrir
 
         {grupo && (
           <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold flex items-center gap-1 flex-shrink-0" style={{
-            color: grupo.cor || '#94a3b8',
-            border: `0.5px solid ${grupo.cor || 'rgba(60, 85, 130, 0.5)'}`,
+            color: grupo.cor || '#8ba5a6',
+            border: `0.5px solid ${grupo.cor || 'rgba(50, 100, 104, 0.5)'}`,
           }} title={`Grupo: ${grupo.nome}`}>
             <Folder className="w-3 h-3" /> {grupo.nome}
           </span>
@@ -319,24 +322,31 @@ function LinhaBot({ bot, expandido, onToggleExpand, onAcao, loadingAcao, onAbrir
           {casa.label}
         </span>
 
-        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold text-white flex-shrink-0" style={{ backgroundColor: '#0891b2' }}>
+        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold text-white flex-shrink-0" style={{ backgroundColor: '#0284c7' }}>
           {mercadoLabel}
         </span>
 
         <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium flex-shrink-0" style={{
-          backgroundColor: 'rgba(60, 85, 130, 0.2)',
-          color: '#94a3b8',
-          border: '0.5px solid rgba(60, 85, 130, 0.5)',
+          backgroundColor: 'rgba(50, 100, 104, 0.2)',
+          color: '#8ba5a6',
+          border: '0.5px solid rgba(50, 100, 104, 0.5)',
         }}>
           {isAtivo ? 'Bot ativado' : 'Bot pausado'}
         </span>
 
-        <button className="p-1 text-[--mike-fg-muted] hover:text-[--mike-accent] transition flex-shrink-0" title="Compartilhar (em breve)">
-          <Share2 className="w-4 h-4" />
-        </button>
-        <button className="p-1 text-[--mike-fg-muted] hover:text-[--mike-accent] transition flex-shrink-0" title="Configurar horários (em breve)">
-          <Clock className="w-4 h-4" />
-        </button>
+        {/* nov/2026: "Compartilhar" e "Configurar horários" ainda não fazem nada
+            ("em breve"). Ficam fora da tela até existirem; para voltar, troque
+            MOSTRAR_BOTOES_EM_BREVE para true no topo do arquivo. */}
+        {MOSTRAR_BOTOES_EM_BREVE && (
+          <>
+            <button className="p-1 text-[--mike-fg-muted] hover:text-[--mike-accent] transition flex-shrink-0" title="Compartilhar (em breve)">
+              <Share2 className="w-4 h-4" />
+            </button>
+            <button className="p-1 text-[--mike-fg-muted] hover:text-[--mike-accent] transition flex-shrink-0" title="Configurar horários (em breve)">
+              <Clock className="w-4 h-4" />
+            </button>
+          </>
+        )}
         <button
           onClick={() => onBaixarCsv(bot.id, bot.nome)}
           disabled={!!loadingCsv}
@@ -404,7 +414,7 @@ function MikeSelect({ value, onChange, options, placeholder = 'Selecione', width
       {open && (
         <div className="absolute top-full left-0 right-0 mt-1 rounded-md overflow-hidden z-30 max-h-64 overflow-y-auto" style={{
           backgroundColor: 'var(--mike-card)',
-          border: '0.5px solid rgba(60, 85, 130, 0.6)',
+          border: '0.5px solid rgba(50, 100, 104, 0.6)',
           boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)',
         }}>
           {options.map(opt => (
@@ -413,7 +423,7 @@ function MikeSelect({ value, onChange, options, placeholder = 'Selecione', width
               onClick={() => { onChange(opt.value); setOpen(false); }}
               className={`w-full text-left px-3 py-1.5 text-xs transition ${
                 opt.value === value
-                  ? 'bg-[--mike-accent]/10 text-[--mike-accent]'
+                  ? 'bg-mike-accent/10 text-[--mike-accent]'
                   : 'text-[--mike-fg-soft] hover:bg-[--mike-card-hover] hover:text-[--mike-fg]'
               }`}
             >
@@ -459,18 +469,18 @@ function BarraVisoes({ visao, onVisao, org, modoSelecao, onSelecao, onNovoGrupo,
         <ChipVisao ativo={visao === 'favoritos'} onClick={() => onVisao('favoritos')} cor="#f59e0b">
           <Star className="w-3 h-3" fill={visao === 'favoritos' ? 'currentColor' : 'none'} /> Favoritos {n(totalFav)}
         </ChipVisao>
-        <ChipVisao ativo={visao === 'sem'} onClick={() => onVisao('sem')} cor="#64748b">
+        <ChipVisao ativo={visao === 'sem'} onClick={() => onVisao('sem')} cor="#6c8689">
           Sem grupo {n(org.sem_grupo)}
         </ChipVisao>
         {org.grupos.map(g => (
-          <ChipVisao key={g.id} ativo={visao === g.id} onClick={() => onVisao(g.id)} cor={g.cor || '#0891b2'} title={`Grupo ${g.nome}`}>
+          <ChipVisao key={g.id} ativo={visao === g.id} onClick={() => onVisao(g.id)} cor={g.cor || '#0284c7'} title={`Grupo ${g.nome}`}>
             <Folder className="w-3 h-3" /> {g.nome} {n(g.total)}
           </ChipVisao>
         ))}
         <button
           onClick={onNovoGrupo}
-          className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold text-[--mike-accent] hover:bg-[--mike-accent]/10 transition flex-shrink-0"
-          style={{ border: '0.5px dashed rgba(16, 185, 129, 0.5)' }}
+          className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold text-[--mike-accent] hover:bg-mike-accent/10 transition flex-shrink-0"
+          style={{ border: '0.5px dashed rgba(43, 205, 185, 0.5)' }}
           title="Criar um grupo"
         >
           <FolderPlus className="w-3 h-3" /> Novo grupo
@@ -479,9 +489,9 @@ function BarraVisoes({ visao, onVisao, org, modoSelecao, onSelecao, onNovoGrupo,
         <button
           onClick={onSelecao}
           className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[11px] font-semibold transition flex-shrink-0 ${
-            modoSelecao ? 'bg-[--mike-accent]/15 text-[--mike-accent]' : 'mike-border-thin text-[--mike-fg-soft] hover:text-[--mike-fg]'
+            modoSelecao ? 'bg-mike-accent/15 text-[--mike-accent]' : 'mike-border-thin text-[--mike-fg-soft] hover:text-[--mike-fg]'
           }`}
-          style={modoSelecao ? { border: '0.5px solid rgba(16, 185, 129, 0.5)' } : {}}
+          style={modoSelecao ? { border: '0.5px solid rgba(43, 205, 185, 0.5)' } : {}}
           title="Marcar vários bots pra mover de grupo"
         >
           <CheckSquare className="w-3.5 h-3.5" /> {modoSelecao ? 'Selecionando' : 'Selecionar'}
@@ -509,7 +519,7 @@ function BarraSelecao({ qtd, grupos, visao, ocupado, menuAberto, onMenu, onMover
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 px-3 py-2 rounded-xl shadow-2xl flex-wrap justify-center max-w-[95vw]" style={{
       backgroundColor: 'var(--mike-card)',
-      border: '0.5px solid rgba(16, 185, 129, 0.5)',
+      border: '0.5px solid rgba(43, 205, 185, 0.5)',
     }}>
       <span className="text-xs text-[--mike-fg] font-semibold px-1">
         {qtd} selecionado{qtd === 1 ? '' : 's'}
@@ -526,7 +536,7 @@ function BarraSelecao({ qtd, grupos, visao, ocupado, menuAberto, onMenu, onMover
         {menuAberto && (
           <div className="absolute bottom-full mb-2 left-0 min-w-[200px] max-h-72 overflow-y-auto rounded-md py-1 shadow-2xl" style={{
             backgroundColor: 'var(--mike-card-2)',
-            border: '0.5px solid rgba(60, 85, 130, 0.6)',
+            border: '0.5px solid rgba(50, 100, 104, 0.6)',
           }}>
             {grupos.map(g => (
               <button
@@ -535,11 +545,11 @@ function BarraSelecao({ qtd, grupos, visao, ocupado, menuAberto, onMenu, onMover
                 disabled={visao === g.id}
                 className="w-full text-left px-3 py-1.5 text-xs text-[--mike-fg-soft] hover:bg-[--mike-card-hover] hover:text-[--mike-fg] flex items-center gap-2 disabled:opacity-40"
               >
-                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: g.cor || '#0891b2' }} />
+                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: g.cor || '#0284c7' }} />
                 <span className="truncate">{g.nome}</span>
               </button>
             ))}
-            {grupos.length > 0 && <div className="my-1" style={{ borderTop: '0.5px solid rgba(60, 85, 130, 0.4)' }} />}
+            {grupos.length > 0 && <div className="my-1" style={{ borderTop: '0.5px solid rgba(50, 100, 104, 0.4)' }} />}
             <button
               onClick={onNovoGrupo}
               className="w-full text-left px-3 py-1.5 text-xs text-[--mike-accent] hover:bg-[--mike-card-hover] flex items-center gap-2"
@@ -580,11 +590,11 @@ function ModalGrupo({ modal, ocupado, onFechar, onSalvar }) {
     <div onClick={onFechar} className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}>
       <div onClick={e => e.stopPropagation()} className="rounded-2xl p-6 max-w-sm w-full" style={{
         backgroundColor: 'var(--mike-card)',
-        border: '0.5px solid rgba(60, 85, 130, 0.6)',
+        border: '0.5px solid rgba(50, 100, 104, 0.6)',
         animation: 'mike-modal-fade 200ms ease-out',
       }}>
         <div className="flex items-start gap-3 mb-4">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${excluir ? 'bg-rose-800/30 border border-rose-700/50' : 'bg-[--mike-accent]/15 border border-[--mike-accent]/40'}`}>
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${excluir ? 'bg-rose-800/30 border border-rose-700/50' : 'bg-mike-accent/15 border border-mike-accent/40'}`}>
             {excluir ? <Trash2 className="w-5 h-5 text-rose-300" /> : <Folder className="w-5 h-5 text-[--mike-accent]" />}
           </div>
           <div className="min-w-0 flex-1">
@@ -1017,17 +1027,17 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
   const totalPages = Math.max(1, Math.ceil(total / LIMIT));
 
   const themeVars = {
-    '--mike-bg': '#0b0f1a',
-    '--mike-bg-2': '#070a13',
-    '--mike-card': '#141a28',
-    '--mike-card-2': '#1a2030',
-    '--mike-card-hover': '#1c2336',
-    '--mike-border': '#222a3d',
-    '--mike-fg': '#eaeef7',
-    '--mike-fg-soft': '#b8c0d4',
-    '--mike-fg-muted': '#6b7691',
-    '--mike-accent': '#10b981',
-    '--mike-accent-2': '#0891b2',
+    '--mike-bg': '#060b0f',
+    '--mike-bg-2': '#04080b',
+    '--mike-card': '#0b1519',
+    '--mike-card-2': '#0f1c21',
+    '--mike-card-hover': '#132429',
+    '--mike-border': '#1a2c31',
+    '--mike-fg': '#eef8f6',
+    '--mike-fg-soft': '#b5c9c8',
+    '--mike-fg-muted': '#6c8689',
+    '--mike-accent': '#2bcdb9',
+    '--mike-accent-2': '#0d847a',
   };
 
   return (
@@ -1035,12 +1045,12 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
       ...themeVars,
       backgroundColor: 'var(--mike-bg)',
       color: 'var(--mike-fg)',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontFamily: 'var(--mike-font)',
     }}>
       <style>{`
-        .mike-border-thin { border: 0.5px solid rgba(60, 85, 130, 0.4) !important; }
-        .mike-border-thin:hover { border-color: rgba(80, 110, 170, 0.7) !important; }
-        .mike-border-thin:focus { border-color: rgba(16, 185, 129, 0.7) !important; outline: none; }
+        .mike-border-thin { border: 0.5px solid rgba(50, 100, 104, 0.4) !important; }
+        .mike-border-thin:hover { border-color: rgba(70, 130, 132, 0.7) !important; }
+        .mike-border-thin:focus { border-color: rgba(43, 205, 185, 0.7) !important; outline: none; }
         @keyframes mike-toast-in { 0% { transform: translateX(120%); opacity: 0; } 100% { transform: translateX(0); opacity: 1; } }
         .mike-toast-in { animation: mike-toast-in 0.3s ease-out; }
         @keyframes mike-modal-fade { from { opacity: 0; transform: translateY(8px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
@@ -1085,7 +1095,7 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
 
           <button
             onClick={() => handleNavegar('criar_bot')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[--mike-accent] hover:bg-emerald-400 text-[--mike-bg] text-xs font-bold transition shadow-md shadow-[--mike-accent]/30"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[--mike-accent] hover:bg-emerald-400 text-[--mike-bg] text-xs font-bold transition shadow-md shadow-mike-accent/30"
           >
             <Plus className="w-3.5 h-3.5" /> Novo Bot
           </button>
@@ -1111,12 +1121,12 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
             onClick={() => setFiltrosAbertos(!filtrosAbertos)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition ${
               filtrosAbertos
-                ? 'bg-[--mike-accent]/15 text-[--mike-accent]'
+                ? 'bg-mike-accent/15 text-[--mike-accent]'
                 : algumFiltroAtivo
                   ? 'mike-border-thin bg-transparent text-[--mike-fg]'
                   : 'mike-border-thin bg-transparent text-[--mike-fg-soft] hover:text-[--mike-fg]'
             }`}
-            style={filtrosAbertos ? { border: '0.5px solid rgba(16, 185, 129, 0.5)' } : {}}
+            style={filtrosAbertos ? { border: '0.5px solid rgba(43, 205, 185, 0.5)' } : {}}
           >
             <Filter className="w-3.5 h-3.5" />
             Filtros
@@ -1142,7 +1152,7 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
         )}
 
         {filtrosAbertos && (
-          <div className="mb-4 rounded-lg p-3" style={{ backgroundColor: 'transparent', border: '0.5px solid rgba(60, 85, 130, 0.4)' }}>
+          <div className="mb-4 rounded-lg p-3" style={{ backgroundColor: 'transparent', border: '0.5px solid rgba(50, 100, 104, 0.4)' }}>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-[10px] text-[--mike-fg-muted] mb-1">Casa</label>
@@ -1222,7 +1232,7 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
         ) : (
           <div className="rounded-2xl py-12 px-6 text-center" style={{
             backgroundColor: 'transparent',
-            border: '0.5px solid rgba(60, 85, 130, 0.4)',
+            border: '0.5px solid rgba(50, 100, 104, 0.4)',
           }}>
             <Bot className="w-12 h-12 text-[--mike-fg-muted] opacity-40 mx-auto mb-3" />
             <p className="text-sm text-[--mike-fg] font-semibold mb-1">
@@ -1249,7 +1259,7 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
                   setBusca('');
                   adicionarToast('Filtros limpos', 'info');
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-[--mike-accent]/10 border border-[--mike-accent]/40 text-[--mike-accent] hover:bg-[--mike-accent]/15 transition"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-mike-accent/10 border border-mike-accent/40 text-[--mike-accent] hover:bg-mike-accent/15 transition"
               >
                 <FilterX className="w-3 h-3" /> Limpar filtros
               </button>
@@ -1288,7 +1298,7 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
 
         <button
           onClick={() => handleNavegar('criar_bot')}
-          className="fixed bottom-6 right-6 z-30 w-14 h-14 rounded-full bg-[--mike-accent] hover:bg-emerald-400 text-[--mike-bg] flex items-center justify-center shadow-2xl shadow-[--mike-accent]/40 hover:scale-110 transition-transform"
+          className="fixed bottom-6 right-6 z-30 w-14 h-14 rounded-full bg-[--mike-accent] hover:bg-emerald-400 text-[--mike-bg] flex items-center justify-center shadow-2xl shadow-mike-accent/40 hover:scale-110 transition-transform"
           title="Criar novo bot"
         >
           <Plus className="w-6 h-6" strokeWidth={3} />
@@ -1350,7 +1360,7 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
         <div onClick={() => setModalConfirm(null)} className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}>
           <div onClick={e => e.stopPropagation()} className="rounded-2xl p-6 max-w-sm w-full" style={{
             backgroundColor: 'var(--mike-card)',
-            border: '0.5px solid rgba(60, 85, 130, 0.6)',
+            border: '0.5px solid rgba(50, 100, 104, 0.6)',
             animation: 'mike-modal-fade 200ms ease-out',
           }}>
             <div className="flex items-start gap-3 mb-4">

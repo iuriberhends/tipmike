@@ -1,9 +1,11 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {
   Search, Bell, Settings, ChevronDown, Home, Activity, Store, Bot, Table2, BarChart3, Plus,
-  Clock, ExternalLink, X, FilterX, RefreshCw, Radio
+  Clock, ExternalLink, X, FilterX, RefreshCw, Radio, ChevronRight, History, Zap
 } from 'lucide-react';
 import MikeHeader from '../shared/MikeHeader.jsx';
+import { EstadoVazio, EstadoErro } from '../shared/Estados.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 import { ApiEventos, ApiStats } from '../lib/api.js';
 import { usePais } from '../context/PaisContext.jsx';
 
@@ -66,7 +68,7 @@ function TeamLogo({ nome, size = 28 }) {
 // ESPORTES
 // ============================================================
 const ESPORTE_CORES = {
-  'E-Football': { bg: 'bg-emerald-500/15', text: 'text-emerald-400', border: 'border-emerald-500/30', activeBg: 'bg-emerald-500', activeText: 'text-white', activeBorder: 'border-emerald-500', activeShadow: 'shadow-emerald-500/40' },
+  'E-Football': { bg: 'bg-emerald-500/15', text: 'text-emerald-400', border: 'border-emerald-500/30', activeBg: 'bg-emerald-500', activeText: 'text-emerald-950', activeBorder: 'border-emerald-500', activeShadow: 'shadow-emerald-500/40' },
   'E-Basketball': { bg: 'bg-orange-500/15', text: 'text-orange-400', border: 'border-orange-500/30', activeBg: 'bg-orange-500', activeText: 'text-white', activeBorder: 'border-orange-500', activeShadow: 'shadow-orange-500/40' },
   'E-Hockey': { bg: 'bg-cyan-500/15', text: 'text-cyan-400', border: 'border-cyan-500/30', activeBg: 'bg-cyan-500', activeText: 'text-white', activeBorder: 'border-cyan-500', activeShadow: 'shadow-cyan-500/40' },
 };
@@ -173,139 +175,238 @@ function normalizarEvento(ev, fmt) {
 // ============================================================
 // COMPONENTES
 // ============================================================
+
+// Número que "corre" até o valor novo em vez de trocar de uma vez.
+function useContagem(alvo, ms = 700) {
+  const [valor, setValor] = useState(0);
+  const atualRef = useRef(0);
+  useEffect(() => {
+    const de = atualRef.current;
+    const para = Number(alvo) || 0;
+    if (de === para) return undefined;
+    const t0 = performance.now();
+    let quadro;
+    const passo = (t) => {
+      const k = Math.min(1, (t - t0) / ms);
+      const suave = 1 - Math.pow(1 - k, 3);
+      const agora = Math.round(de + (para - de) * suave);
+      atualRef.current = agora;
+      setValor(agora);
+      if (k < 1) quadro = requestAnimationFrame(passo);
+    };
+    quadro = requestAnimationFrame(passo);
+    return () => cancelAnimationFrame(quadro);
+  }, [alvo, ms]);
+  return valor;
+}
+
+const KPI_TONS = {
+  vivo:  { chip: 'bg-red-500/15 border-red-500/30 text-red-400',             brilho: 'rgba(239, 68, 68, 0.22)' },
+  marca: { chip: 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300', brilho: 'rgba(43, 205, 185, 0.22)' },
+  info:  { chip: 'bg-cyan-500/15 border-cyan-500/30 text-cyan-300',          brilho: 'rgba(56, 189, 248, 0.2)' },
+};
+
+function CartaoKpi({ icone: Icone, rotulo, valor, tom = 'marca', pulsando = false, carregando = false, legenda }) {
+  const contado = useContagem(valor);
+  const t = KPI_TONS[tom] || KPI_TONS.marca;
+  return (
+    <div className="mike-kpi rounded-2xl p-3 sm:px-4 sm:py-3.5 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 min-w-0" style={{ '--mike-kpi-brilho': t.brilho }}>
+      <div className={`relative w-8 h-8 sm:w-10 sm:h-10 rounded-xl border flex items-center justify-center flex-shrink-0 ${t.chip}`}>
+        <Icone className="w-4 h-4" />
+        {pulsando && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500 mike-pulse-live" />}
+      </div>
+      <div className="min-w-0">
+        <div className="text-[10px] text-[--mike-fg-muted] uppercase tracking-wider font-semibold truncate">{rotulo}</div>
+        {carregando ? (
+          <div className="mike-skeleton h-6 w-14 mt-1" />
+        ) : (
+          <div className="font-display text-xl sm:text-2xl font-bold text-[--mike-fg] leading-tight tabular-nums truncate">
+            {contado.toLocaleString('pt-BR')}
+          </div>
+        )}
+        {legenda && <div className="hidden sm:block text-[10px] text-[--mike-fg-muted] truncate">{legenda}</div>}
+      </div>
+    </div>
+  );
+}
+
+// Botão de atualizar com o anel que mostra quanto falta para a próxima atualização automática.
+function BotaoAtualizar({ onClick, girando, desabilitado, segundos, total = 15 }) {
+  const raio = 15;
+  const volta = 2 * Math.PI * raio;
+  const fracao = Math.max(0, Math.min(1, segundos / total));
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={desabilitado}
+      className="relative w-11 h-11 flex-shrink-0 rounded-xl bg-[--mike-card] border border-[--mike-border] hover:bg-[--mike-card-hover] hover:border-[--mike-accent] text-[--mike-fg-muted] hover:text-[--mike-accent] transition disabled:opacity-50 flex items-center justify-center"
+      title={`Atualizar agora (automático em ${Math.max(0, total - segundos)}s)`}
+      aria-label="Atualizar agora"
+    >
+      <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 44 44" aria-hidden>
+        <circle cx="22" cy="22" r={raio} fill="none" stroke="rgba(50, 100, 104, 0.35)" strokeWidth="2" />
+        <circle
+          cx="22" cy="22" r={raio} fill="none" stroke="var(--mike-accent)" strokeWidth="2" strokeLinecap="round"
+          strokeDasharray={volta} strokeDashoffset={volta * (1 - fracao)}
+          style={{ transition: 'stroke-dashoffset 1s linear' }}
+        />
+      </svg>
+      <RefreshCw className={`w-3.5 h-3.5 ${girando ? 'mike-spin' : ''}`} />
+    </button>
+  );
+}
+
 function PillEsporte({ esporte }) {
   const c = ESPORTE_CORES[esporte] || ESPORTE_CORES['E-Football'];
   const label = esporte === 'E-Football' ? 'e-Soccer' : esporte === 'E-Basketball' ? 'e-Basket' : esporte;
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold border ${c.bg} ${c.text} ${c.border}`}>
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold border flex-shrink-0 ${c.bg} ${c.text} ${c.border}`}>
       {label}
     </span>
   );
 }
 
-function BotaoH2H({ tipo = 'h2h', onClick }) {
+function Placar({ a, b }) {
   return (
-    <button onClick={(e) => { e.stopPropagation(); onClick?.(); }} className="flex items-center gap-1 px-2 py-1 rounded-md bg-[--mike-card-2] border border-[--mike-border] hover:border-[--mike-accent] hover:bg-[--mike-accent]/5 text-[10px] font-semibold text-[--mike-fg-soft] hover:text-[--mike-accent] transition">
-      {tipo === 'h2h' ? 'H2H' : 'H2H + Time'}
-      <ExternalLink className="w-2.5 h-2.5" />
-    </button>
-  );
-}
-
-function CardPartidaPainel({ p, tipo, onAbrirPartida, onAbrirH2H }) {
-  const isAnt = tipo === 'anterior';
-  const aoVivoAgora = !isAnt && p.aoVivo;
-
-  return (
-    <div onClick={() => onAbrirPartida?.(p)} className="px-4 py-3 hover:bg-[--mike-card-hover] transition cursor-pointer border-b border-[--mike-border]/40 last:border-b-0 relative">
-      {aoVivoAgora && (
-        <div className="absolute top-2 left-2 flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-500/15 border border-red-500/40">
-          <span className="w-1.5 h-1.5 rounded-full bg-red-500 mike-pulse-live" />
-          <span className="text-[9px] font-bold text-red-400 tracking-wider">AO VIVO</span>
-        </div>
-      )}
-
-      <div className="flex items-center justify-between gap-2 mb-2">
-        <div className={`flex flex-col gap-0.5 min-w-0 ${aoVivoAgora ? 'pl-20' : ''}`}>
-          <PillEsporte esporte={p.esporte} />
-          <span className="text-[10px] text-[--mike-fg-muted] truncate">{p.liga}</span>
-          {p.live_time && <span className="text-[9px] text-emerald-400/70">{p.live_time}</span>}
-        </div>
-        <div className="text-[11px] font-mono text-[--mike-fg-soft] whitespace-nowrap">
-          {p.data}, <span className="text-[--mike-fg]">{p.hora}</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <BotaoH2H tipo="h2h" onClick={() => onAbrirH2H?.(p)} />
-        </div>
-      </div>
-
-      {isAnt ? (
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            {p.timeA && <TeamLogo nome={p.timeA} size={32} />}
-            <div className="min-w-0 leading-tight">
-              <div className="text-[13px] font-bold text-[--mike-fg] truncate">{p.jogadorA}</div>
-              {p.timeA && <div className="text-[10px] text-[--mike-fg-muted] truncate">{p.timeA}</div>}
-            </div>
-          </div>
-          <div className="flex items-center justify-center gap-1.5 min-w-[64px] px-3 py-1.5 rounded-md bg-gradient-to-r from-emerald-500/20 to-emerald-500/10 border border-emerald-500/40 font-mono text-base font-black shadow-lg shadow-emerald-500/10">
-            <span className={p.placarA > p.placarB ? 'text-emerald-300' : p.placarA < p.placarB ? 'text-red-400' : 'text-[--mike-fg]'}>{p.placarA ?? '-'}</span>
-            <span className="text-[--mike-fg-muted]">:</span>
-            <span className={p.placarB > p.placarA ? 'text-emerald-300' : p.placarB < p.placarA ? 'text-red-400' : 'text-[--mike-fg]'}>{p.placarB ?? '-'}</span>
-          </div>
-          <div className="flex items-center gap-2 justify-end min-w-0">
-            <div className="text-right min-w-0 leading-tight">
-              <div className="text-[13px] font-bold text-[--mike-fg] truncate">{p.jogadorB}</div>
-              {p.timeB && <div className="text-[10px] text-[--mike-fg-muted] truncate">{p.timeB}</div>}
-            </div>
-            {p.timeB && <TeamLogo nome={p.timeB} size={32} />}
-          </div>
-        </div>
-      ) : (
-        <div className="flex items-center justify-center gap-4">
-          <div className="flex items-center gap-2 justify-end min-w-0 flex-1 max-w-[40%]">
-            <div className="text-right min-w-0 leading-tight">
-              <div className="text-[13px] font-bold text-[--mike-fg] truncate">{p.jogadorA}</div>
-            </div>
-          </div>
-          <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-slate-700/80 to-slate-800/80 border border-slate-600/60 shadow-inner flex-shrink-0">
-            <span className="font-serif italic font-bold text-[10px] text-slate-300 tracking-wider">vs</span>
-          </div>
-          <div className="flex items-center gap-2 min-w-0 flex-1 max-w-[40%]">
-            <div className="min-w-0 leading-tight">
-              <div className="text-[13px] font-bold text-[--mike-fg] truncate">{p.jogadorB}</div>
-            </div>
-          </div>
-        </div>
-      )}
+    <div className="flex items-center justify-center gap-1.5 min-w-[64px] px-3 py-1.5 rounded-lg bg-gradient-to-r from-emerald-500/20 to-emerald-500/10 border border-emerald-500/40 font-mono text-base font-black shadow-lg shadow-emerald-500/10 flex-shrink-0">
+      <span className={a > b ? 'text-emerald-300' : a < b ? 'text-red-400' : 'text-[--mike-fg]'}>{a ?? '-'}</span>
+      <span className="text-[--mike-fg-muted]">:</span>
+      <span className={b > a ? 'text-emerald-300' : b < a ? 'text-red-400' : 'text-[--mike-fg]'}>{b ?? '-'}</span>
     </div>
   );
 }
 
-function PainelPartidas({ titulo, partidas, tipo, esporteAtivo, onAbrirPartida, onAbrirH2H }) {
+function CardPartidaPainel({ p, tipo, onAbrirPartida }) {
+  const isAnt = tipo === 'anterior';
+  const aoVivoAgora = !isAnt && p.aoVivo;
+  const temPlacar = p.placarA != null && p.placarB != null;
+  // Sem onAbrirPartida (tela de Partida desligada em config/paineis.js) a linha
+  // é só informação: não vira botão, não ganha cursor de clique nem seta.
+  const clicavel = Boolean(onAbrirPartida);
+  const abrir = () => onAbrirPartida?.(p);
+  const interacao = clicavel
+    ? { onClick: abrir, onKeyDown: (e) => { if (e.key === 'Enter') { e.preventDefault(); abrir(); } }, role: 'button', tabIndex: 0 }
+    : {};
+
   return (
-    <div className="rounded-2xl bg-[--mike-card] border border-[--mike-border] overflow-hidden shadow-2xl shadow-black/40 flex flex-col" style={{ maxHeight: '600px' }}>
-      <div className="px-5 py-3.5 bg-gradient-to-r from-[--mike-accent] via-[--mike-accent]/80 to-[--mike-accent-2] flex items-center justify-between gap-2 flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <Clock className="w-4 h-4 text-[--mike-bg]" />
-          <h2 className="text-sm font-bold text-[--mike-bg]">{titulo}</h2>
+    <div
+      {...interacao}
+      className={`group relative px-4 py-3 border-b border-mike-border/60 last:border-b-0 ${clicavel ? 'mike-linha-partida cursor-pointer' : 'transition-colors hover:bg-mike-card-2/60'}`}
+    >
+      <div className="flex items-center gap-2 mb-2 min-w-0">
+        <PillEsporte esporte={p.esporte} />
+        <span className="text-[10px] text-[--mike-fg-muted] truncate flex-1 min-w-0">{p.liga}</span>
+        {aoVivoAgora && (
+          <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-500/15 border border-red-500/40 flex-shrink-0">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-500 mike-pulse-live" />
+            <span className="text-[9px] font-bold text-red-400 tracking-wider">AO VIVO{p.live_time ? ` · ${p.live_time}` : ''}</span>
+          </span>
+        )}
+        <span className="text-[11px] font-mono text-[--mike-fg-soft] whitespace-nowrap flex-shrink-0">
+          <span className="hidden sm:inline">{p.data}, </span><span className="text-[--mike-fg]">{p.hora}</span>
+        </span>
+        {clicavel && <ChevronRight className="w-3.5 h-3.5 text-[--mike-fg-muted] opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition flex-shrink-0 hidden sm:block" />}
+      </div>
+
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-2 min-w-0 justify-end">
+          <div className="text-right min-w-0 leading-tight">
+            <div className="text-[13px] font-bold text-[--mike-fg] truncate">{p.jogadorA}</div>
+            {p.timeA && <div className="text-[10px] text-[--mike-fg-muted] truncate">{p.timeA}</div>}
+          </div>
+          {p.timeA && <TeamLogo nome={p.timeA} size={30} />}
         </div>
-        <span className="text-[10px] font-mono font-bold text-[--mike-bg]/80 px-2 py-0.5 rounded bg-[--mike-bg]/15">
+
+        {(isAnt || temPlacar) ? (
+          <Placar a={p.placarA} b={p.placarB} />
+        ) : (
+          <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-slate-700/80 to-slate-800/80 border border-slate-600/60 shadow-inner flex-shrink-0">
+            <span className="italic font-bold text-[10px] text-slate-300 tracking-wider">vs</span>
+          </div>
+        )}
+
+        <div className="flex items-center gap-2 min-w-0">
+          {p.timeB && <TeamLogo nome={p.timeB} size={30} />}
+          <div className="min-w-0 leading-tight">
+            <div className="text-[13px] font-bold text-[--mike-fg] truncate">{p.jogadorB}</div>
+            {p.timeB && <div className="text-[10px] text-[--mike-fg-muted] truncate">{p.timeB}</div>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const ROTULO_ESPORTE = { 'E-Football': 'e-Soccer', 'E-Basketball': 'e-Basket', 'E-Hockey': 'e-Hockey' };
+
+function PainelPartidas({ titulo, icone: Icone = Clock, vivo = false, partidas, tipo, esporteAtivo, busca, erro, onTentar, onAbrirPartida }) {
+  const filtrando = Boolean(busca || esporteAtivo);
+  return (
+    <section className="mike-painel rounded-2xl bg-[--mike-card] border border-[--mike-border] overflow-hidden shadow-2xl shadow-black/40 flex flex-col" style={{ maxHeight: '620px' }}>
+      <header className="px-4 sm:px-5 py-3.5 flex items-center justify-between gap-2 flex-shrink-0 border-b border-[--mike-border]">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className={`w-7 h-7 rounded-lg border flex items-center justify-center flex-shrink-0 ${vivo ? 'bg-red-500/15 border-red-500/30 text-red-400' : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'}`}>
+            <Icone className="w-3.5 h-3.5" />
+          </span>
+          <h2 className="text-sm font-bold text-[--mike-fg] truncate m-0">{titulo}</h2>
+          {vivo && partidas.length > 0 && <span className="w-1.5 h-1.5 rounded-full bg-red-500 mike-pulse-live flex-shrink-0" />}
+        </div>
+        <span className="text-[10px] font-mono font-bold text-[--mike-fg-soft] px-2 py-1 rounded-md bg-[--mike-card-2] border border-[--mike-border] flex-shrink-0">
           {partidas.length} {partidas.length === 1 ? 'jogo' : 'jogos'}
         </span>
-      </div>
-      {partidas.length > 0 ? (
+      </header>
+
+      {erro ? (
+        <EstadoErro
+          className="flex-1"
+          titulo="Não deu para carregar as partidas"
+          mensagem={String(erro.message || erro)}
+          onTentar={onTentar}
+        />
+      ) : partidas.length > 0 ? (
         <div className="overflow-y-auto flex-1 mike-scroll">
-          {partidas.map((p) => (
-            <CardPartidaPainel key={p.id} p={p} tipo={tipo} onAbrirPartida={onAbrirPartida} onAbrirH2H={onAbrirH2H} />
+          {partidas.map((p, i) => (
+            // o mesmo jogo pode vir de mais de uma casa: a chave leva a casa e a posição
+            <CardPartidaPainel key={`${p.id}|${p.bookmaker || ""}|${i}`} p={p} tipo={tipo} onAbrirPartida={onAbrirPartida} />
           ))}
         </div>
       ) : (
-        <div className="flex-1 flex flex-col items-center justify-center py-12 px-6 text-center gap-2">
-          <FilterX className="w-8 h-8 text-[--mike-fg-muted] opacity-50" />
-          <p className="text-xs text-[--mike-fg-muted]">
-            {esporteAtivo ? `Nenhum jogo de ${esporteAtivo}` : 'Nenhum jogo encontrado'}
-          </p>
-        </div>
+        <EstadoVazio
+          className="flex-1"
+          icone={filtrando ? FilterX : (vivo ? Radio : Clock)}
+          titulo={filtrando ? 'Nenhum jogo com esse filtro' : (vivo ? 'Nenhum jogo ao vivo agora' : 'Nenhum jogo recente')}
+          descricao={
+            busca ? `Nada encontrado para "${busca}".`
+              : esporteAtivo ? `Sem jogos de ${ROTULO_ESPORTE[esporteAtivo] || esporteAtivo} no momento.`
+              : 'A lista se atualiza sozinha a cada 15 segundos.'
+          }
+        />
       )}
-    </div>
+    </section>
   );
 }
 
 function SkeletonPainel() {
   return (
-    <div className="rounded-2xl bg-[--mike-card] border border-[--mike-border] overflow-hidden flex flex-col" style={{ maxHeight: '600px' }}>
-      <div className="px-5 py-3.5" style={{ background: 'linear-gradient(90deg, rgba(16,185,129,0.15), rgba(8,145,178,0.15))' }}>
+    <div className="rounded-2xl bg-[--mike-card] border border-[--mike-border] overflow-hidden flex flex-col" style={{ maxHeight: '620px' }}>
+      <div className="px-5 py-4 border-b border-[--mike-border] flex items-center gap-2.5">
+        <div className="mike-skeleton h-7 w-7 rounded-lg" />
         <div className="mike-skeleton h-3.5 w-32 rounded" />
       </div>
       <div className="p-2 space-y-1.5 flex-1">
-        {[1,2,3,4,5,6].map(i => (
-          <div key={i} className="flex items-center gap-3 px-3 py-2 rounded-md">
-            <div className="mike-skeleton h-2 w-20 rounded" />
-            <div className="flex-1 flex items-center justify-between gap-2">
-              <div className="mike-skeleton h-3 w-24 rounded" />
-              <div className="mike-skeleton h-5 w-12 rounded-md" />
-              <div className="mike-skeleton h-3 w-24 rounded" />
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div key={i} className="px-3 py-2.5 rounded-md space-y-2.5">
+            <div className="flex items-center gap-2">
+              <div className="mike-skeleton h-4 w-14 rounded" />
+              <div className="mike-skeleton h-2 w-24 rounded" />
+              <div className="flex-1" />
+              <div className="mike-skeleton h-2 w-16 rounded" />
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex-1 flex justify-end"><div className="mike-skeleton h-3 w-24 rounded" /></div>
+              <div className="mike-skeleton h-8 w-16 rounded-lg" />
+              <div className="flex-1"><div className="mike-skeleton h-3 w-24 rounded" /></div>
             </div>
           </div>
         ))}
@@ -323,15 +424,22 @@ export default function Today({ onNavegar, onAbrirPartida }) {
   const [refreshing, setRefreshing] = useState(false);
   const [ultimaAtualizacao, setUltimaAtualizacao] = useState(0);
   const [telaAtiva, setTelaAtiva] = useState('today');
+  const buscaRef = useRef(null);
+  const { usuario } = useAuth();
 
   const filtros = useMemo(() => ({ sport: esporteAtivo }), [esporteAtivo]);
 
   // Dados reais da API
-  const { data: eventosLive,     loading: loadingLive,     refetch: refetchLive }     = useEventosLive(filtros);
-  const { data: eventosFinished, loading: loadingFinished, refetch: refetchFinished } = useEventosFinished(filtros);
-  const { data: statsDash,       refetch: refetchStats }                               = useStatsDashboard();
+  const { data: eventosLive,     loading: loadingLive,     error: erroLive,     refetch: refetchLive }     = useEventosLive(filtros);
+  const { data: eventosFinished, loading: loadingFinished, error: erroFinished, refetch: refetchFinished } = useEventosFinished(filtros);
+  const { data: statsDash,       loading: loadingStats,    refetch: refetchStats }                          = useStatsDashboard();
 
   const loading = loadingLive || loadingFinished;
+  // O esqueleto só aparece na primeira carga; nas atualizações de 15 em 15s
+  // a lista continua na tela (antes ela piscava a cada atualização).
+  const [jaCarregou, setJaCarregou] = useState(false);
+  useEffect(() => { if (!loading) setJaCarregou(true); }, [loading]);
+  const primeiraCarga = loading && !jaCarregou;
 
   // Data/hora dos jogos no fuso do país escolhido
   const { formatarData, formatarHora } = usePais();
@@ -363,18 +471,12 @@ export default function Today({ onNavegar, onAbrirPartida }) {
     ticksHora: statsDash?.ticks_ultima_hora || 0,
   }), [proximasFiltradas, anterioresFiltradas, statsDash]);
 
-  const handleNavegar = (telaId) => {
+  const handleNavegar = (telaId, contexto) => {
     setTelaAtiva(telaId);
-    if (onNavegar) onNavegar(telaId);
+    if (onNavegar) onNavegar(telaId, contexto);
   };
 
-  const handleAbrirPartida = (partida) => {
-    if (onAbrirPartida) onAbrirPartida(partida);
-  };
-
-  const handleAbrirH2H = (partida) => {
-    if (onNavegar) onNavegar('h2h', { partida });
-  };
+  const handleAbrirPartida = onAbrirPartida ? (partida) => onAbrirPartida(partida) : undefined;
 
   const fazerRefresh = useCallback(() => {
     setRefreshing(true);
@@ -394,25 +496,44 @@ export default function Today({ onNavegar, onAbrirPartida }) {
     return () => clearInterval(id);
   }, [loading, fazerRefresh]);
 
+  // Atalho "/": põe o cursor na busca (se a pessoa não estiver digitando em outro campo)
+  useEffect(() => {
+    const aoTeclar = (e) => {
+      if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
+      const alvo = e.target;
+      const digitando = alvo && (alvo.tagName === 'INPUT' || alvo.tagName === 'TEXTAREA' || alvo.tagName === 'SELECT' || alvo.isContentEditable);
+      if (digitando) return;
+      e.preventDefault();
+      buscaRef.current?.focus();
+    };
+    window.addEventListener('keydown', aoTeclar);
+    return () => window.removeEventListener('keydown', aoTeclar);
+  }, []);
+
+  const primeiroNome = (usuario?.nome || '').trim().split(/\s+/)[0] || '';
+  const hoje = useMemo(() => {
+    const t = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+    return t.charAt(0).toUpperCase() + t.slice(1);
+  }, []);
+  const casasAtivas = statsDash?.bookmakers_ativos || [];
+
   const themeVars = {
-    '--mike-bg': '#0b0f1a', '--mike-bg-2': '#070a13', '--mike-card': '#141a28',
-    '--mike-card-2': '#1a2030', '--mike-card-hover': '#1d2434', '--mike-border': '#222a3d',
-    '--mike-fg': '#eaeef7', '--mike-fg-soft': '#a8b3c9', '--mike-fg-muted': '#6b7691',
-    '--mike-accent': '#10b981', '--mike-accent-2': '#0891b2',
+    '--mike-bg': '#060b0f', '--mike-bg-2': '#04080b', '--mike-card': '#0b1519',
+    '--mike-card-2': '#0f1c21', '--mike-card-hover': '#132429', '--mike-border': '#1a2c31',
+    '--mike-fg': '#eef8f6', '--mike-fg-soft': '#a9bfbf', '--mike-fg-muted': '#6c8689',
+    '--mike-accent': '#2bcdb9', '--mike-accent-2': '#0d847a',
   };
 
   return (
-    <div className="min-h-screen" style={{ ...themeVars, backgroundColor: 'var(--mike-bg)', color: 'var(--mike-fg)', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div className="min-h-screen" style={{ ...themeVars, backgroundColor: 'var(--mike-bg)', color: 'var(--mike-fg)', fontFamily: 'var(--mike-font)' }}>
       <style>{`
         .mike-scroll::-webkit-scrollbar { width: 8px; }
         .mike-scroll::-webkit-scrollbar-track { background: transparent; }
-        .mike-scroll::-webkit-scrollbar-thumb { background: rgba(16,185,129,0.3); border-radius: 4px; border: 2px solid transparent; background-clip: padding-box; }
-        .mike-scroll::-webkit-scrollbar-thumb:hover { background: rgba(16,185,129,0.6); background-clip: padding-box; border: 2px solid transparent; }
-        .mike-scroll { scrollbar-width: thin; scrollbar-color: rgba(16,185,129,0.3) transparent; }
-        .scrollbar-none::-webkit-scrollbar { display: none; }
-        .scrollbar-none { scrollbar-width: none; }
+        .mike-scroll::-webkit-scrollbar-thumb { background: rgba(43,205,185,0.3); border-radius: 4px; border: 2px solid transparent; background-clip: padding-box; }
+        .mike-scroll::-webkit-scrollbar-thumb:hover { background: rgba(43,205,185,0.6); background-clip: padding-box; border: 2px solid transparent; }
+        .mike-scroll { scrollbar-width: thin; scrollbar-color: rgba(43,205,185,0.3) transparent; }
         @keyframes mike-shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-        .mike-skeleton { background: linear-gradient(90deg, rgba(60,85,130,0.1) 0%, rgba(60,85,130,0.25) 50%, rgba(60,85,130,0.1) 100%); background-size: 200% 100%; animation: mike-shimmer 1.5s infinite linear; border-radius: 4px; }
+        .mike-skeleton { background: linear-gradient(90deg, rgba(50,100,104,0.1) 0%, rgba(50,100,104,0.25) 50%, rgba(50,100,104,0.1) 100%); background-size: 200% 100%; animation: mike-shimmer 1.5s infinite linear; border-radius: 4px; }
         @keyframes mike-refresh-pulse { 0%, 100% { opacity: 0.4; transform: scale(1); } 50% { opacity: 1; transform: scale(1.2); } }
         .mike-refresh-dot { animation: mike-refresh-pulse 1s ease-in-out infinite; }
         @keyframes mike-live-pulse { 0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(239,68,68,0.7); } 50% { opacity: 0.8; box-shadow: 0 0 0 5px rgba(239,68,68,0); } }
@@ -423,101 +544,105 @@ export default function Today({ onNavegar, onAbrirPartida }) {
 
       <MikeHeader telaAtiva={telaAtiva} onNavegar={handleNavegar} />
 
-      <main className="max-w-screen-xl mx-auto px-4 lg:px-8 py-10">
-        {/* HERO */}
-        <div className="flex flex-col items-center gap-4 mb-8">
-          <div className="grid grid-cols-3 gap-3 w-full max-w-2xl">
-            <div className="rounded-xl bg-[--mike-card] border border-[--mike-border] px-4 py-3 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-red-500/15 border border-red-500/30 flex items-center justify-center flex-shrink-0">
-                <Radio className="w-4 h-4 text-red-400" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-[10px] text-[--mike-fg-muted] uppercase tracking-wider truncate">Ao vivo</div>
-                <div className="text-xl font-black text-[--mike-fg] leading-tight">{stats.aoVivo}</div>
-              </div>
+      <main className="max-w-screen-xl mx-auto px-4 lg:px-8 pt-7 sm:pt-9 pb-10">
+        {/* TOPO: saudação + busca */}
+        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5 mb-6">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-[--mike-fg-muted]">
+              <span className="mike-ponto-vivo" />
+              {hoje}
             </div>
-            <div className="rounded-xl bg-[--mike-card] border border-[--mike-border] px-4 py-3 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center flex-shrink-0">
-                <Activity className="w-4 h-4 text-emerald-400" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-[10px] text-[--mike-fg-muted] uppercase tracking-wider truncate">Recentes</div>
-                <div className="text-xl font-black text-[--mike-fg] leading-tight">{stats.recentes}</div>
-              </div>
-            </div>
-            <div className="rounded-xl bg-[--mike-card] border border-[--mike-border] px-4 py-3 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center flex-shrink-0">
-                <Activity className="w-4 h-4 text-cyan-400" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-[10px] text-[--mike-fg-muted] uppercase tracking-wider truncate">Ticks/hora</div>
-                <div className="text-xl font-black text-[--mike-fg] leading-tight">{stats.ticksHora.toLocaleString()}</div>
-              </div>
-            </div>
+            <h1 className="text-2xl md:text-[2rem] font-bold text-[--mike-fg] mt-2 mb-0 leading-tight">
+              {primeiroNome ? <>Olá, <span className="text-[--mike-menta]">{primeiroNome}</span></> : 'Partidas do dia'}
+            </h1>
+            <p className="text-sm text-[--mike-fg-muted] mt-1.5 mb-0">Acompanhe todas as partidas do dia, ao vivo e encerradas.</p>
           </div>
 
-          <h1 className="text-2xl md:text-3xl font-black text-center text-[--mike-fg] max-w-md mt-2">
-            Acompanhe todas as partidas do dia
-          </h1>
-
-          <div className="w-full max-w-md flex gap-2">
-            <div className="flex-1 flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[--mike-card] border border-[--mike-border] shadow-sm focus-within:border-[--mike-accent] transition">
+          <div className="w-full lg:w-[440px] flex gap-2 flex-shrink-0">
+            <div className="flex-1 min-w-0 h-11 flex items-center gap-2 px-3.5 rounded-xl bg-[--mike-card] border border-[--mike-border] focus-within:border-[--mike-accent] focus-within:shadow-[0_0_0_3px_rgba(43,205,185,0.14)] transition">
               <Search className="w-4 h-4 text-[--mike-fg-muted] flex-shrink-0" />
-              <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Busque jogadores, ligas ou esportes" className="flex-1 bg-transparent outline-none text-sm placeholder:text-[--mike-fg-muted]" />
-              {busca && (
-                <button onClick={() => setBusca('')} className="p-0.5 rounded hover:bg-[--mike-card-hover] text-[--mike-fg-muted] hover:text-[--mike-fg] transition">
+              <input
+                ref={buscaRef}
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Escape') { setBusca(''); e.currentTarget.blur(); } }}
+                placeholder="Buscar jogador, liga ou esporte"
+                className="flex-1 min-w-0 bg-transparent outline-none text-sm placeholder:text-[--mike-fg-muted]"
+                aria-label="Buscar partidas"
+              />
+              {busca ? (
+                <button type="button" onClick={() => setBusca('')} className="p-1 rounded hover:bg-[--mike-card-hover] text-[--mike-fg-muted] hover:text-[--mike-fg] transition" aria-label="Limpar busca">
                   <X className="w-4 h-4" />
                 </button>
+              ) : (
+                <kbd className="mike-kbd hidden md:inline-flex" title="Aperte / para buscar">/</kbd>
               )}
             </div>
-            <button onClick={fazerRefresh} disabled={refreshing || loading} className="px-3 rounded-lg bg-[--mike-card] border border-[--mike-border] hover:bg-[--mike-card-hover] hover:border-[--mike-accent] text-[--mike-fg-muted] hover:text-[--mike-accent] transition disabled:opacity-50" title={`Atualizar (auto em ${15 - ultimaAtualizacao}s)`}>
-              <RefreshCw className={`w-4 h-4 ${refreshing ? 'mike-spin' : ''}`} />
-            </button>
-          </div>
-
-          <div className="w-full overflow-x-auto pb-2 scrollbar-none">
-            <div className="flex justify-start md:justify-center items-center gap-2.5 min-w-min">
-              {ESPORTES_FILTROS.map((e) => {
-                const cores = ESPORTE_CORES[e.id] || ESPORTE_CORES['E-Football'];
-                const ativo = esporteAtivo === e.id;
-                return (
-                  <button key={e.id} onClick={() => setEsporteAtivo(ativo ? null : e.id)}
-                    className={`px-3.5 py-1 rounded-full text-xs font-semibold border transition whitespace-nowrap ${ativo ? `${cores.activeBg} ${cores.activeText} ${cores.activeBorder} shadow-lg ${cores.activeShadow}` : 'bg-[--mike-card] text-[--mike-fg-muted] border-[--mike-border] hover:bg-[--mike-card-hover] hover:text-[--mike-fg]'}`}>
-                    {e.label}
-                  </button>
-                );
-              })}
-              {(esporteAtivo || busca) && (
-                <button onClick={() => { setEsporteAtivo(null); setBusca(''); }} className="ml-1 px-3 py-1 rounded-full text-xs font-medium border border-[--mike-border] text-[--mike-fg-muted] hover:text-[--mike-fg] hover:border-[--mike-accent]/40 transition flex items-center gap-1.5 whitespace-nowrap">
-                  <FilterX className="w-3 h-3" />
-                  Limpar filtros
-                </button>
-              )}
-            </div>
+            <BotaoAtualizar onClick={fazerRefresh} girando={refreshing} desabilitado={refreshing || loading} segundos={ultimaAtualizacao} />
           </div>
         </div>
 
-        {/* GRID PAINEIS */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-10">
-          {loading ? (
+        {/* NÚMEROS DO MOMENTO */}
+        <div className="grid grid-cols-3 gap-2.5 sm:gap-3 mb-5">
+          <CartaoKpi icone={Radio} rotulo="Ao vivo" valor={stats.aoVivo} tom="vivo" pulsando={stats.aoVivo > 0} carregando={primeiraCarga} legenda="jogos em andamento" />
+          <CartaoKpi icone={History} rotulo="Recentes" valor={stats.recentes} tom="marca" carregando={primeiraCarga} legenda="últimos encerrados" />
+          <CartaoKpi icone={Zap} rotulo="Ticks/hora" valor={stats.ticksHora} tom="info" carregando={loadingStats} legenda="leituras de odds na última hora" />
+        </div>
+
+        {/* FILTRO DE ESPORTE */}
+        <div className="w-full overflow-x-auto pb-1 mb-4 scrollbar-none">
+          <div className="flex items-center gap-2 min-w-min">
+            <button
+              type="button"
+              onClick={() => setEsporteAtivo(null)}
+              className={`px-3.5 h-8 rounded-full text-xs font-semibold border transition whitespace-nowrap ${!esporteAtivo ? 'bg-mike-accent/15 text-[--mike-menta] border-mike-accent/50' : 'bg-[--mike-card] text-[--mike-fg-muted] border-[--mike-border] hover:bg-[--mike-card-hover] hover:text-[--mike-fg]'}`}
+            >
+              Todos
+            </button>
+            {ESPORTES_FILTROS.map((e) => {
+              const cores = ESPORTE_CORES[e.id] || ESPORTE_CORES['E-Football'];
+              const ativo = esporteAtivo === e.id;
+              return (
+                <button key={e.id} type="button" onClick={() => setEsporteAtivo(ativo ? null : e.id)}
+                  className={`px-3.5 h-8 rounded-full text-xs font-semibold border transition whitespace-nowrap ${ativo ? `${cores.activeBg} ${cores.activeText} ${cores.activeBorder} shadow-lg ${cores.activeShadow}` : 'bg-[--mike-card] text-[--mike-fg-muted] border-[--mike-border] hover:bg-[--mike-card-hover] hover:text-[--mike-fg]'}`}>
+                  {e.label}
+                </button>
+              );
+            })}
+            {(esporteAtivo || busca) && (
+              <button type="button" onClick={() => { setEsporteAtivo(null); setBusca(''); }} className="ml-1 px-3 h-8 rounded-full text-xs font-medium border border-[--mike-border] text-[--mike-fg-muted] hover:text-[--mike-fg] hover:border-mike-accent/40 transition flex items-center gap-1.5 whitespace-nowrap">
+                <FilterX className="w-3 h-3" />
+                Limpar filtros
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* PAINÉIS */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5 mb-8">
+          {primeiraCarga ? (
             <><SkeletonPainel /><SkeletonPainel /></>
           ) : (
             <>
-              <PainelPartidas titulo="Partidas anteriores" partidas={anterioresFiltradas} tipo="anterior" esporteAtivo={esporteAtivo} onAbrirPartida={handleAbrirPartida} onAbrirH2H={handleAbrirH2H} />
-              <PainelPartidas titulo="Ao vivo agora" partidas={proximasFiltradas} tipo="proxima" esporteAtivo={esporteAtivo} onAbrirPartida={handleAbrirPartida} onAbrirH2H={handleAbrirH2H} />
+              <PainelPartidas titulo="Ao vivo agora" icone={Radio} vivo partidas={proximasFiltradas} tipo="proxima" esporteAtivo={esporteAtivo} busca={busca} erro={erroLive} onTentar={fazerRefresh} onAbrirPartida={handleAbrirPartida} />
+              <PainelPartidas titulo="Partidas anteriores" icone={Clock} partidas={anterioresFiltradas} tipo="anterior" esporteAtivo={esporteAtivo} busca={busca} erro={erroFinished} onTentar={fazerRefresh} onAbrirPartida={handleAbrirPartida} />
             </>
           )}
         </div>
 
         {/* STATUS */}
-        <div className="text-center">
-          <p className="text-[10px] text-[--mike-fg-muted] flex items-center justify-center gap-1.5">
+        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-[11px] text-[--mike-fg-muted]">
+          <span className="flex items-center gap-1.5">
             <span className="mike-refresh-dot inline-block w-1.5 h-1.5 rounded-full bg-emerald-400" />
             {refreshing ? 'Atualizando...' : `Próxima atualização em ${15 - ultimaAtualizacao}s`}
-            {statsDash?.bookmakers_ativos?.length > 0 && (
-              <span className="ml-2">· {statsDash.bookmakers_ativos.join(', ')}</span>
-            )}
-          </p>
+          </span>
+          {casasAtivas.length > 0 && (
+            <span className="flex flex-wrap items-center justify-center gap-1.5">
+              {casasAtivas.map((c) => (
+                <span key={c} className="px-2 py-0.5 rounded-md bg-[--mike-card] border border-[--mike-border] text-[--mike-fg-soft] font-medium">{c}</span>
+              ))}
+            </span>
+          )}
         </div>
       </main>
     </div>

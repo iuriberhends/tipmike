@@ -321,7 +321,7 @@ function MikeSelect({ value, onChange, options, placeholder = '', disabled = fal
         onClick={abrirDropdown}
         disabled={disabled}
         className={`mike-border-thin w-full flex items-center justify-between px-3 py-2 rounded-md bg-transparent text-xs transition gap-2 ${
-          disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer hover:border-[--mike-accent]/40'
+          disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer hover:border-mike-accent/40'
         }`}
       >
         <span className={opcaoSelecionada ? 'text-[--mike-fg] truncate' : 'text-[--mike-fg-muted] truncate'}>
@@ -338,8 +338,8 @@ function MikeSelect({ value, onChange, options, placeholder = '', disabled = fal
             bottom: pos.bottom,
             left: pos.left,
             width: pos.width,
-            backgroundColor: '#0d1220',
-            border: '0.5px solid rgba(60, 85, 130, 0.4)',
+            backgroundColor: '#0a1216',
+            border: '0.5px solid rgba(50, 100, 104, 0.4)',
             boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)',
             maxHeight: '260px',
           }}
@@ -374,9 +374,9 @@ function Switch({ ativo, onChange, disabled = false }) {
         disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
       }`}
       style={{
-        backgroundColor: ativo ? '#10b981' : '#4a5470',
+        backgroundColor: ativo ? '#2bcdb9' : '#3f5a60',
         transition: 'background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        boxShadow: ativo ? '0 0 12px rgba(16, 185, 129, 0.4)' : 'none',
+        boxShadow: ativo ? '0 0 12px rgba(43, 205, 185, 0.4)' : 'none',
       }}
     >
       <div
@@ -384,7 +384,7 @@ function Switch({ ativo, onChange, disabled = false }) {
         style={{
           left: ativo ? '18px' : '2px',
           transition: 'left 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease',
-          boxShadow: ativo ? '0 2px 6px rgba(16, 185, 129, 0.5), 0 1px 2px rgba(0,0,0,0.2)' : '0 1px 2px rgba(0,0,0,0.2)',
+          boxShadow: ativo ? '0 2px 6px rgba(43, 205, 185, 0.5), 0 1px 2px rgba(0,0,0,0.2)' : '0 1px 2px rgba(0,0,0,0.2)',
         }}
       />
     </button>
@@ -398,10 +398,10 @@ function PillLabel({ texto, ativo, info }) {
     <div
       className="relative inline-flex items-center gap-1 px-3 py-1.5 rounded text-[11px] font-bold"
       style={{
-        backgroundColor: ativo ? '#10b981' : '#4a5470',
+        backgroundColor: ativo ? '#2bcdb9' : '#3f5a60',
         color: ativo ? '#ffffff' : 'rgba(255,255,255,0.85)',
         transition: 'background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s ease, box-shadow 0.3s ease',
-        boxShadow: ativo ? '0 2px 8px rgba(16, 185, 129, 0.25)' : 'none',
+        boxShadow: ativo ? '0 2px 8px rgba(43, 205, 185, 0.25)' : 'none',
       }}
     >
       {texto}
@@ -416,8 +416,8 @@ function PillLabel({ texto, ativo, info }) {
             <div
               className="mike-tooltip-in absolute z-50 left-1/2 bottom-full mb-2 -translate-x-1/2 rounded-md px-3 py-2 text-left shadow-2xl"
               style={{
-                backgroundColor: '#0d1220',
-                border: '0.5px solid rgba(16, 185, 129, 0.5)',
+                backgroundColor: '#0a1216',
+                border: '0.5px solid rgba(43, 205, 185, 0.5)',
                 width: '220px',
                 whiteSpace: 'normal',
               }}
@@ -431,7 +431,7 @@ function PillLabel({ texto, ativo, info }) {
                   top: '100%',
                   borderLeft: '5px solid transparent',
                   borderRight: '5px solid transparent',
-                  borderTop: '5px solid #0d1220',
+                  borderTop: '5px solid #0a1216',
                 }}
               />
             </div>
@@ -474,14 +474,14 @@ function RangeSlider({ min, max, step = 0.5, value, onChange, sufixoMin = '', su
         className="mike-border-thin w-14 px-2 py-1 rounded text-xs text-center bg-transparent text-[--mike-fg] outline-none mike-no-spin"
       />
       <div
-        className="relative flex-1 h-6 flex items-center"
+        className="relative flex-1 min-w-0 h-6 flex items-center"
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
       >
-        <div className="absolute inset-x-0 h-1 rounded-full bg-[#3a4258]" />
+        <div className="absolute inset-x-0 h-1 rounded-full bg-[#2b4248]" />
         <div
           className="absolute h-1 rounded-full"
-          style={{ left: `${pctMin}%`, right: `${100 - pctMax}%`, backgroundColor: '#10b981' }}
+          style={{ left: `${pctMin}%`, right: `${100 - pctMax}%`, backgroundColor: '#2bcdb9' }}
         />
         {/* Tooltip flutuante MIN */}
         {mostrarTooltips && (
@@ -491,7 +491,7 @@ function RangeSlider({ min, max, step = 0.5, value, onChange, sufixoMin = '', su
           >
             <div
               className="px-1.5 py-0.5 rounded text-[10px] font-bold font-mono text-white shadow-md whitespace-nowrap relative"
-              style={{ backgroundColor: '#374151' }}
+              style={{ backgroundColor: '#2f464b' }}
             >
               {vMin}
               <div
@@ -500,7 +500,7 @@ function RangeSlider({ min, max, step = 0.5, value, onChange, sufixoMin = '', su
                   top: '100%',
                   borderLeft: '4px solid transparent',
                   borderRight: '4px solid transparent',
-                  borderTop: '4px solid #374151',
+                  borderTop: '4px solid #2f464b',
                 }}
               />
             </div>
@@ -514,7 +514,7 @@ function RangeSlider({ min, max, step = 0.5, value, onChange, sufixoMin = '', su
           >
             <div
               className="px-1.5 py-0.5 rounded text-[10px] font-bold font-mono text-white shadow-md whitespace-nowrap relative"
-              style={{ backgroundColor: '#374151' }}
+              style={{ backgroundColor: '#2f464b' }}
             >
               {vMax}
               <div
@@ -523,7 +523,7 @@ function RangeSlider({ min, max, step = 0.5, value, onChange, sufixoMin = '', su
                   top: '100%',
                   borderLeft: '4px solid transparent',
                   borderRight: '4px solid transparent',
-                  borderTop: '4px solid #374151',
+                  borderTop: '4px solid #2f464b',
                 }}
               />
             </div>
@@ -571,14 +571,14 @@ function SingleSlider({ min, max, step = 1, value, onChange, sufixoMin = null, s
         {sufixoMin !== null ? sufixoMin : min}
       </span>
       <div
-        className="relative flex-1 h-6 flex items-center"
+        className="relative flex-1 min-w-0 h-6 flex items-center"
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
       >
         {/* Track */}
-        <div className="absolute inset-x-0 h-1 rounded-full bg-[#3a4258]" />
+        <div className="absolute inset-x-0 h-1 rounded-full bg-[#2b4248]" />
         {/* Range ativo */}
-        <div className="absolute h-1 rounded-full" style={{ width: `${pct}%`, backgroundColor: '#10b981' }} />
+        <div className="absolute h-1 rounded-full" style={{ width: `${pct}%`, backgroundColor: '#2bcdb9' }} />
         {/* Tooltip flutuante - so quando hover ou arrastando */}
         {mostrarTooltip && (
           <div
@@ -591,7 +591,7 @@ function SingleSlider({ min, max, step = 1, value, onChange, sufixoMin = null, s
           >
             <div
               className="px-1.5 py-0.5 rounded text-[10px] font-bold font-mono text-white shadow-md whitespace-nowrap relative"
-              style={{ backgroundColor: '#374151' }}
+              style={{ backgroundColor: '#2f464b' }}
             >
               {value}
               <div
@@ -600,7 +600,7 @@ function SingleSlider({ min, max, step = 1, value, onChange, sufixoMin = null, s
                   top: '100%',
                   borderLeft: '4px solid transparent',
                   borderRight: '4px solid transparent',
-                  borderTop: '4px solid #374151',
+                  borderTop: '4px solid #2f464b',
                 }}
               />
             </div>
@@ -667,7 +667,7 @@ function LinhaFiltro({ ativo, onToggle, label, info, children, comToggle = true,
 
 function SecaoForm({ titulo, descricao, children }) {
   return (
-    <section className="mb-6 pb-6" style={{ borderBottom: '0.5px solid rgba(60, 85, 130, 0.2)' }}>
+    <section className="mb-6 pb-6" style={{ borderBottom: '0.5px solid rgba(50, 100, 104, 0.2)' }}>
       <div className="text-center mb-4">
         <h2 className="text-base font-bold text-[--mike-fg] mb-1">{titulo}</h2>
         {descricao && <p className="text-[11px] text-[--mike-fg-muted] max-w-3xl mx-auto leading-relaxed">{descricao}</p>}
@@ -775,7 +775,7 @@ function MultiTagInput({ valores, onChange, opcoes, placeholder = '' }) {
         className="mike-border-thin w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md bg-transparent cursor-text min-h-[34px] flex-wrap"
       >
         {valores.map((v) => (
-          <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-[--mike-accent]/15 text-[--mike-accent] border border-[--mike-accent]/30">
+          <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-mike-accent/15 text-[--mike-accent] border border-mike-accent/30">
             {v}
             <button onClick={(e) => { e.stopPropagation(); remover(v); }} className="hover:text-rose-400 transition">
               <X className="w-2.5 h-2.5" />
@@ -793,15 +793,15 @@ function MultiTagInput({ valores, onChange, opcoes, placeholder = '' }) {
       {aberto && opcoesFiltradas.length > 0 && (
         <div className="mike-mercados-scroll mike-dropdown-in absolute z-40 left-0 right-0 mt-1 rounded-md overflow-y-auto"
           style={{
-            backgroundColor: '#0d1220',
-            border: '0.5px solid rgba(60, 85, 130, 0.4)',
+            backgroundColor: '#0a1216',
+            border: '0.5px solid rgba(50, 100, 104, 0.4)',
             boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)',
             maxHeight: '220px',
           }}
         >
           {opcoesFiltradas.map((o) => (
             <button key={o} onClick={() => adicionar(o)}
-              className="w-full px-3 py-2 text-xs text-left text-[--mike-fg-soft] hover:bg-[--mike-card-2]/50 hover:text-[--mike-fg] transition">
+              className="w-full px-3 py-2 text-xs text-left text-[--mike-fg-soft] hover:bg-mike-card-2/50 hover:text-[--mike-fg] transition">
               {o}
             </button>
           ))}
@@ -837,9 +837,9 @@ function ChipFiltro({ index, detalhes, onRemover, hover, onHoverChange }) {
     <div
       className="mike-chip-in relative inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold transition cursor-pointer"
       style={{
-        backgroundColor: 'rgba(60, 85, 130, 0.25)',
-        border: '0.5px solid rgba(60, 85, 130, 0.5)',
-        color: '#b8c0d4',
+        backgroundColor: 'rgba(50, 100, 104, 0.25)',
+        border: '0.5px solid rgba(50, 100, 104, 0.5)',
+        color: '#b5c9c8',
       }}
       onMouseEnter={() => onHoverChange(index)}
       onMouseLeave={() => onHoverChange(null)}
@@ -857,8 +857,8 @@ function ChipFiltro({ index, detalhes, onRemover, hover, onHoverChange }) {
         <div
           className="mike-tooltip-in absolute z-50 left-0 top-full mt-2 rounded-lg p-3 text-left whitespace-nowrap shadow-2xl"
           style={{
-            backgroundColor: '#0d1220',
-            border: '0.5px solid rgba(16, 185, 129, 0.5)',
+            backgroundColor: '#0a1216',
+            border: '0.5px solid rgba(43, 205, 185, 0.5)',
             minWidth: '240px',
           }}
         >
@@ -910,8 +910,8 @@ function BlocoFiltrosHistorico({
     <div
       className={semBackground ? '' : 'mt-6 rounded-lg p-4'}
       style={semBackground ? {} : {
-        backgroundColor: 'rgba(60, 85, 130, 0.08)',
-        border: '0.5px solid rgba(60, 85, 130, 0.4)',
+        backgroundColor: 'rgba(50, 100, 104, 0.08)',
+        border: '0.5px solid rgba(50, 100, 104, 0.4)',
       }}
     >
       {titulo && <h3 className="text-xs font-bold text-[--mike-fg] mb-2">{titulo}</h3>}
@@ -969,7 +969,7 @@ function BlocoFiltrosHistorico({
                   onChange={(e) => c.onChange(e.target.value === '' ? null : parseFloat(e.target.value))}
                   className="mike-border-thin w-24 px-2 py-1.5 rounded text-xs text-center bg-transparent text-[--mike-fg] outline-none mike-no-spin"
                   style={{ opacity: c.ativo ? 1 : 0.4 }} />
-                {!c.ativo && <span className="text-[10px]" style={{ color: '#10b981' }}>auto</span>}
+                {!c.ativo && <span className="text-[10px]" style={{ color: '#2bcdb9' }}>auto</span>}
               </div>
             )}
           </LinhaCampoHist>
@@ -988,8 +988,8 @@ function BlocoFiltrosHistorico({
           }}
           className="flex items-center gap-1.5 px-4 py-2 rounded-md text-[11px] font-bold uppercase tracking-wider text-white shadow-md transition-transform duration-200 hover:scale-105 active:scale-95"
           style={{
-            backgroundColor: '#10b981',
-            boxShadow: '0 4px 12px rgba(16, 185, 129, 0.35)',
+            backgroundColor: '#2bcdb9',
+            boxShadow: '0 4px 12px rgba(43, 205, 185, 0.35)',
           }}
         >
           <Plus className="w-3.5 h-3.5" strokeWidth={3} />
@@ -1027,13 +1027,13 @@ function formatarCombinacao(c) {
 
 function CaixaFiltrarPartidas({ cor, titulo, ativo, onToggle, jogadores, times, carregando, estado, onChange, torneioNome }) {
   const isVerde = cor === 'verde';
-  const corPrimaria = isVerde ? '#10b981' : '#f43f5e';
+  const corPrimaria = isVerde ? '#2bcdb9' : '#f43f5e';
   const corBg = ativo
-    ? (isVerde ? 'rgba(16, 185, 129, 0.08)' : 'rgba(244, 63, 94, 0.08)')
+    ? (isVerde ? 'rgba(43, 205, 185, 0.08)' : 'rgba(244, 63, 94, 0.08)')
     : 'transparent';
   const corBorda = ativo
-    ? (isVerde ? 'rgba(16, 185, 129, 0.5)' : 'rgba(244, 63, 94, 0.5)')
-    : (isVerde ? 'rgba(16, 185, 129, 0.3)' : 'rgba(244, 63, 94, 0.3)');
+    ? (isVerde ? 'rgba(43, 205, 185, 0.5)' : 'rgba(244, 63, 94, 0.5)')
+    : (isVerde ? 'rgba(43, 205, 185, 0.3)' : 'rgba(244, 63, 94, 0.3)');
 
   const opcoesJogadores = jogadores.map(j => ({ value: j, label: j }));
   const opcoesTimes = times.map(t => ({ value: t, label: t }));
@@ -1095,12 +1095,12 @@ function CaixaFiltrarPartidas({ cor, titulo, ativo, onToggle, jogadores, times, 
       </div>
       <Collapse aberto={ativo}>
         <div className="pt-3 space-y-3">
-          <p className="text-[10px] leading-relaxed" style={{ color: '#6b7691' }}>
+          <p className="text-[10px] leading-relaxed" style={{ color: '#6c8689' }}>
             Você pode adicionar um jogador ou um time sozinho, além de todas as combinações possíveis.
           </p>
 
           {carregando && (
-            <div className="flex items-center gap-2 text-[10px]" style={{ color: '#6b7691' }}>
+            <div className="flex items-center gap-2 text-[10px]" style={{ color: '#6c8689' }}>
               <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none">
                 <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.3"/>
                 <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
@@ -1161,11 +1161,11 @@ function CaixaFiltrarPartidas({ cor, titulo, ativo, onToggle, jogadores, times, 
           <div className="space-y-1.5 pt-1">
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" className="mike-checkbox" checked={estado.fixarJ1Casa} onChange={(e) => setField('fixarJ1Casa', e.target.checked)} />
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded" style={{ backgroundColor: isVerde ? 'rgba(16,185,129,0.15)' : 'rgba(244,63,94,0.15)', color: corPrimaria, border: `0.5px solid ${corPrimaria}40` }}>Fixar Jogador 1/Time 1 como casa</span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded" style={{ backgroundColor: isVerde ? 'rgba(43,205,185,0.15)' : 'rgba(244,63,94,0.15)', color: corPrimaria, border: `0.5px solid ${corPrimaria}40` }}>Fixar Jogador 1/Time 1 como casa</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" className="mike-checkbox" checked={estado.fixarJ2Visit} onChange={(e) => setField('fixarJ2Visit', e.target.checked)} />
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded" style={{ backgroundColor: isVerde ? 'rgba(16,185,129,0.15)' : 'rgba(244,63,94,0.15)', color: corPrimaria, border: `0.5px solid ${corPrimaria}40` }}>Fixar Jogador 2/Time 2 como visitante</span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded" style={{ backgroundColor: isVerde ? 'rgba(43,205,185,0.15)' : 'rgba(244,63,94,0.15)', color: corPrimaria, border: `0.5px solid ${corPrimaria}40` }}>Fixar Jogador 2/Time 2 como visitante</span>
             </label>
           </div>
 
@@ -1278,13 +1278,13 @@ function CaixaFiltrarPartidas({ cor, titulo, ativo, onToggle, jogadores, times, 
 // ============================================================
 function CaixaBlacklistJogador({ cor, titulo, descricao, ativo, onToggle, jogadores, carregando, estado, onChange }) {
   const isVerde = cor === 'verde';
-  const corPrimaria = isVerde ? '#10b981' : '#f43f5e';
+  const corPrimaria = isVerde ? '#2bcdb9' : '#f43f5e';
   const corBg = ativo
-    ? (isVerde ? 'rgba(16, 185, 129, 0.08)' : 'rgba(244, 63, 94, 0.08)')
+    ? (isVerde ? 'rgba(43, 205, 185, 0.08)' : 'rgba(244, 63, 94, 0.08)')
     : 'transparent';
   const corBorda = ativo
-    ? (isVerde ? 'rgba(16, 185, 129, 0.5)' : 'rgba(244, 63, 94, 0.5)')
-    : (isVerde ? 'rgba(16, 185, 129, 0.3)' : 'rgba(244, 63, 94, 0.3)');
+    ? (isVerde ? 'rgba(43, 205, 185, 0.5)' : 'rgba(244, 63, 94, 0.5)')
+    : (isVerde ? 'rgba(43, 205, 185, 0.3)' : 'rgba(244, 63, 94, 0.3)');
 
   const [sel, setSel] = useState('');
   const adicionados = estado.adicionados || [];
@@ -1313,11 +1313,11 @@ function CaixaBlacklistJogador({ cor, titulo, descricao, ativo, onToggle, jogado
       <Collapse aberto={ativo}>
         <div className="pt-3 space-y-3">
           {descricao && (
-            <p className="text-[10px] leading-relaxed" style={{ color: '#6b7691' }}>{descricao}</p>
+            <p className="text-[10px] leading-relaxed" style={{ color: '#6c8689' }}>{descricao}</p>
           )}
 
           {carregando && (
-            <div className="flex items-center gap-2 text-[10px]" style={{ color: '#6b7691' }}>
+            <div className="flex items-center gap-2 text-[10px]" style={{ color: '#6c8689' }}>
               <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none">
                 <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.3"/>
                 <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
@@ -1350,7 +1350,7 @@ function CaixaBlacklistJogador({ cor, titulo, descricao, ativo, onToggle, jogado
               <div className="flex flex-wrap gap-1.5">
                 {adicionados.map((nick) => (
                   <span key={nick} className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold"
-                    style={{ backgroundColor: isVerde ? 'rgba(16,185,129,0.15)' : 'rgba(244,63,94,0.15)', color: corPrimaria, border: `0.5px solid ${corPrimaria}40` }}>
+                    style={{ backgroundColor: isVerde ? 'rgba(43,205,185,0.15)' : 'rgba(244,63,94,0.15)', color: corPrimaria, border: `0.5px solid ${corPrimaria}40` }}>
                     {nick}
                     <button onClick={() => remover(nick)} className="hover:opacity-70" title="Remover">
                       <Trash2 className="w-3 h-3" />
@@ -2290,17 +2290,17 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
   }, [botInicial?.id]);
 
   const themeVars = {
-    '--mike-bg': '#0b0f1a',
-    '--mike-bg-2': '#070a13',
-    '--mike-card': '#141a28',
-    '--mike-card-2': '#1a2030',
-    '--mike-card-hover': '#1c2336',
-    '--mike-border': '#222a3d',
-    '--mike-fg': '#eaeef7',
-    '--mike-fg-soft': '#b8c0d4',
-    '--mike-fg-muted': '#6b7691',
-    '--mike-accent': '#10b981',
-    '--mike-accent-2': '#0891b2',
+    '--mike-bg': '#060b0f',
+    '--mike-bg-2': '#04080b',
+    '--mike-card': '#0b1519',
+    '--mike-card-2': '#0f1c21',
+    '--mike-card-hover': '#132429',
+    '--mike-border': '#1a2c31',
+    '--mike-fg': '#eef8f6',
+    '--mike-fg-soft': '#b5c9c8',
+    '--mike-fg-muted': '#6c8689',
+    '--mike-accent': '#2bcdb9',
+    '--mike-accent-2': '#0d847a',
   };
 
   // Lista de torneios PAI disponiveis pro dropdown:
@@ -2363,22 +2363,22 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
       ...themeVars,
       backgroundColor: 'var(--mike-bg)',
       color: 'var(--mike-fg)',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontFamily: 'var(--mike-font)',
     }}>
       <style>{`
         .mike-mercados-scroll::-webkit-scrollbar { width: 6px; }
-        .mike-mercados-scroll::-webkit-scrollbar-track { background: rgba(80, 110, 170, 0.05); border-radius: 10px; }
-        .mike-mercados-scroll::-webkit-scrollbar-thumb { background: rgba(80, 110, 170, 0.5); border-radius: 10px; }
-        .mike-mercados-scroll::-webkit-scrollbar-thumb:hover { background: rgba(80, 110, 170, 0.9); }
-        .mike-mercados-scroll { scrollbar-width: thin; scrollbar-color: rgba(80, 110, 170, 0.5) rgba(80, 110, 170, 0.05); }
+        .mike-mercados-scroll::-webkit-scrollbar-track { background: rgba(70, 130, 132, 0.05); border-radius: 10px; }
+        .mike-mercados-scroll::-webkit-scrollbar-thumb { background: rgba(70, 130, 132, 0.5); border-radius: 10px; }
+        .mike-mercados-scroll::-webkit-scrollbar-thumb:hover { background: rgba(70, 130, 132, 0.9); }
+        .mike-mercados-scroll { scrollbar-width: thin; scrollbar-color: rgba(70, 130, 132, 0.5) rgba(70, 130, 132, 0.05); }
 
         /* Opcoes do MikeSelect: hover verde igual ao ativo */
-        .mike-option { color: #b8c0d4; background-color: transparent; }
-        .mike-option[data-ativo="true"] { background-color: #10b981; color: #ffffff; font-weight: 600; }
-        .mike-option:hover { background-color: #10b981; color: #ffffff; }
+        .mike-option { color: #b5c9c8; background-color: transparent; }
+        .mike-option[data-ativo="true"] { background-color: #2bcdb9; color: #03201c; font-weight: 600; }
+        .mike-option:hover { background-color: #2bcdb9; color: #03201c; }
 
-        .mike-border-thin { border: 0.5px solid rgba(60, 85, 130, 0.4) !important; }
-        .mike-border-thin:hover { border-color: rgba(80, 110, 170, 0.7) !important; }
+        .mike-border-thin { border: 0.5px solid rgba(50, 100, 104, 0.4) !important; }
+        .mike-border-thin:hover { border-color: rgba(70, 130, 132, 0.7) !important; }
 
         .mike-no-spin::-webkit-outer-spin-button,
         .mike-no-spin::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
@@ -2397,21 +2397,21 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
           width: 14px;
           height: 14px;
           border-radius: 50%;
-          background: #10b981;
+          background: #2bcdb9;
           cursor: pointer;
           pointer-events: auto;
-          border: 2px solid #0b0f1a;
-          box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.6);
+          border: 2px solid #060b0f;
+          box-shadow: 0 0 0 1px rgba(43, 205, 185, 0.6);
         }
         .mike-range-thumb::-moz-range-thumb {
           width: 14px;
           height: 14px;
           border-radius: 50%;
-          background: #10b981;
+          background: #2bcdb9;
           cursor: pointer;
           pointer-events: auto;
-          border: 2px solid #0b0f1a;
-          box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.6);
+          border: 2px solid #060b0f;
+          box-shadow: 0 0 0 1px rgba(43, 205, 185, 0.6);
         }
 
         .mike-checkbox {
@@ -2419,15 +2419,15 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
           width: 14px;
           height: 14px;
           border-radius: 3px;
-          border: 1px solid rgba(80, 110, 170, 0.6);
+          border: 1px solid rgba(70, 130, 132, 0.6);
           background: transparent;
           cursor: pointer;
           position: relative;
           transition: all 0.15s;
           flex-shrink: 0;
         }
-        .mike-checkbox:hover { border-color: rgba(16, 185, 129, 0.6); }
-        .mike-checkbox:checked { background: #10b981; border-color: #10b981; }
+        .mike-checkbox:hover { border-color: rgba(43, 205, 185, 0.6); }
+        .mike-checkbox:checked { background: #2bcdb9; border-color: #2bcdb9; }
         .mike-checkbox:checked::after {
           content: '';
           position: absolute;
@@ -2435,7 +2435,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
           top: 1px;
           width: 4px;
           height: 8px;
-          border: solid #0b0f1a;
+          border: solid #060b0f;
           border-width: 0 2px 2px 0;
           transform: rotate(45deg);
         }
@@ -2445,15 +2445,15 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
           width: 14px;
           height: 14px;
           border-radius: 50%;
-          border: 1.5px solid rgba(80, 110, 170, 0.6);
+          border: 1.5px solid rgba(70, 130, 132, 0.6);
           background: transparent;
           cursor: pointer;
           position: relative;
           transition: all 0.15s;
           flex-shrink: 0;
         }
-        .mike-radio:hover { border-color: rgba(16, 185, 129, 0.6); }
-        .mike-radio:checked { border-color: #10b981; }
+        .mike-radio:hover { border-color: rgba(43, 205, 185, 0.6); }
+        .mike-radio:checked { border-color: #2bcdb9; }
         .mike-radio:checked::after {
           content: '';
           position: absolute;
@@ -2462,7 +2462,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
           width: 8px;
           height: 8px;
           border-radius: 50%;
-          background: #10b981;
+          background: #2bcdb9;
         }
 
         @keyframes mike-toast-in { 0% { transform: translateY(-20px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
@@ -2531,8 +2531,8 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
         {/* Loading state quando carrega bot pra editar */}
         {loadingBot && (
           <div className="rounded-lg p-12 text-center mb-4" style={{
-            backgroundColor: 'rgba(20, 26, 40, 0.6)',
-            border: '0.5px solid rgba(60, 85, 130, 0.4)',
+            backgroundColor: 'rgba(11, 21, 25, 0.6)',
+            border: '0.5px solid rgba(50, 100, 104, 0.4)',
           }}>
             <svg className="w-8 h-8 mx-auto mb-3 animate-spin text-[--mike-accent]" viewBox="0 0 24 24" fill="none">
               <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.3"/>
@@ -2580,9 +2580,9 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
               return (
                 <>
                   <div className="flex items-center gap-1 px-2 py-1 rounded font-mono font-bold" style={{
-                    backgroundColor: filtrosAtivos > 0 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(60, 85, 130, 0.15)',
-                    color: filtrosAtivos > 0 ? '#10b981' : '#6b7691',
-                    border: `0.5px solid ${filtrosAtivos > 0 ? 'rgba(16, 185, 129, 0.4)' : 'rgba(60, 85, 130, 0.4)'}`,
+                    backgroundColor: filtrosAtivos > 0 ? 'rgba(43, 205, 185, 0.15)' : 'rgba(50, 100, 104, 0.15)',
+                    color: filtrosAtivos > 0 ? '#2bcdb9' : '#6c8689',
+                    border: `0.5px solid ${filtrosAtivos > 0 ? 'rgba(43, 205, 185, 0.4)' : 'rgba(50, 100, 104, 0.4)'}`,
                   }}>
                     {filtrosAtivos} {filtrosAtivos === 1 ? 'filtro' : 'filtros'}
                   </div>
@@ -2616,7 +2616,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
               </>
             ) : (
               <>
-                <div className="w-2 h-2 rounded-full bg-[#4a5470]" />
+                <div className="w-2 h-2 rounded-full bg-[#3f5a60]" />
                 <span>Auto-save ativado</span>
               </>
             )}
@@ -2627,15 +2627,15 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
           {/* Atalhos */}
           <div className="hidden md:flex items-center gap-2 text-[--mike-fg-muted]">
             <kbd className="px-1.5 py-0.5 rounded font-mono font-semibold" style={{
-              backgroundColor: 'rgba(60,85,130,0.2)',
-              border: '0.5px solid rgba(60,85,130,0.4)',
-              color: '#b8c0d4',
+              backgroundColor: 'rgba(50,100,104,0.2)',
+              border: '0.5px solid rgba(50,100,104,0.4)',
+              color: '#b5c9c8',
             }}>Ctrl+S</kbd>
             <span>salvar</span>
             <kbd className="px-1.5 py-0.5 rounded font-mono font-semibold ml-2" style={{
-              backgroundColor: 'rgba(60,85,130,0.2)',
-              border: '0.5px solid rgba(60,85,130,0.4)',
-              color: '#b8c0d4',
+              backgroundColor: 'rgba(50,100,104,0.2)',
+              border: '0.5px solid rgba(50,100,104,0.4)',
+              color: '#b5c9c8',
             }}>Esc</kbd>
             <span>cancelar</span>
           </div>
@@ -3090,7 +3090,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
         {/* FILTRAR PARTIDAS */}
         <SecaoForm titulo="Filtrar Partidas" descricao="Adicione ou remova partidas específicas do seu filtro">
           {!torneioAtivo || torneios.length === 0 ? (
-            <div className="text-center py-4 text-[11px]" style={{ color: '#6b7691' }}>
+            <div className="text-center py-4 text-[11px]" style={{ color: '#6c8689' }}>
               Selecione um torneio na seção "Torneio e Grade" para habilitar os filtros de partidas.
             </div>
           ) : (
@@ -3128,7 +3128,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
         </SecaoForm>
 
         {/* EVITAR LINHAS SEQ + MAX TIPS POR JOGO */}
-        <div className="rounded-lg p-4 mb-6 space-y-3" style={{ backgroundColor: 'rgba(60,85,130,0.06)', border: '0.5px solid rgba(60,85,130,0.3)' }}>
+        <div className="rounded-lg p-4 mb-6 space-y-3" style={{ backgroundColor: 'rgba(50,100,104,0.06)', border: '0.5px solid rgba(50,100,104,0.3)' }}>
           {/* Evitar linhas sequenciais */}
           <label className="inline-flex items-center gap-2 cursor-pointer">
             <input type="checkbox" className="mike-checkbox" checked={evitarLinhasSeq} onChange={(e) => setEvitarLinhasSeq(e.target.checked)} />
@@ -3162,7 +3162,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
           )}
 
           {String(mercado).startsWith('ah_') && (
-            <div className="pt-3 mt-1" style={{ borderTop: '0.5px solid rgba(60,85,130,0.25)' }}>
+            <div className="pt-3 mt-1" style={{ borderTop: '0.5px solid rgba(50,100,104,0.25)' }}>
               <label className="inline-flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" className="mike-checkbox" checked={folgaAtivo} onChange={(e) => setFolgaAtivo(e.target.checked)} />
                 <span className="text-xs text-[--mike-fg-soft]">Folga: so apostar quando a zebra ja cobre a linha com sobra (handicap).</span>
@@ -3180,7 +3180,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
           )}
 
           {/* MOMENTO (v13) — estagio do jogo; vale pra qualquer mercado */}
-          <div className="pt-3 mt-1" style={{ borderTop: '0.5px solid rgba(60,85,130,0.25)' }}>
+          <div className="pt-3 mt-1" style={{ borderTop: '0.5px solid rgba(50,100,104,0.25)' }}>
             <label className="inline-flex items-center gap-2 cursor-pointer">
               <input type="checkbox" className="mike-checkbox" checked={momentoAtivo} onChange={(e) => setMomentoAtivo(e.target.checked)} />
               <span className="text-xs text-[--mike-fg-soft]">Momento: so apostar ate certo ponto do jogo (linha da casa ainda defasada no comeco).</span>
@@ -3201,7 +3201,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
           </div>
 
           {/* ATROPELO (v16) — taxa de goleada do jogador. Eixo de dois sentidos. */}
-          <div className="pt-3 mt-1" style={{ borderTop: '0.5px solid rgba(60,85,130,0.25)' }}>
+          <div className="pt-3 mt-1" style={{ borderTop: '0.5px solid rgba(50,100,104,0.25)' }}>
             <label className="inline-flex items-center gap-2 cursor-pointer">
               <input type="checkbox" className="mike-checkbox" checked={atropeloAtivo} onChange={(e) => setAtropeloAtivo(e.target.checked)} />
               <span className="text-xs text-[--mike-fg-soft]">Atropelo: filtrar pela taxa de jogos que viram goleada.</span>
@@ -3222,7 +3222,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
           </div>
 
           {/* TOT_ENV (v17) — soma do placar no envio. NAO e' o momento acima. */}
-          <div className="pt-3 mt-1" style={{ borderTop: '0.5px solid rgba(60,85,130,0.25)' }}>
+          <div className="pt-3 mt-1" style={{ borderTop: '0.5px solid rgba(50,100,104,0.25)' }}>
             <label className="inline-flex items-center gap-2 cursor-pointer">
               <input type="checkbox" className="mike-checkbox" checked={totEnvAtivo} onChange={(e) => setTotEnvAtivo(e.target.checked)} />
               <span className="text-xs text-[--mike-fg-soft]">Soma do placar (tot_env): filtrar por quanto de jogo ja passou.</span>
@@ -3240,7 +3240,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
 
           {/* ERR (v23) — erro da casa na linha de total. So over/under. */}
           {(mercado === 'over_under_ft' || mercado === 'over_under_ht') && (
-          <div className="pt-3 mt-1" style={{ borderTop: '0.5px solid rgba(60,85,130,0.25)' }}>
+          <div className="pt-3 mt-1" style={{ borderTop: '0.5px solid rgba(50,100,104,0.25)' }}>
             <label className="inline-flex items-center gap-2 cursor-pointer">
               <input type="checkbox" className="mike-checkbox" checked={errAtivo} onChange={(e) => setErrAtivo(e.target.checked)} />
               <span className="text-xs text-[--mike-fg-soft]">Err: filtrar pelo erro recente da casa na linha de total.</span>
@@ -3266,8 +3266,8 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
 
         {/* AÇÕES */}
         <div className="sticky bottom-0 -mx-4 px-4 py-4 backdrop-blur-md flex items-center gap-2" style={{
-          backgroundColor: 'rgba(11, 15, 26, 0.92)',
-          borderTop: '0.5px solid rgba(60, 85, 130, 0.4)',
+          backgroundColor: 'rgba(6, 11, 15, 0.92)',
+          borderTop: '0.5px solid rgba(50, 100, 104, 0.4)',
         }}>
           {modoEdicao && (
             <button
@@ -3300,7 +3300,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
           <button
             onClick={salvarBot}
             disabled={salvando}
-            className="flex items-center gap-1.5 px-6 py-2 rounded-md bg-[--mike-accent] hover:bg-emerald-400 text-[--mike-bg] text-xs font-bold transition-transform duration-200 hover:scale-105 active:scale-95 shadow-md shadow-[--mike-accent]/30 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
+            className="flex items-center gap-1.5 px-6 py-2 rounded-md bg-[--mike-accent] hover:bg-emerald-400 text-[--mike-bg] text-xs font-bold transition-transform duration-200 hover:scale-105 active:scale-95 shadow-md shadow-mike-accent/30 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
           >
             {salvando ? (
               <>
@@ -3330,13 +3330,13 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
           <div
             className="mike-dropdown-in w-full max-w-3xl max-h-[80vh] flex flex-col rounded-lg overflow-hidden"
             style={{
-              backgroundColor: '#0d1220',
-              border: '0.5px solid rgba(60, 85, 130, 0.6)',
+              backgroundColor: '#0a1216',
+              border: '0.5px solid rgba(50, 100, 104, 0.6)',
               boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: '0.5px solid rgba(60,85,130,0.4)' }}>
+            <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: '0.5px solid rgba(50,100,104,0.4)' }}>
               <Code className="w-4 h-4 text-cyan-400" />
               <h3 className="text-sm font-bold text-[--mike-fg] flex-1">Preview do Bot</h3>
               <button
@@ -3354,7 +3354,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
             </div>
             <div className="flex-1 overflow-auto mike-mercados-scroll p-4 space-y-4">
               {/* RESUMO HUMANO */}
-              <div className="rounded-md p-3" style={{ backgroundColor: 'rgba(16, 185, 129, 0.05)', border: '0.5px solid rgba(16, 185, 129, 0.3)' }}>
+              <div className="rounded-md p-3" style={{ backgroundColor: 'rgba(43, 205, 185, 0.05)', border: '0.5px solid rgba(43, 205, 185, 0.3)' }}>
                 <div className="flex items-center gap-1.5 mb-2">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                   <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">O que esse bot vai fazer</span>
@@ -3422,12 +3422,12 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
                   <Code className="w-3.5 h-3.5 text-[--mike-fg-muted]" />
                   <span className="text-[10px] font-bold text-[--mike-fg-muted] uppercase tracking-wider">JSON técnico (vai pra API)</span>
                 </div>
-                <pre className="text-[11px] text-[--mike-fg-soft] font-mono leading-relaxed whitespace-pre-wrap break-all p-3 rounded" style={{ backgroundColor: 'rgba(0,0,0,0.3)', border: '0.5px solid rgba(60,85,130,0.3)' }}>
+                <pre className="text-[11px] text-[--mike-fg-soft] font-mono leading-relaxed whitespace-pre-wrap break-all p-3 rounded" style={{ backgroundColor: 'rgba(0,0,0,0.3)', border: '0.5px solid rgba(50,100,104,0.3)' }}>
 {JSON.stringify(formState, null, 2)}
                 </pre>
               </div>
             </div>
-            <div className="px-4 py-2 text-[10px] text-[--mike-fg-muted] flex items-center justify-between" style={{ borderTop: '0.5px solid rgba(60,85,130,0.4)' }}>
+            <div className="px-4 py-2 text-[10px] text-[--mike-fg-muted] flex items-center justify-between" style={{ borderTop: '0.5px solid rgba(50,100,104,0.4)' }}>
               <span>{Object.keys(formState).length} campos</span>
               <span>Pressione ESC ou clique fora para fechar</span>
             </div>
@@ -3445,7 +3445,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
           <div
             className="mike-dropdown-in w-full max-w-sm rounded-lg overflow-hidden"
             style={{
-              backgroundColor: '#0d1220',
+              backgroundColor: '#0a1216',
               border: '0.5px solid rgba(244, 63, 94, 0.5)',
               boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
             }}

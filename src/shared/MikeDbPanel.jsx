@@ -59,7 +59,7 @@ function Segmentado({ valor, onChange, opcoes, disabled }) {
             onClick={() => onChange(o.valor)}
             className="px-2.5 py-1.5 rounded-md text-[11px] font-semibold transition disabled:opacity-40"
             style={ativo
-              ? { backgroundColor: 'rgba(6,182,212,0.16)', color: '#22d3ee', border: '0.5px solid rgba(6,182,212,0.45)' }
+              ? { backgroundColor: 'rgba(14,165,233,0.16)', color: '#38bdf8', border: '0.5px solid rgba(14,165,233,0.45)' }
               : { color: 'var(--mike-fg-muted)', border: '0.5px solid rgba(255,255,255,0.08)' }}>
             {o.rotulo}
           </button>
@@ -111,7 +111,7 @@ function CampoLiga({ ligas, valor, onChange, disabled }) {
 
       {casam !== null ? (
         <div className="text-[10px] flex flex-wrap items-center gap-x-2"
-             style={{ color: casam.length ? '#34d399' : '#fbbf24' }}>
+             style={{ color: casam.length ? '#56e2ce' : '#fbbf24' }}>
           {casam.length
             ? <>{casam.length} liga{casam.length > 1 ? 's' : ''} batem — ex: {casam.slice(0, 3).map((l) => bonito(l.liga)).join(' · ')}{casam.length > 3 ? ' ...' : ''}</>
             : <>nenhuma liga do histórico contém isso — o recorte sairia vazio</>}
@@ -354,14 +354,14 @@ export default function MikeDbPanel({ onGerado }) {
       )}
       {casaEhBet365 && !usandoBetsapi && (
         <div className="rounded-md p-2 text-[10px] flex items-start gap-1.5"
-             style={{ backgroundColor: 'rgba(6,182,212,0.06)', border: '0.5px solid rgba(6,182,212,0.25)' }}>
+             style={{ backgroundColor: 'rgba(14,165,233,0.06)', border: '0.5px solid rgba(14,165,233,0.25)' }}>
           <CheckCircle2 className="w-3 h-3 mt-0.5 shrink-0 text-emerald-400" />
           <span className="text-[--mike-fg-soft]">bet365 vem do <b>histórico da coleta própria (JBot)</b> — gera em segundos. Antes de agosto o histórico dela está em outro formato de mercado e não entra no backtest.</span>
         </div>
       )}
       {usandoBetsapi && (
         <div className="rounded-md p-2 text-[10px] flex items-start gap-1.5"
-             style={{ backgroundColor: 'rgba(6,182,212,0.06)', border: '0.5px solid rgba(6,182,212,0.25)' }}>
+             style={{ backgroundColor: 'rgba(14,165,233,0.06)', border: '0.5px solid rgba(14,165,233,0.25)' }}>
           {status?.chrome_cdp_aberto
             ? <><CheckCircle2 className="w-3 h-3 mt-0.5 shrink-0 text-emerald-400" />
                 <span className="text-[--mike-fg-soft]">bet365 vem da <b>BetsAPI</b> (raspa e converte). Chrome do CDP aberto — pode gerar; períodos longos levam horas.</span></>
@@ -480,7 +480,7 @@ export default function MikeDbPanel({ onGerado }) {
           )}
           <button onClick={gerar} disabled={gerando}
             className="flex items-center gap-1.5 px-4 py-2 rounded-md text-xs font-bold transition disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ backgroundColor: gerando ? 'rgba(6,182,212,0.2)' : '#06b6d4', color: gerando ? '#6b7691' : '#0b0f1a' }}>
+            style={{ backgroundColor: gerando ? 'rgba(14,165,233,0.2)' : '#0ea5e9', color: gerando ? '#6c8689' : '#060b0f' }}>
             {gerando ? <><RefreshCw className="w-3.5 h-3.5 mike-spin" /> Gerando...</>
                      : <><Play className="w-3.5 h-3.5" /> Gerar ticks</>}
           </button>
@@ -512,7 +512,7 @@ export default function MikeDbPanel({ onGerado }) {
       {gerando && (
         <div className="space-y-1">
           <div className="h-1 rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}>
-            <div className="h-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: '#06b6d4' }} />
+            <div className="h-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: '#0ea5e9' }} />
           </div>
           <div className="flex justify-between text-[10px] text-[--mike-fg-muted]">
             <span>{etapa}</span><span>{pct}%</span>
@@ -522,7 +522,7 @@ export default function MikeDbPanel({ onGerado }) {
 
       {resultado && (
         <div className="rounded-md p-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px]"
-             style={{ backgroundColor: 'rgba(16,185,129,0.06)', border: '0.5px solid rgba(16,185,129,0.25)' }}>
+             style={{ backgroundColor: 'rgba(43,205,185,0.06)', border: '0.5px solid rgba(43,205,185,0.25)' }}>
           <span className="flex items-center gap-1 text-emerald-400 font-bold">
             <CheckCircle2 className="w-3 h-3" /> {(resultado.linhas ?? 0).toLocaleString()} ticks
           </span>
@@ -543,7 +543,7 @@ export default function MikeDbPanel({ onGerado }) {
 
       {verLog && log.length > 0 && (
         <pre className="rounded-md p-2 text-[9px] leading-relaxed overflow-auto max-h-52"
-             style={{ backgroundColor: 'rgba(0,0,0,0.35)', border: '0.5px solid rgba(255,255,255,0.07)', color: '#8b93a7', fontFamily: 'ui-monospace, monospace' }}>
+             style={{ backgroundColor: 'rgba(0,0,0,0.35)', border: '0.5px solid rgba(255,255,255,0.07)', color: '#8ba5a6', fontFamily: 'ui-monospace, monospace' }}>
           {log.join('\n')}
         </pre>
       )}

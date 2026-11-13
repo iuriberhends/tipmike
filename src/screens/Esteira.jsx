@@ -42,42 +42,42 @@ import { cabecalhoPais } from '../lib/pais.js';
 // ============================================================
 
 const STATUS = {
-  pendente:   { rotulo: 'Na fila',    cor: '#6b7691' },
-  preparando: { rotulo: 'Preparando', cor: '#0891b2', girando: true },
-  rodando:    { rotulo: 'Rodando',    cor: '#22d3ee', girando: true },
-  concluido:  { rotulo: 'Pronto',     cor: '#10b981' },
+  pendente:   { rotulo: 'Na fila',    cor: '#6c8689' },
+  preparando: { rotulo: 'Preparando', cor: '#0284c7', girando: true },
+  rodando:    { rotulo: 'Rodando',    cor: '#38bdf8', girando: true },
+  concluido:  { rotulo: 'Pronto',     cor: '#2bcdb9' },
   erro:       { rotulo: 'Erro',       cor: '#f43f5e' },
-  cancelado:  { rotulo: 'Cancelado',  cor: '#6b7691' },
+  cancelado:  { rotulo: 'Cancelado',  cor: '#6c8689' },
 };
 const ATIVO = ['pendente', 'preparando', 'rodando'];
 const FINAL = ['concluido', 'erro', 'cancelado'];
 
 const PAPEL = {
-  sentinela:  { rotulo: 'sentinela', cor: '#22d3ee' },
+  sentinela:  { rotulo: 'sentinela', cor: '#38bdf8' },
   controle:   { rotulo: 'controle',  cor: '#a78bfa' },
-  estrategia: { rotulo: '',          cor: '#eaeef7' },
-  variacao:   { rotulo: '↳',         cor: '#6b7691' },
+  estrategia: { rotulo: '',          cor: '#eef8f6' },
+  variacao:   { rotulo: '↳',         cor: '#6c8689' },
 };
 
 const POLL_MS = 4000;
 
 const themeVars = {
-  '--mike-bg': '#0b0f1a',
-  '--mike-bg-2': '#070a13',
-  '--mike-card': '#141a28',
-  '--mike-card-2': '#1a2030',
-  '--mike-card-hover': '#1c2336',
-  '--mike-border': '#222a3d',
-  '--mike-fg': '#eaeef7',
-  '--mike-fg-soft': '#b8c0d4',
-  '--mike-fg-muted': '#6b7691',
-  '--mike-accent': '#10b981',
-  '--mike-accent-2': '#0891b2',
+  '--mike-bg': '#060b0f',
+  '--mike-bg-2': '#04080b',
+  '--mike-card': '#0b1519',
+  '--mike-card-2': '#0f1c21',
+  '--mike-card-hover': '#132429',
+  '--mike-border': '#1a2c31',
+  '--mike-fg': '#eef8f6',
+  '--mike-fg-soft': '#b5c9c8',
+  '--mike-fg-muted': '#6c8689',
+  '--mike-accent': '#2bcdb9',
+  '--mike-accent-2': '#0d847a',
 };
 
 const cardStyle = {
-  backgroundColor: 'rgba(20, 26, 40, 0.4)',
-  border: '0.5px solid rgba(60, 85, 130, 0.4)',
+  backgroundColor: 'rgba(11, 21, 25, 0.4)',
+  border: '0.5px solid rgba(50, 100, 104, 0.4)',
 };
 
 function numOuNull(v) {
@@ -278,7 +278,7 @@ function Select({ value, onChange, options }) {
       style={{ appearance: 'none', WebkitAppearance: 'none' }}
     >
       {options.map(o => (
-        <option key={o.value} value={o.value} style={{ background: '#141a28' }}>
+        <option key={o.value} value={o.value} style={{ background: '#0b1519' }}>
           {o.label}
         </option>
       ))}
@@ -314,8 +314,8 @@ function SecaoTitulo({ icon: Icon, children }) {
 function Grupo({ icon: Icon, cor, titulo, desc, children }) {
   return (
     <div className="rounded-lg p-3.5" style={{
-      backgroundColor: 'rgba(13,17,27,0.5)',
-      border: '0.5px solid rgba(60,85,130,0.28)',
+      backgroundColor: 'rgba(8,14,18,0.5)',
+      border: '0.5px solid rgba(50,100,104,0.28)',
     }}>
       <div className="flex items-start gap-2.5 mb-3">
         <div className="w-[3px] self-stretch rounded-full flex-shrink-0" style={{ backgroundColor: cor }} />
@@ -332,7 +332,7 @@ function Grupo({ icon: Icon, cor, titulo, desc, children }) {
   );
 }
 
-function StatCard({ icon: Icon, label, valor, cor = '#eaeef7' }) {
+function StatCard({ icon: Icon, label, valor, cor = '#eef8f6' }) {
   return (
     <div className="rounded-lg p-3" style={cardStyle}>
       <div className="flex items-center gap-1.5 mb-1.5">
@@ -386,7 +386,7 @@ function agruparPlacar(itens) {
 function CelRoi({ m, baseline }) {
   const roiN = m && Number(m.ROI);
   const cor = !Number.isFinite(roiN) ? 'var(--mike-fg-muted)'
-    : roiN > 0 ? '#10b981' : roiN < 0 ? '#f43f5e' : 'var(--mike-fg-soft)';
+    : roiN > 0 ? '#2bcdb9' : roiN < 0 ? '#f43f5e' : 'var(--mike-fg-soft)';
   const premio = (Number.isFinite(roiN) && baseline && baseline.ROI != null)
     ? roiN - Number(baseline.ROI) : null;
   return (
@@ -412,12 +412,12 @@ function LinhaItem({ it, mae, baseline, onFicha, completo = false }) {
   }
   const r3 = m.roi_3d, r7 = m.roi_7d;
   const cor37 = (v) => (v == null ? 'var(--mike-fg-muted)'
-    : v > 0 ? '#10b981' : v < 0 ? '#f87171' : 'var(--mike-fg-soft)');
+    : v > 0 ? '#2bcdb9' : v < 0 ? '#f87171' : 'var(--mike-fg-soft)');
   return (
     <tr onClick={() => onFicha && onFicha(it)}
         title={emErro ? (it.erro || 'erro') : it.nome}
         style={{
-          borderTop: '0.5px solid rgba(60,85,130,0.18)',
+          borderTop: '0.5px solid rgba(50,100,104,0.18)',
           backgroundColor: 'transparent',
           opacity: zerada ? 0.45 : 1,
           cursor: 'pointer',
@@ -443,7 +443,7 @@ function LinhaItem({ it, mae, baseline, onFicha, completo = false }) {
       <td className="px-2 py-1.5 text-right text-[--mike-fg-soft]">{fmt(m.apostas) ?? '–'}</td>
       <td className="px-2 py-1.5 text-right font-bold whitespace-nowrap">
         {m.greens != null
-          ? <><span style={{ color: '#10b981' }}>{m.greens}</span>
+          ? <><span style={{ color: '#2bcdb9' }}>{m.greens}</span>
               <span className="text-[--mike-fg-muted]">–</span>
               <span style={{ color: '#f87171' }}>{m.reds}</span></>
           : (m['G-R'] || '–')}
@@ -451,7 +451,7 @@ function LinhaItem({ it, mae, baseline, onFicha, completo = false }) {
       <td className="px-2 py-1.5 text-right text-[--mike-fg-soft]">{m.WR != null ? fmt1(m.WR) : '–'}</td>
       <td className="px-2 py-1.5 text-right font-bold"
           style={{ color: m.unidades == null ? 'var(--mike-fg-muted)'
-            : Number(m.unidades) > 0 ? '#10b981'
+            : Number(m.unidades) > 0 ? '#2bcdb9'
             : Number(m.unidades) < 0 ? '#f43f5e' : 'var(--mike-fg-soft)' }}>
         {m.unidades != null ? fmt1(m.unidades) : '–'}
       </td>
@@ -482,10 +482,10 @@ function Placar({ itens, baseline, onFicha, completo = false }) {
   }
   const { grupos, orfas } = agruparPlacar(itens);
   return (
-    <div className="rounded-md overflow-hidden" style={{ border: '0.5px solid rgba(60,85,130,0.28)' }}>
+    <div className="rounded-md overflow-hidden" style={{ border: '0.5px solid rgba(50,100,104,0.28)' }}>
       <div className={completo ? 'max-h-[70vh] overflow-y-auto' : 'max-h-[420px] overflow-y-auto'}>
         <table className="w-full text-[10.5px] font-mono">
-          <thead className="sticky top-0 z-10" style={{ backgroundColor: '#111726' }}>
+          <thead className="sticky top-0 z-10" style={{ backgroundColor: '#0a1317' }}>
             <tr className="text-[9px] uppercase tracking-wider text-[--mike-fg-muted]">
               <th className="text-left  px-2 py-1.5 font-bold">Estratégia</th>
               <th className="text-right px-2 py-1.5 font-bold">Ap</th>
@@ -716,12 +716,12 @@ export default function Esteira({ onNavegar } = {}) {
       ...themeVars,
       backgroundColor: 'var(--mike-bg)',
       color: 'var(--mike-fg)',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontFamily: 'var(--mike-font)',
     }}>
       <style>{`
-        .mike-border-thin { border: 0.5px solid rgba(60, 85, 130, 0.4) !important; }
-        .mike-border-thin:hover { border-color: rgba(80, 110, 170, 0.7) !important; }
-        .mike-border-thin:focus { border-color: rgba(16, 185, 129, 0.7) !important; outline: none; }
+        .mike-border-thin { border: 0.5px solid rgba(50, 100, 104, 0.4) !important; }
+        .mike-border-thin:hover { border-color: rgba(70, 130, 132, 0.7) !important; }
+        .mike-border-thin:focus { border-color: rgba(43, 205, 185, 0.7) !important; outline: none; }
         @keyframes mike-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .mike-spin { animation: mike-spin 0.8s linear infinite; }
       `}</style>
@@ -755,8 +755,8 @@ export default function Esteira({ onNavegar } = {}) {
           </div>
           <button onClick={() => onNavegar?.('esteira_escolha')}
             className="flex items-center gap-2 px-3.5 py-2 rounded-md text-[12px] font-bold transition"
-            style={{ border: '0.5px solid rgba(6,182,212,0.5)', color: '#22d3ee',
-                     backgroundColor: 'rgba(6,182,212,0.08)' }}>
+            style={{ border: '0.5px solid rgba(14,165,233,0.5)', color: '#38bdf8',
+                     backgroundColor: 'rgba(14,165,233,0.08)' }}>
             <Radar className="w-3.5 h-3.5" /> Escolher do garimpo
           </button>
         </div>
@@ -842,7 +842,7 @@ export default function Esteira({ onNavegar } = {}) {
                   <button key={t.v} onClick={() => setFonteTipo(t.v)}
                     className="px-3 py-1.5 rounded-md text-[11px] font-bold transition"
                     style={fonteTipo === t.v
-                      ? { backgroundColor: 'rgba(6,182,212,0.15)', color: '#22d3ee', border: '0.5px solid rgba(6,182,212,0.4)' }
+                      ? { backgroundColor: 'rgba(14,165,233,0.15)', color: '#38bdf8', border: '0.5px solid rgba(14,165,233,0.4)' }
                       : { color: 'var(--mike-fg-muted)', border: '0.5px solid rgba(255,255,255,0.07)' }}>
                     {t.l}
                   </button>
@@ -946,9 +946,9 @@ export default function Esteira({ onNavegar } = {}) {
                 onClick={handleRodar}
                 disabled={!planilha || criando}
                 className="w-full mt-4 flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-sm font-bold transition disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ backgroundColor: (!planilha || criando) ? 'rgba(16,185,129,0.2)' : '#10b981',
-                         color: (!planilha || criando) ? '#6b7691' : '#0b0f1a',
-                         boxShadow: (!planilha || criando) ? 'none' : '0 4px 12px rgba(16,185,129,0.3)' }}
+                style={{ backgroundColor: (!planilha || criando) ? 'rgba(43,205,185,0.2)' : '#2bcdb9',
+                         color: (!planilha || criando) ? '#6c8689' : '#060b0f',
+                         boxShadow: (!planilha || criando) ? 'none' : '0 4px 12px rgba(43,205,185,0.3)' }}
               >
                 {criando ? <><RefreshCw className="w-4 h-4 mike-spin" /> Criando...</>
                          : <><Play className="w-4 h-4" /> Rodar esteira</>}
@@ -991,8 +991,8 @@ export default function Esteira({ onNavegar } = {}) {
                     <button key={j.id} onClick={() => selecionar(j.id)}
                       className="w-full text-left rounded-md px-3 py-2.5 transition"
                       style={on
-                        ? { backgroundColor: 'rgba(6,182,212,0.10)', border: '0.5px solid rgba(6,182,212,0.4)' }
-                        : { backgroundColor: 'rgba(13,17,27,0.5)', border: '0.5px solid rgba(60,85,130,0.28)' }}>
+                        ? { backgroundColor: 'rgba(14,165,233,0.10)', border: '0.5px solid rgba(14,165,233,0.4)' }
+                        : { backgroundColor: 'rgba(8,14,18,0.5)', border: '0.5px solid rgba(50,100,104,0.28)' }}>
                       <div className="flex items-center gap-2.5">
                         <span className="text-[11px] font-black font-mono flex-shrink-0 w-7"
                               style={{ color: s.cor }}>#{j.id}</span>
@@ -1018,9 +1018,9 @@ export default function Esteira({ onNavegar } = {}) {
                       {ATIVO.includes(j.status) && (
                         <div className="mt-2 pl-[38px]">
                           <div className="h-1.5 rounded-full overflow-hidden"
-                               style={{ backgroundColor: 'rgba(60,85,130,0.25)' }}>
+                               style={{ backgroundColor: 'rgba(50,100,104,0.25)' }}>
                             <div className="h-full transition-all duration-500"
-                                 style={{ width: `${Math.max(2, pct)}%`, backgroundColor: '#10b981' }} />
+                                 style={{ width: `${Math.max(2, pct)}%`, backgroundColor: '#2bcdb9' }} />
                           </div>
                           <div className="flex items-center justify-between gap-2 mt-1">
                             <span className="text-[10px] text-[--mike-fg-muted] font-mono truncate">
@@ -1056,7 +1056,7 @@ export default function Esteira({ onNavegar } = {}) {
 
               {aviso && (
                 <div className="rounded-lg p-3 flex items-start gap-2"
-                     style={{ backgroundColor: 'rgba(16,185,129,0.08)', border: '0.5px solid rgba(16,185,129,0.3)' }}>
+                     style={{ backgroundColor: 'rgba(43,205,185,0.08)', border: '0.5px solid rgba(43,205,185,0.3)' }}>
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
                   <span className="text-xs text-emerald-300 flex-1">{aviso}</span>
                   <button onClick={() => setAviso(null)} className="text-emerald-400/60 hover:text-emerald-300">
@@ -1108,7 +1108,7 @@ export default function Esteira({ onNavegar } = {}) {
                     <div className="grid grid-cols-2 gap-2 mb-3">
                       <StatCard icon={Hash} label="Itens"
                                 valor={`${d.itens_concluidos_real ?? 0}/${d.itens_total_real ?? 0}`}
-                                cor="#0891b2" />
+                                cor="#0284c7" />
                       <StatCard icon={Clock} label="Duração"
                                 valor={duracaoEntre(d.iniciado_em, d.finalizado_em) || '–'} />
                     </div>
@@ -1118,10 +1118,10 @@ export default function Esteira({ onNavegar } = {}) {
                       {d.sentinela_ok != null && (
                         <div className="rounded-md p-2.5 flex items-start gap-2"
                              style={d.sentinela_ok
-                               ? { backgroundColor: 'rgba(16,185,129,0.06)', border: '0.5px solid rgba(16,185,129,0.25)' }
+                               ? { backgroundColor: 'rgba(43,205,185,0.06)', border: '0.5px solid rgba(43,205,185,0.25)' }
                                : { backgroundColor: 'rgba(244,63,94,0.08)', border: '0.5px solid rgba(244,63,94,0.3)' }}>
                           <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0 mt-0.5"
-                                       style={{ color: d.sentinela_ok ? '#10b981' : '#f43f5e' }} />
+                                       style={{ color: d.sentinela_ok ? '#2bcdb9' : '#f43f5e' }} />
                           <span className="text-[11px] text-[--mike-fg-soft]">
                             <b>Sentinela</b>{' '}
                             {d.sentinela_ok ? 'passou' : 'reprovou'}
@@ -1172,14 +1172,14 @@ export default function Esteira({ onNavegar } = {}) {
                       {podeRetomar && (
                         <button onClick={() => handleAcao(d.id, 'retomar')}
                           className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md text-[12px] font-bold transition"
-                          style={{ backgroundColor: '#fbbf24', color: '#0b0f1a' }}>
+                          style={{ backgroundColor: '#fbbf24', color: '#060b0f' }}>
                           <RotateCcw className="w-3.5 h-3.5" /> Retomar
                           {(d.itens_erro || 0) > 0 && ` (${d.itens_erro} em erro)`}
                         </button>
                       )}
                       {d.tem_planilha && (
                         <button onClick={() => handleDownload(d.id)}
-                          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md text-[12px] font-bold mike-border-thin text-[--mike-accent] hover:bg-[--mike-accent]/10 transition">
+                          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md text-[12px] font-bold mike-border-thin text-[--mike-accent] hover:bg-mike-accent/10 transition">
                           <Download className="w-3.5 h-3.5" /> Baixar placar (.xlsx)
                         </button>
                       )}
@@ -1205,7 +1205,7 @@ export default function Esteira({ onNavegar } = {}) {
              style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
              onClick={() => setPlacarCheio(false)}>
           <div className="rounded-lg p-4 w-full max-w-6xl max-h-[92vh] overflow-hidden flex flex-col"
-               style={{ backgroundColor: '#0f1420', border: '0.5px solid rgba(60,85,130,0.5)' }}
+               style={{ backgroundColor: '#0a1216', border: '0.5px solid rgba(50,100,104,0.5)' }}
                onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-2 mb-2">
               <Trophy className="w-4 h-4 text-cyan-400" />
@@ -1220,7 +1220,7 @@ export default function Esteira({ onNavegar } = {}) {
             {d.sentinela_ok != null && d.baseline && d.baseline.ROI != null && (
               <div className="mb-2 text-[11px] text-[--mike-fg-soft]">
                 <ShieldCheck className="w-3.5 h-3.5 inline mr-1"
-                             style={{ color: d.sentinela_ok ? '#10b981' : '#f43f5e' }} />
+                             style={{ color: d.sentinela_ok ? '#2bcdb9' : '#f43f5e' }} />
                 Mercado inteiro: {fmt(d.baseline.apostas)} ap · ROI {fmt1(d.baseline.ROI)}%
                 — é isso que as estratégias precisam bater.
               </div>
@@ -1248,7 +1248,7 @@ export default function Esteira({ onNavegar } = {}) {
         const Lin = ({ a, b, hint }) => (
           <div className="flex items-center justify-between gap-3 py-0.5"
                title={hint || ''}
-               style={{ borderBottom: '0.5px solid rgba(60,85,130,0.15)' }}>
+               style={{ borderBottom: '0.5px solid rgba(50,100,104,0.15)' }}>
             <span className="text-[--mike-fg-muted]">{a}</span>
             <span className="text-[--mike-fg] font-semibold text-right">{b}</span>
           </div>
@@ -1258,7 +1258,7 @@ export default function Esteira({ onNavegar } = {}) {
                style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}
                onClick={() => setFichaItem(null)}>
             <div className="rounded-lg p-4 w-full max-w-md max-h-[85vh] overflow-y-auto"
-                 style={{ backgroundColor: '#141a28', border: '0.5px solid rgba(60,85,130,0.5)' }}
+                 style={{ backgroundColor: '#0b1519', border: '0.5px solid rgba(50,100,104,0.5)' }}
                  onClick={(e) => e.stopPropagation()}>
               <div className="flex items-start gap-2 mb-3">
                 <div className="flex-1 min-w-0">
@@ -1284,7 +1284,7 @@ export default function Esteira({ onNavegar } = {}) {
 
               <div className="space-y-1 text-[11px] mb-3">
                 <Lin a="greens – reds" b={<span>
-                  <b style={{ color: '#10b981' }}>{m.greens ?? '—'}</b>
+                  <b style={{ color: '#2bcdb9' }}>{m.greens ?? '—'}</b>
                   <span className="text-[--mike-fg-muted]"> – </span>
                   <b style={{ color: '#f87171' }}>{m.reds ?? '—'}</b></span>} />
                 <Lin a="apostas · taxa de acerto" b={`${fmt(m.apostas) ?? '—'} · ${m.WR ?? '—'}%`} />
@@ -1354,8 +1354,8 @@ export default function Esteira({ onNavegar } = {}) {
                         }
                       }}
                       className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-bold transition disabled:opacity-40 disabled:cursor-not-allowed"
-                      style={{ backgroundColor: trava ? 'rgba(16,185,129,0.12)' : '#10b981',
-                               color: trava ? '#6b7691' : '#0b0f1a' }}>
+                      style={{ backgroundColor: trava ? 'rgba(43,205,185,0.12)' : '#2bcdb9',
+                               color: trava ? '#6c8689' : '#060b0f' }}>
                       <Play className="w-3 h-3" /> Criar bot
                     </button>
                   );
@@ -1416,7 +1416,7 @@ export default function Esteira({ onNavegar } = {}) {
                style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
                onClick={() => setBotForm(null)}>
             <div className="rounded-lg p-4 w-full max-w-sm"
-                 style={{ backgroundColor: '#141a28', border: '0.5px solid rgba(60,85,130,0.5)' }}
+                 style={{ backgroundColor: '#0b1519', border: '0.5px solid rgba(50,100,104,0.5)' }}
                  onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center gap-2 mb-3">
                 <Play className="w-4 h-4 text-emerald-400" />
@@ -1470,8 +1470,8 @@ export default function Esteira({ onNavegar } = {}) {
                           {botForm.sel.map((t) => (
                             <span key={t}
                               className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10.5px] font-semibold"
-                              style={{ backgroundColor: 'rgba(6,182,212,0.1)',
-                                       border: '0.5px solid rgba(6,182,212,0.4)', color: '#22d3ee' }}>
+                              style={{ backgroundColor: 'rgba(14,165,233,0.1)',
+                                       border: '0.5px solid rgba(14,165,233,0.4)', color: '#38bdf8' }}>
                               {t}
                               <button onClick={() => setBotForm((p) => (p
                                   ? { ...p, sel: p.sel.filter((x) => x !== t) } : p))}
@@ -1509,7 +1509,7 @@ export default function Esteira({ onNavegar } = {}) {
                 </div>
 
                 <div className="rounded-md p-2.5 text-[10.5px] text-[--mike-fg-soft]"
-                     style={{ backgroundColor: 'rgba(13,17,27,0.6)', border: '0.5px solid rgba(60,85,130,0.28)' }}>
+                     style={{ backgroundColor: 'rgba(8,14,18,0.6)', border: '0.5px solid rgba(50,100,104,0.28)' }}>
                   Casa <b>{snap.casa || '—'}</b> · mercado <b>{snap.mercado || '—'}</b>.
                   {m['G-R'] && (
                     <> Esta estratégia fez <b>{m['G-R']}</b> · ROI <b>{m.ROI}%</b>
@@ -1527,8 +1527,8 @@ export default function Esteira({ onNavegar } = {}) {
 
                 <button onClick={criar} disabled={!podeCriar}
                   className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-sm font-bold transition disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{ backgroundColor: podeCriar ? '#10b981' : 'rgba(16,185,129,0.2)',
-                           color: podeCriar ? '#0b0f1a' : '#6b7691' }}>
+                  style={{ backgroundColor: podeCriar ? '#2bcdb9' : 'rgba(43,205,185,0.2)',
+                           color: podeCriar ? '#060b0f' : '#6c8689' }}>
                   {botForm.criando
                     ? <><RefreshCw className="w-4 h-4 mike-spin" /> Criando...</>
                     : <><Play className="w-4 h-4" /> Criar bot (nasce pausado)</>}
