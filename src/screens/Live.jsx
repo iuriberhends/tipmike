@@ -1,10 +1,11 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   Search, ChevronDown, ChevronUp, Home, Clock, ExternalLink, X, FilterX,
-  Gamepad2, Snowflake, Check, RefreshCw, TrendingUp, TrendingDown,
+  Check, RefreshCw, TrendingUp, TrendingDown,
   BarChart2, Activity, Zap, ChevronRight
 } from 'lucide-react';
 import MikeHeader from '../shared/MikeHeader.jsx';
+import IconeEsporte, { tipoDoEsporte } from '../shared/IconeEsporte.jsx';
 import { ApiEventos, ApiH2H } from '../lib/api.js';
 import { usePais } from '../context/PaisContext.jsx';
 import { corDaCasa, COR_CASA } from '../lib/pais.js';
@@ -14,21 +15,23 @@ import { corDaCasa, COR_CASA } from '../lib/pais.js';
 // ============================================================
 const TEMA = {
   'E-Football': {
-    icone: Gamepad2, label: 'e-Soccer',
+    label: 'e-Soccer',
     cardBorder: 'rgba(43,205,185,0.5)', headerBg: 'bg-emerald-900/40',
     headerText: 'text-emerald-300', dot: 'bg-emerald-400',
     timerText: 'text-emerald-300', timerIcon: 'text-emerald-400/80',
     btnActive: 'bg-emerald-500/15 border-emerald-500 text-emerald-300',
   },
   'E-Basketball': {
-    icone: Gamepad2, label: 'e-Basket',
-    cardBorder: 'rgba(244,63,94,0.5)', headerBg: 'bg-rose-950/50',
-    headerText: 'text-rose-400', dot: 'bg-rose-400',
-    timerText: 'text-rose-400', timerIcon: 'text-rose-400/80',
-    btnActive: 'bg-rose-500/15 border-rose-500 text-rose-300',
+    label: 'e-Basket',
+    // laranja da bola (igual ao selo e-Basket do Início); antes era rosa,
+    // que se confundia com o vermelho do "AO VIVO" e de quem está perdendo
+    cardBorder: 'rgba(249,115,22,0.5)', headerBg: 'bg-orange-950/50',
+    headerText: 'text-orange-300', dot: 'bg-orange-400',
+    timerText: 'text-orange-300', timerIcon: 'text-orange-400/80',
+    btnActive: 'bg-orange-500/15 border-orange-500 text-orange-300',
   },
   'E-Hockey': {
-    icone: Snowflake, label: 'e-Hockey',
+    label: 'e-Hockey',
     cardBorder: 'rgba(14,165,233,0.5)', headerBg: 'bg-cyan-950/50',
     headerText: 'text-cyan-300', dot: 'bg-cyan-400',
     timerText: 'text-cyan-300', timerIcon: 'text-cyan-400/80',
@@ -71,19 +74,24 @@ function normalizaTxt(s) {
 // HOOKS
 // ============================================================
 function useEventosLive(sport) {
-  const [state, setState] = useState({ data: [], loading: true, error: null });
+  // `rodada` sobe a cada lista recebida; os cartões usam para reler as odds.
+  const [state, setState] = useState({ data: [], loading: true, error: null, rodada: 0 });
   const lastReq = useRef(0);
 
-  const fetch_ = useCallback(async () => {
+  // `silencioso` = recarga de rotina (a cada 15 s ou pelo botão). Não volta
+  // para o esqueleto: se voltasse, todos os cartões seriam desmontados a cada
+  // recarga — a tela piscava, o H2H aberto fechava e o placar nunca chegava
+  // a piscar no gol, porque o cartão renascia já com o placar novo.
+  const fetch_ = useCallback(async (silencioso = false) => {
     const id = ++lastReq.current;
-    setState(s => ({ ...s, loading: true }));
+    if (!silencioso) setState(s => ({ ...s, loading: true }));
     try {
       const params = {};
       if (sport) params.sport = sport;
       const data = await ApiEventos.live(params);
-      if (id === lastReq.current) setState({ data: data || [], loading: false, error: null });
+      if (id === lastReq.current) setState(s => ({ data: data || [], loading: false, error: null, rodada: s.rodada + 1 }));
     } catch (e) {
-      if (id === lastReq.current) setState({ data: [], loading: false, error: e });
+      if (id === lastReq.current) setState(s => ({ data: [], loading: false, error: e, rodada: s.rodada }));
     }
   }, [sport]);
 
@@ -91,12 +99,18 @@ function useEventosLive(sport) {
   return { ...state, refetch: fetch_ };
 }
 
-function useOddsEvento(eventId) {
+// Relê as odds quando o evento muda e a cada `rodada` da lista (antes a
+// releitura acontecia por acidente, porque o cartão era recriado a cada 15 s).
+function useOddsEvento(eventId, rodada) {
   const [odds, setOdds] = useState([]);
   useEffect(() => {
     if (!eventId) return;
-    ApiEventos.odds(eventId).then(d => setOdds(d || [])).catch(() => setOdds([]));
-  }, [eventId]);
+    let vivo = true;
+    ApiEventos.odds(eventId)
+      .then(d => { if (vivo) setOdds(d || []); })
+      .catch(() => { if (vivo) setOdds([]); });
+    return () => { vivo = false; };
+  }, [eventId, rodada]);
   return odds;
 }
 
@@ -298,9 +312,9 @@ function PainelH2H({ ja, jb }) {
   );
 }
 
-function CardLive({ ev, onAbrirPartida }) {
+function CardLive({ ev, rodada, onAbrirPartida }) {
   const tema = TEMA[ev.sport] || TEMA['E-Football'];
-  const odds = useOddsEvento(ev.event_id);
+  const odds = useOddsEvento(ev.event_id, rodada);
   const mercados = useMemo(() => processarMercados(odds), [odds]);
   const [h2hAberto, setH2hAberto] = useState(false);
   const [placarPiscou, setPlacarPiscou] = useState(false);
@@ -337,6 +351,8 @@ function CardLive({ ev, onAbrirPartida }) {
     .trim() || ev.liga;
 
   const totalGols = (ev.score_home || 0) + (ev.score_away || 0);
+  // basquete soma pontos, não gols
+  const unidadePlacar = tipoDoEsporte(ev.sport) === 'basquete' ? 'pontos' : 'gols';
 
   return (
     <div className="rounded-xl overflow-hidden shadow-xl shadow-black/40 flex flex-col" style={{ border: `0.5px solid ${tema.cardBorder}`, backgroundColor: 'var(--mike-card)' }}>
@@ -344,7 +360,8 @@ function CardLive({ ev, onAbrirPartida }) {
       {/* HEADER */}
       <div className={`px-3 py-2 ${tema.headerBg} flex items-center justify-between gap-2`}>
         <div className="flex items-center gap-1.5 min-w-0 flex-1">
-          <span className={`w-1.5 h-1.5 rounded-full ${tema.dot} animate-pulse flex-shrink-0`} />
+          {/* a bola do esporte; dá um pulo quando o placar muda */}
+          <IconeEsporte esporte={ev.sport} tamanho={15} quicando={placarPiscou} />
           <span className={`text-[11px] font-bold ${tema.headerText} truncate`}>{ligaLabel}</span>
           {tendencia && (
             <span className={`flex items-center gap-0.5 text-[9px] font-bold ${tendencia.cor} flex-shrink-0`}>
@@ -384,7 +401,7 @@ function CardLive({ ev, onAbrirPartida }) {
               {ev.score_away ?? '-'}
             </span>
           </div>
-          <span className="text-[8px] text-[--mike-fg-muted] mt-0.5">{totalGols} gols</span>
+          <span className="text-[8px] text-[--mike-fg-muted] mt-0.5">{totalGols} {unidadePlacar}</span>
         </div>
 
         <div className="text-left min-w-0 flex-1">
@@ -507,7 +524,7 @@ export default function Live({ onNavegar, onAbrirPartida }) {
   const [torneio, setTorneio] = useState('todos');
   const [ultimaAtualizacao, setUltimaAtualizacao] = useState(0);
 
-  const { data: eventosLive, loading, refetch } = useEventosLive(esporteAtivo);
+  const { data: eventosLive, loading, rodada, refetch } = useEventosLive(esporteAtivo);
 
   // Agrupa por par, consolida casas, prioriza melhor event_id.
   // nov/2026: /eventos/live já vem filtrado pelo país (X-Pais), então o par
@@ -562,7 +579,7 @@ export default function Live({ onNavegar, onAbrirPartida }) {
 
   const fazerRefresh = useCallback(() => {
     setRefreshing(true);
-    refetch().finally(() => { setRefreshing(false); setUltimaAtualizacao(0); });
+    refetch(true).finally(() => { setRefreshing(false); setUltimaAtualizacao(0); });
   }, [refetch]);
 
   useEffect(() => {
@@ -619,7 +636,7 @@ export default function Live({ onNavegar, onAbrirPartida }) {
           <div className="grid grid-cols-3 gap-3 mb-5">
             {[
               { label: 'Partidas', value: stats.partidas, Icon: Activity, cor: 'text-red-400', bg: 'bg-red-500/15 border-red-500/30' },
-              { label: 'Gols ao vivo', value: stats.gols, Icon: Zap, cor: 'text-emerald-400', bg: 'bg-emerald-500/15 border-emerald-500/30' },
+              { label: tipoDoEsporte(esporteAtivo) === 'basquete' ? 'Pontos ao vivo' : 'Gols ao vivo', value: stats.gols, Icon: Zap, cor: 'text-emerald-400', bg: 'bg-emerald-500/15 border-emerald-500/30' },
               { label: 'Casas monitoradas', value: stats.casas, Icon: BarChart2, cor: 'text-blue-400', bg: 'bg-blue-500/15 border-blue-500/30' },
             ].map(({ label, value, Icon, cor, bg }) => (
               <div key={label} className="rounded-xl bg-[--mike-card] mike-border-thin p-3 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 min-w-0">
@@ -640,11 +657,10 @@ export default function Live({ onNavegar, onAbrirPartida }) {
           {ESPORTES.map(e => {
             const t = TEMA[e.id];
             const ativo = esporteAtivo === e.id;
-            const Icone = t.icone;
             return (
               <button key={e.id} onClick={() => setEsporteAtivo(ativo ? null : e.id)}
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border transition ${ativo ? t.btnActive : 'mike-border-thin bg-transparent text-[--mike-fg-muted] hover:text-[--mike-fg]'}`}>
-                <Icone className="w-3.5 h-3.5" />{e.label}
+                <IconeEsporte esporte={e.id} tamanho={16} />{e.label}
               </button>
             );
           })}
@@ -691,7 +707,7 @@ export default function Live({ onNavegar, onAbrirPartida }) {
         ) : eventosFiltrados.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {eventosFiltrados.map(ev => (
-              <CardLive key={`${ev.jogador_a}||${ev.jogador_b}`} ev={ev} onAbrirPartida={onAbrirPartida} />
+              <CardLive key={`${ev.jogador_a}||${ev.jogador_b}`} ev={ev} rodada={rodada} onAbrirPartida={onAbrirPartida} />
             ))}
           </div>
         ) : (

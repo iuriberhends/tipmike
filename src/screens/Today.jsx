@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import MikeHeader from '../shared/MikeHeader.jsx';
 import { EstadoVazio, EstadoErro } from '../shared/Estados.jsx';
+import IconeEsporte from '../shared/IconeEsporte.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { ApiEventos, ApiStats } from '../lib/api.js';
 import { usePais } from '../context/PaisContext.jsx';
@@ -68,9 +69,9 @@ function TeamLogo({ nome, size = 28 }) {
 // ESPORTES
 // ============================================================
 const ESPORTE_CORES = {
-  'E-Football': { bg: 'bg-emerald-500/15', text: 'text-emerald-400', border: 'border-emerald-500/30', activeBg: 'bg-emerald-500', activeText: 'text-emerald-950', activeBorder: 'border-emerald-500', activeShadow: 'shadow-emerald-500/40' },
-  'E-Basketball': { bg: 'bg-orange-500/15', text: 'text-orange-400', border: 'border-orange-500/30', activeBg: 'bg-orange-500', activeText: 'text-white', activeBorder: 'border-orange-500', activeShadow: 'shadow-orange-500/40' },
-  'E-Hockey': { bg: 'bg-cyan-500/15', text: 'text-cyan-400', border: 'border-cyan-500/30', activeBg: 'bg-cyan-500', activeText: 'text-white', activeBorder: 'border-cyan-500', activeShadow: 'shadow-cyan-500/40' },
+  'E-Football': { bg: 'bg-emerald-500/15', text: 'text-emerald-400', border: 'border-emerald-500/30', activeBg: 'bg-emerald-500/15', activeText: 'text-emerald-300', activeBorder: 'border-emerald-500', activeShadow: 'shadow-emerald-500/20' },
+  'E-Basketball': { bg: 'bg-orange-500/15', text: 'text-orange-400', border: 'border-orange-500/30', activeBg: 'bg-orange-500/15', activeText: 'text-orange-300', activeBorder: 'border-orange-500', activeShadow: 'shadow-orange-500/20' },
+  'E-Hockey': { bg: 'bg-cyan-500/15', text: 'text-cyan-400', border: 'border-cyan-500/30', activeBg: 'bg-cyan-500/15', activeText: 'text-cyan-300', activeBorder: 'border-cyan-500', activeShadow: 'shadow-cyan-500/20' },
 };
 
 const ESPORTES_FILTROS = [
@@ -261,7 +262,8 @@ function PillEsporte({ esporte }) {
   const c = ESPORTE_CORES[esporte] || ESPORTE_CORES['E-Football'];
   const label = esporte === 'E-Football' ? 'e-Soccer' : esporte === 'E-Basketball' ? 'e-Basket' : esporte;
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold border flex-shrink-0 ${c.bg} ${c.text} ${c.border}`}>
+    <span className={`inline-flex items-center gap-1 pl-1 pr-2 py-0.5 rounded-md text-[10px] font-semibold border flex-shrink-0 ${c.bg} ${c.text} ${c.border}`}>
+      <IconeEsporte esporte={esporte} tamanho={13} />
       {label}
     </span>
   );
@@ -604,7 +606,8 @@ export default function Today({ onNavegar, onAbrirPartida }) {
               const ativo = esporteAtivo === e.id;
               return (
                 <button key={e.id} type="button" onClick={() => setEsporteAtivo(ativo ? null : e.id)}
-                  className={`px-3.5 h-8 rounded-full text-xs font-semibold border transition whitespace-nowrap ${ativo ? `${cores.activeBg} ${cores.activeText} ${cores.activeBorder} shadow-lg ${cores.activeShadow}` : 'bg-[--mike-card] text-[--mike-fg-muted] border-[--mike-border] hover:bg-[--mike-card-hover] hover:text-[--mike-fg]'}`}>
+                  className={`inline-flex items-center gap-1.5 pl-2 pr-3.5 h-8 rounded-full text-xs font-semibold border transition whitespace-nowrap ${ativo ? `${cores.activeBg} ${cores.activeText} ${cores.activeBorder} shadow-lg ${cores.activeShadow}` : 'bg-[--mike-card] text-[--mike-fg-muted] border-[--mike-border] hover:bg-[--mike-card-hover] hover:text-[--mike-fg]'}`}>
+                  <IconeEsporte esporte={e.id} tamanho={16} />
                   {e.label}
                 </button>
               );

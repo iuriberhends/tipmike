@@ -466,8 +466,30 @@ h1.font-bold {
   animation: mike-entrar 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
+/* Bola do esporte (shared/IconeEsporte.jsx): rola um pouco quando o mouse
+   passa na linha ou no botão, e dá um pulo quando o placar muda. */
+.mike-bola-gira {
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.group:hover .mike-bola-gira,
+button:hover > .mike-bola-gira {
+  transform: rotate(72deg);
+}
+.mike-bola-quicando {
+  animation: mike-quicar 0.9s cubic-bezier(0.3, 0, 0.3, 1) 1;
+}
+@keyframes mike-quicar {
+  0% { transform: translateY(0) rotate(0); }
+  25% { transform: translateY(-5px) rotate(110deg); }
+  50% { transform: translateY(0) rotate(220deg); }
+  72% { transform: translateY(-2px) rotate(300deg); }
+  100% { transform: translateY(0) rotate(360deg); }
+}
+
 /* Quem pede menos movimento no sistema fica sem as animações decorativas. */
 @media (prefers-reduced-motion: reduce) {
+  .mike-bola-gira { transition: none; transform: none !important; }
+  .mike-bola-quicando,
   .mike-entrar,
   .mike-tremer,
   .mike-faixa,

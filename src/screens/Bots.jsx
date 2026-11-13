@@ -26,6 +26,7 @@ import {
   Folder, FolderPlus, FolderInput, CheckSquare, Square, Pencil,
 } from 'lucide-react';
 import MikeHeader from '../shared/MikeHeader.jsx';
+import IconeEsporte from '../shared/IconeEsporte.jsx';
 import BacktestModal from './BacktestModal';
 import { ModalHistorico } from './Historico';
 import { ApiBots, ApiBotsOrg } from '../lib/api';
@@ -270,6 +271,8 @@ function LinhaBot({ bot, expandido, onToggleExpand, onAcao, loadingAcao, onAbrir
         >
           <Star className="w-4 h-4" fill={bot.favorito ? 'currentColor' : 'none'} />
         </button>
+
+        <IconeEsporte esporte={bot.esporte} tamanho={18} />
 
         <div className="flex-shrink-0 w-12 h-8 rounded flex flex-col items-center justify-center text-white text-[10px] font-bold" style={{ backgroundColor: esporte.cor }}>
           {esporte.logo}
