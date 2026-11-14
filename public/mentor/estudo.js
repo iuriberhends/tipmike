@@ -338,7 +338,7 @@ function htmlQuiz(){
   const fonteG=(BQ.pv[q.p]||{}).gst;
   const fb=mostra?`<section class="es-fb ${r.ok?'ok':'no'}"><b>${r.ok?I('circle-check-big')+'Acertou':I('x')+`Errou · a certa é a ${q.g}`}</b>
       ${q.c?`<div class="es-com">${negrito(q.c)}</div>`:`<p class="mx-dica">Comentário desta questão ainda não escrito.</p>`}
-      <p class="es-gst">${fonteG==='definitivo'?'Gabarito oficial definitivo da banca':fonteG==='preliminar'?'Gabarito oficial preliminar da banca':'Gabarito conferido pelo Claude (o oficial não foi encontrado)'}${q.cv==='diverge'?' · atenção: o Claude discorda do gabarito, veja o comentário':''}</p>
+      <p class="es-gst">${fonteG==='definitivo'?'Gabarito oficial definitivo da banca':fonteG==='preliminar'?'Gabarito oficial preliminar da banca':'Gabarito resolvido e conferido 2 vezes pelo Claude (o oficial da banca não está mais disponível)'}${q.cv==='diverge'?' · atenção: o Claude discorda do gabarito, veja o comentário':''}</p>
       <div class="mx-acoes">${r.ok?'':`<button class="mx-btn sec" data-acao="q-erro">${I('pen')}Anotar o erro</button>`}${q.tx||(q.fig&&q.fig.length)?'':`<button class="mx-btn sec" data-acao="q-card">${I('brain')}Virar card</button>`}</div></section>`:'';
   const pe=ses.prova?`<button class="mx-btn" data-acao="q-resp" ${ses.sel?'':'disabled'}>${ses.i<ses.ids.length-1?'Marcar e seguir':'Marcar e ver o resumo'}${I('arrow-right')}</button>`
     :mostra?`<button class="mx-btn" data-acao="q-prox">${ses.i<ses.ids.length-1?'Próxima':'Ver o resultado'}${I('arrow-right')}</button>`
