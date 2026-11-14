@@ -195,7 +195,8 @@ function limparInicio(){
   const box=document.getElementById('hoje'); if(!box) return;
   box.querySelectorAll('li').forEach(li=>{const b=li.querySelector('b');if(!b)return;const t=b.textContent;
     if(t.includes('Cards · FSRS')) li.style.display='none';
-    if(t.includes('Revisões · questões')){b.textContent='Revisão do dia';const sp=li.querySelector('.muted.small');if(sp&&!HOJE_REV.revisoes)sp.textContent='Nada para revisar hoje.';}
+    if(t.includes('Revisões · questões')){b.textContent='Revisão do dia';const sp=li.querySelector('.muted.small');const s=resumoHoje();
+      if(sp&&s) sp.textContent=s.lista.length?`${s.lista.length} assunto${s.lista.length>1?'s':''} · cerca de ${fmtMin(s.min)}: ${s.lista.slice(0,3).map(x=>U(x.u).as).join(' · ')}${s.lista.length>3?' …':''}`:'Nada para revisar hoje.';}
   });
 }
 if(typeof renderHoje==='function'){const h0=renderHoje;window.renderHoje=function(){const r=h0.apply(this,arguments);try{limparInicio();}catch(_){}return r;};}
