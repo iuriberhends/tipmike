@@ -438,7 +438,7 @@ function unidadesDeHoje(){
 }
 function vQuestoes(){
   if(!EJ) return '<section class="mx-card">Carregando…</section>';
-  const cab=`<header class="mx-cab"><h1>Questões</h1><p>Só provas da PMBA: ${EJ.nSD} questões de Soldado e ${EJ.nCFO} do CFO, com gabarito oficial e o comentário de cada uma. É o filtro mais certeiro que existe para o seu objetivo.</p></header>`;
+  const cab=`<header class="mx-cab"><h1>Questões</h1><p>Só provas da PMBA: ${BQ?`${BQ.q.filter(q=>q.p.startsWith('SD')).length} questões de Soldado e ${BQ.q.filter(q=>q.p.startsWith('CFO')).length} do CFO`:`${EJ.nSD} questões de Soldado e ${EJ.nCFO} do CFO`}, cada uma com gabarito e comentário. É o filtro mais certeiro que existe para o seu objetivo.</p></header>`;
   if(!BQ) return cab+semBancoHtml();
   const st=Q(); const alvo=alvoAtual(st);
   const venc=Object.entries(st.qd).filter(([id,d])=>d<=H()&&QID[id]).length;
