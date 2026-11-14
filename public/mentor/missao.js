@@ -18,7 +18,7 @@
 (function(){
 'use strict';
 if(window.__missao) return;
-const VERSAO='20261114m';
+const VERSAO='20261114q';
 const HOJE=window.__HOJE||new Date().toISOString().slice(0,10);
 const K='mm3_missao', RK='mm3_rev2', TK='mm_missao_timer';
 const TRILHA_ATE='2027-01-02';
@@ -214,7 +214,9 @@ function plano(s){
   const revMin=pend.reduce((a,x)=>a+x.min,0);
   const ets=[];
   const anki=tot<=120?10:15, fim=5;
-  ets.push({id:'anki',tipo:'anki',min:anki,titulo:'Aquecimento no Anki',sub:'os cards vencidos de hoje'});
+  const EC=window.__estudo, mc=EC&&EC.pronto&&EC.modoCards();
+  if(mc&&mc!=='fora'){const r=EC.resumoCards()||{rev:0,novos:0,min:0}; ets.push({id:'anki',tipo:'anki',cards:1,min:Math.max(5,Math.min(25,r.min||5)),titulo:'Cards do dia',sub:r.rev+r.novos?`${r.rev} ${plural(r.rev,'revisão','revisões')} · ${r.novos} ${plural(r.novos,'novo')}`:'nada vencido hoje'});}
+  else ets.push({id:'anki',tipo:'anki',min:anki,titulo:'Aquecimento no Anki',sub:'os cards vencidos de hoje'});
   const tri=tot<=120?40:45;
   const passoTrilha=f=>{const x=sessaoDoDia(f,s); const t=x.ultimaHoje||x.prox;
     if(t) return {id:f,tipo:'trilha',fila:f,t,min:tri,titulo:(f==='P'?'Português':'Matemática')+' do zero',sub:`${t.cod} · ${t.nome}${t.n>1?` (${t.k}/${t.n})`:''}`};
@@ -261,16 +263,17 @@ function plano(s){
 /* o que passou pela semana (seg a sáb): vira a lista de questões misturadas do domingo */
 function assuntosDaSemana(s){
   const ini=add(HOJE,-((semana(HOJE)+6)%7)), fim=HOJE; const out=[]; const vis=new Set();
-  const pushU=(nome,mat)=>{if(!vis.has(nome)){vis.add(nome);out.push([nome,mat]);}};
-  MJ.trilha.forEach(t=>{const v=s.td[t.id];if(v&&v[0]&&v[0]>=ini&&v[0]<=fim)pushU(t.nome,t.fila==='P'?'Português':'Matemática');});
-  MJ.fichas.forEach(f=>{const v=s.fd[f.id];if((v&&v[0]>=ini)||(s.fm[f.id]&&Object.keys(s.d).some(d=>d>=ini&&s.d[d].m&&s.d[d].m.ficha)))if(v||fichaDaVez(s)===f)pushU(f.nome,f.mat);});
-  const e=RV.e(); Object.entries(e.f).forEach(([k,v])=>{if(v[2]>=ini){const u=U(k.split('|')[1]);if(u)pushU(u.as,u.mat);}});
+  const pushU=(nome,mat,uid)=>{if(!vis.has(nome)){vis.add(nome);out.push([nome,mat,uid||null]);}};
+  MJ.trilha.forEach(t=>{const v=s.td[t.id];if(v&&v[0]&&v[0]>=ini&&v[0]<=fim)pushU(t.nome,t.fila==='P'?'Português':'Matemática',t.u);});
+  MJ.fichas.forEach(f=>{const v=s.fd[f.id];if((v&&v[0]>=ini)||(s.fm[f.id]&&Object.keys(s.d).some(d=>d>=ini&&s.d[d].m&&s.d[d].m.ficha)))if(v||fichaDaVez(s)===f)pushU(f.nome,f.mat,f.u);});
+  const e=RV.e(); Object.entries(e.f).forEach(([k,v])=>{if(v[2]>=ini){const u=U(k.split('|')[1]);if(u)pushU(u.as,u.mat,u.id);}});
   return out;
 }
 function feita(s,et){
   const d=dia(s);
   if(et.tipo==='trilha') return !!(s.td[et.t.id]&&s.td[et.t.id][0]===HOJE);
   if(et.tipo==='rev') return !et.rev.length;
+  if(et.tipo==='anki'&&et.cards){const r=window.__estudo.resumoCards();return !!d.ok.anki||(r&&r.rev+r.novos===0&&r.feitos>0);}
   if(et.tipo==='ficha') return !!(d.ok.ficha||(s.fd[et.f.id]&&s.fd[et.f.id][0]===HOJE));
   if(et.tipo==='red') return s.rd[et.ri]===HOJE;
   if(et.tipo==='livre') return true;
@@ -309,7 +312,7 @@ const T={
 };
 
 /* ================================================================ desenho */
-let aba=(location.hash||'').replace('#m-','')||'hoje';
+let aba=(location.hash||'').replace('#m-','')||'hoje'; if(!['hoje','questoes','cards','revisao','plano','progresso','alvo','mais'].includes(aba)) aba='hoje';
 let foco=null;            /* etapa aberta no "Agora" */
 let abertoRev=null;       /* assunto aberto na revisão */
 let planoAberto={};       /* seções abertas no Plano */
@@ -330,12 +333,15 @@ function htmlTopo(s){
   const hojeMin=horasVis()[HOJE]||0;
   return `<div class="mx-topo-in">
     <button class="mx-marca" data-ir="hoje" aria-label="Hoje"><span class="mx-logo">M</span><span class="mx-marca-t"><b>${esc(cap(dLonga(HOJE)))}</b><i>${diasProva()} dias para a prova</i></span></button>
-    <nav class="mx-abas" aria-label="Seções">${ABAS.map(a=>`<button class="mx-aba" data-ir="${a[0]}" aria-current="${aba===a[0]?'page':'false'}">${I(a[2])}<span>${a[1]}</span></button>`).join('')}</nav>
+    <nav class="mx-abas" aria-label="Seções">${ABAS.map(a=>`<button class="mx-aba" data-ir="${a[0]}" aria-current="${abaNav(aba)===a[0]?'page':'false'}">${I(a[2])}<span>${a[1]}</span></button>`).join('')}</nav>
     <span class="mx-sync" data-sync title="Sem conexão: o que você marcar fica guardado no aparelho e sobe quando a internet voltar" ${SYNC.falhou?'':'hidden'}>${I('zap')}offline</span>
     <button class="mx-relogio ${rod?'on':''}" data-acao="relogio" title="${rod?'Pausar':'Tempo estudado hoje'}">${rod?I('pause'):I('clock')}<span data-relogio>${rod?mmss(T.ms(t)):fmtM(hojeMin)}</span></button>
+    <button class="mx-cfg" data-ir="mais" aria-label="Ajustes e ferramentas" title="Ajustes e ferramentas" aria-current="${aba==='mais'?'page':'false'}">${I('cog')}</button>
   </div>`;
 }
-const ABAS=[['hoje','Hoje','home'],['revisao','Revisão','rotate-ccw'],['plano','Plano','route'],['progresso','Progresso','bar-chart-3'],['mais','Mais','dots']];
+const ABAS=[['hoje','Hoje','home'],['questoes','Questões','circle-help'],['cards','Cards','brain'],['revisao','Revisão','rotate-ccw'],['plano','Plano','route']];
+const ABAS_OK=['hoje','questoes','cards','revisao','plano','progresso','alvo','mais'];
+const abaNav=a=>a==='progresso'||a==='alvo'?'plano':a;
 
 /* ---------------- HOJE ---------------- */
 function vHoje(s){
@@ -428,8 +434,13 @@ function errosHtml(uid,rot){
     <button class="mx-btn sec" data-acao="erro">${I('plus')}Anotar</button></div>
     ${l.length?`<ul class="mx-erros">${l.map(x=>`<li><span>${esc(x[2])}${x[3]?` <i>→ ${esc(x[3])}</i>`:''}</span><button data-acao="erro-del" data-i="${x.i}" aria-label="Apagar">${I('x')}</button></li>`).join('')}</ul>`:''}`;
 }
-function resultadoHtml(acao,rotulo,dica){
-  return `<div class="mx-res"><span>${rotulo||'Acertei'}</span><input type="number" inputmode="numeric" min="0" max="200" class="mx-in mx-num" data-a placeholder="0"><span>de</span><input type="number" inputmode="numeric" min="1" max="200" class="mx-in mx-num" data-t placeholder="20">
+/* questões da PMBA dentro da etapa (vem do estudo.js) */
+const qb=(spec,rot)=>{const E=window.__estudo;return E&&E.pronto?E.botaoQuiz(spec,rot):'';};
+const alvoB=u=>{const E=window.__estudo;const a=u&&E&&E.pronto&&E.alvoDaUnidade(u);return a?E.alvoChip(a):'';};
+const qres=orig=>{const E=window.__estudo;return orig&&E&&E.pronto?E.resultado(orig):null;};
+function resultadoHtml(acao,rotulo,dica,orig){
+  const r=qres(orig);
+  return `${r?`<p class="mx-dica" style="margin-top:12px">${I('circle-help')}Das questões da PMBA aqui no Mentor: <b>${r.a} de ${r.t}</b>. Somei abaixo; acrescente as do TEC se fez.</p>`:''}<div class="mx-res"><span>${rotulo||'Acertei'}</span><input type="number" inputmode="numeric" min="0" max="200" class="mx-in mx-num" data-a placeholder="0" ${r?`value="${r.a}"`:''}><span>de</span><input type="number" inputmode="numeric" min="1" max="200" class="mx-in mx-num" data-t placeholder="20" ${r?`value="${r.t}"`:''}>
     <button class="mx-btn" data-acao="${acao}">${I('check')}Concluir</button></div>${dica?`<p class="mx-dica">${dica}</p>`:''}`;
 }
 function tecLink(u,fallbackNome){
@@ -443,11 +454,12 @@ function pedir(txt,rot){return `<button class="mx-pedir" data-acao="copiar" data
 function etapaHtml(s,et,P){
   const ok=feita(s,et);
   const cab=`<header class="mx-fcab"><span class="mx-fic">${I(icEt(et))}</span><div><span class="mx-rot">${esc(et.titulo)}${et.min?' · '+fmtM(et.min):''}</span><h3>${esc(et.sub||'')}</h3></div>${ok?`<span class="mx-feito">${I('check')}feito</span>`:''}</header>`;
-  if(et.tipo==='anki') return cab+`<p class="mx-porque">${I('brain')}Puxar da memória logo no começo acorda a cabeça e fixa o que você viu nos últimos dias.</p>
+  if(et.tipo==='anki'&&et.cards) return cab+window.__estudo.etapaCards(et,ok);
+  if(et.tipo==='anki') return cab+`${window.__estudo&&window.__estudo.pronto&&!window.__estudo.modoCards()?`<p class="mx-status ok" style="margin:0 0 12px">${I('sparkles')}<span>Os seus cards agora podem ser feitos aqui no Mentor, com repetição espaçada. <button class="mx-pedir" data-ir="cards" style="margin:0">Abrir a aba Cards</button></span></p>`:''}<p class="mx-porque">${I('brain')}Puxar da memória logo no começo acorda a cabeça e fixa o que você viu nos últimos dias.</p>
     <ol class="mx-simples"><li>Abra o app do Anki e faça <b>só os cards vencidos de hoje</b> (${et.min} min no máximo).</li><li>Card que você errou 3 vezes: me manda no chat que eu reescrevo.</li><li>Chegou baralho novo de ficha ou de erros? Importe antes de começar.</li></ol>
     <div class="mx-acoes">${ok?`<button class="mx-btn sec" data-acao="desmarcar" data-id="anki">${I('undo')}Desfazer</button>`:`<button class="mx-btn" data-acao="marcar" data-id="anki">${I('check')}Fiz o Anki</button>`}</div>`;
   if(et.tipo==='trilha') return cab+trilhaHtml(s,et,ok);
-  if(et.tipo==='mistas') return cab+`<p>A trilha do zero acabou. Agora são 20 questões misturadas por dia, de tudo o que você já viu.</p>${tecLink(null,et.fila==='P'?'Língua Portuguesa':'Matemática e Raciocínio Lógico')}
+  if(et.tipo==='mistas') return cab+`<p>A trilha do zero acabou. Agora são 20 questões misturadas por dia, de tudo o que você já viu.</p>${qb({mat:et.fila==='P'?'Língua Portuguesa':'Matemática e RL',n:20,mix:true,orig:'mx:'+et.id})}${tecLink(null,et.fila==='P'?'Língua Portuguesa':'Matemática e Raciocínio Lógico')}
     <div class="mx-acoes">${ok?`<button class="mx-btn sec" data-acao="desmarcar" data-id="${et.id}">${I('undo')}Desfazer</button>`:`<button class="mx-btn" data-acao="marcar" data-id="${et.id}">${I('check')}Feito</button>`}</div>`;
   if(et.tipo==='rev') return cab+revEtapaHtml(s,et);
   if(et.tipo==='ficha') return cab+fichaHtml(s,et,ok);
@@ -462,7 +474,8 @@ function etapaHtml(s,et,P){
     ${relogioHtml(et)}<div class="mx-acoes">${ok?`<button class="mx-btn sec" data-acao="desmarcar" data-id="ingles">${I('undo')}Desfazer</button>`:`<button class="mx-btn" data-acao="marcar" data-id="ingles">${I('check')}Feito</button>`}${pedir('Me passa um texto de Inglês de prova do CFO PMBA com as questões, para o domingo.','Pedir um texto')}</div>`;
   if(et.tipo==='atraso') return cab+atrasoHtml(s,et,ok);
   if(et.tipo==='semana') return cab+`<p class="mx-porque">${I('layers')}Misturar os assuntos da semana obriga a cabeça a escolher a regra certa, como na prova. É o que mais separa quem decorou de quem aprendeu.</p>
-    <ol class="mx-simples"><li>No TEC, filtre os assuntos abaixo juntos (área Policial e Forças Armadas) e faça <b>20 questões misturadas</b>.</li><li>Errou? Uma linha por erro.</li></ol>
+    <ol class="mx-simples"><li><b>20 questões misturadas</b> dos assuntos abaixo: comece pelas da PMBA aqui; se faltar, complete no TEC (área Policial e Forças Armadas).</li><li>Errou? Uma linha por erro.</li></ol>
+    ${qb({us:et.lista.map(x=>x[2]).filter(Boolean),n:20,mix:true,orig:'semana'},'Fazer as questões da semana')}
     <ul class="mx-amanha">${et.lista.map(x=>`<li>${esc(x[0])} <i class="mx-dica" style="display:inline">${esc(x[1])}</i></li>`).join('')}</ul>
     <a class="mx-btn sec" href="${TEC_FILTRO}" target="_blank" rel="noopener" style="margin-top:10px">${I('external-link')}Filtrar no TEC</a>
     ${pedir('Monta no TEC um caderno de 20 questões misturadas da minha semana: '+et.lista.map(x=>x[0]).join('; ')+'.','Pedir o caderno da semana')}
@@ -480,15 +493,15 @@ function trilhaHtml(s,et,ok){
     {k:'pre',t:'Pré-teste: 3 a 5 questões antes da aula',min:5,d:temAula?'Estão na 1ª página da aula do zero. Responda sem olhar nada; errar aqui é o que prepara a cabeça.':'Faça 3 a 5 questões do assunto no TEC antes de ver o vídeo, mesmo chutando.'},
     {k:'aula',t:temAula?'Aula do zero':'Vídeo da aula',min:20,d:temAula?'Leia com calma, faça os "Sua vez" e confira as resolvidas.':(t.dicas.join(' · ')||'Pause e tente antes de ver a resolução.'),
       extra:(temAula?t.aula.map(a=>material(a,'Aula do zero '+((a.match(/Aula_(\d+)/)||[])[1]||'')+' · '+t.nome)).join(''):'')+(t.videos.length?`<details class="mx-vid" ${temAula?'':'open'}><summary>${I('circle-play')}${temAula?'Vídeos (opcional)':'Vídeos'}</summary><ul>${t.videos.map(v=>`<li><a href="${esc(v[1])}" target="_blank" rel="noopener">${esc(v[0])}</a></li>`).join('')}</ul></details>`:'')+(t.extra.length?`<div class="mx-extra">${t.extra.map(material).join('')}</div>`:'')},
-    {k:'tec',t:`Questões: ${t.nq} de ${t.nome}${ant.length?` + 5 de ${ant.map(a=>a.nome).join(' e ')}`:''}`,min:15,d:'Misturar com assunto antigo é o que segura a matéria na cabeça.',extra:tecLink(null,t.nome)+pedir(`Monta no TEC o caderno da trilha ${t.cod} (${t.nome}), no meu padrão: área Policial e Forças Armadas, 2019 em diante.`,'Pedir o caderno pronto')},
+    {k:'tec',t:`Questões: ${t.nq} de ${t.nome}${ant.length?` + 5 de ${ant.map(a=>a.nome).join(' e ')}`:''}`,min:15,d:'Comece pelas da PMBA aqui no Mentor e complete no TEC. Misturar com assunto antigo é o que segura a matéria na cabeça.',extra:qb({us:[t.u].concat(ant.map(a=>a.u)).filter(Boolean),n:Math.min(10,t.nq||10),orig:'t:'+t.id,sec:1})+tecLink(null,t.nome)+pedir(`Monta no TEC o caderno da trilha ${t.cod} (${t.nome}), no meu padrão: área Policial e Forças Armadas, 2019 em diante.`,'Pedir o caderno pronto')},
     {k:'erros',t:'Erros: uma linha por erro',min:3,d:'Escreva o que você pensou e a frase certa. No fechamento, a lista vira card de Anki.',extra:errosHtml(t.u,`Trilha ${t.cod} · ${t.nome}`)},
   ];
   const r=s.td[t.id];
-  return `${u?`<p class="mx-meta">${chip(u.as,t.fila==='P'?'cy':'am')} ${chip(u.pp+' da prova','am')}</p>`:''}<p class="mx-porque">${I(t.fila==='P'?'type':'calc')}${t.fila==='P'?'Português vem primeiro porque é a matéria que você adia: cabeça fresca, sem desculpa.':'Matemática logo em seguida, antes das matérias que você gosta. Sessão curta, todo dia.'}</p>
+  return `${u?`<p class="mx-meta">${chip(u.as,t.fila==='P'?'cy':'am')} ${chip(u.pp+' da prova','am')} ${alvoB(t.u)}</p>`:''}<p class="mx-porque">${I(t.fila==='P'?'type':'calc')}${t.fila==='P'?'Português vem primeiro porque é a matéria que você adia: cabeça fresca, sem desculpa.':'Matemática logo em seguida, antes das matérias que você gosta. Sessão curta, todo dia.'}</p>
     ${relogioHtml(et)}
     ${passosHtml(passos,tp,'t:'+t.id)}
     ${ok?`<div class="mx-ok">${I('circle-check-big')}<span>Sessão feita${r&&r[2]?`: ${r[1]} de ${r[2]} (${Math.round(r[1]/r[2]*100)}%)`:''}.</span><button class="mx-btn sec" data-acao="trilha-undo" data-id="${t.id}">${I('undo')}Desfazer</button>${proxTrilha(s,t)?`<button class="mx-btn sec" data-acao="trilha-mais" data-f="${t.fila}">${I('skip-forward')}Adiantar a próxima</button>`:''}</div>`
-      :resultadoHtml('trilha-ok','Acertei',`Conta as ${t.nq+(ant.length?5:0)} questões do passo 3. Fez por fora? Pode concluir sem os números.`)}`;
+      :resultadoHtml('trilha-ok','Acertei',`Conta as ${t.nq+(ant.length?5:0)} questões do passo 3. Fez por fora? Pode concluir sem os números.`,'t:'+t.id)}`;
 }
 function proxTrilha(s,t){return filaT(t.fila).find(x=>!s.td[x.id]&&x.id!==t.id)||null;}
 
@@ -501,16 +514,16 @@ function fichaHtml(s,et,ok){
       <div class="mx-acoes">${pedir(`Monta a ficha da vez: ${f.nome} (${f.mat}), nível ${f.nivel}.`,'Pedir a ficha')}<button class="mx-btn sec" data-acao="ficha-chegou" data-id="${f.id}">${I('check')}Já tenho a ficha</button></div>`;
   }
   const passos=[
-    {k:'pre',t:'Pré-teste sem olhar',min:5,d:'Está logo no começo da ficha. Responda tudo, mesmo chutando: a cabeça passa a procurar essas respostas na leitura.'},
+    {k:'pre',t:'Pré-teste sem olhar',min:5,d:'Está logo no começo da ficha. Responda tudo, mesmo chutando: a cabeça passa a procurar essas respostas na leitura.',extra:qb({u:f.u,n:5,orig:'fp:'+f.id,sec:1},'Pré-teste com questões da PMBA')},
     {k:'mapa',t:'Mapa geral: o roteiro da ficha',min:3,d:'Olhe a árvore inteira antes dos blocos. É o esqueleto onde cada detalhe vai pendurar.'},
     {k:'blocos',t:'Blocos: lei → traduzindo → como cai',min:Math.max(20,Math.round(totalMin*0.55)),d:'No fim de cada bloco, feche a ficha e fale em voz alta o que lembra (30 segundos). Depois confira.',
       extra:`<div class="mx-parei"><label>Parei na página</label><input type="number" inputmode="numeric" min="1" max="99" class="mx-in mx-num" data-parei="${f.id}" value="${esc((s.fpg||{})[f.id]||'')}" placeholder="—"><span class="mx-dica" style="margin:0">${(s.fpg||{})[f.id]?'Amanhã você continua da página '+esc(s.fpg[f.id])+'.':'Anote quando parar; amanhã a missão lembra.'}</span></div>`},
     {k:'ce',t:'Revisão C/E do fim + gabarito do pré-teste',min:10,d:'Compare com o que você marcou no pré-teste: o que mudou é o que você aprendeu hoje.'},
-    {k:'tec',t:'20 questões no TEC',min:25,d:'Do caderno do assunto, no seu padrão (área Policial e Forças Armadas).',extra:tecLink(u,f.nome)},
+    {k:'tec',t:'20 questões: PMBA aqui + TEC',min:25,d:'Primeiro as da PMBA desse assunto aqui no Mentor (as que não saíram no pré-teste); depois complete as 20 no caderno do TEC, no seu padrão.',extra:qb({u:f.u,n:20,orig:'f:'+f.id,sec:1})+tecLink(u,f.nome)},
     {k:'erros',t:'Erros: uma linha por erro',min:3,extra:errosHtml(f.u,`Ficha · ${f.nome}`)},
   ];
   const r=s.fd[f.id];
-  return `<p class="mx-meta">${chip(f.mat,'em')} ${chip('ficha '+f.nivel)} ${chip(f.pp+' da prova','am')}</p>
+  return `<p class="mx-meta">${chip(f.mat,'em')} ${chip('ficha '+f.nivel)} ${chip(f.pp+' da prova','am')} ${alvoB(f.u)}</p>
     ${f.cai?`<p class="mx-porque">${I('target')}<span><b>O que mais cai:</b> ${esc(f.cai)}.</span></p>`:''}
     ${f.arq?material(f.arq,'Ficha · '+f.nome):''}
     <div class="mx-fprog"><span>${fmtM(gasto)} de ${fmtM(totalMin)} nessa ficha</span>${barra(gasto/totalMin,'em')}<i>${ok?'':resto>et.min?`hoje vai até ${fmtM(et.min)}; o resto continua amanhã de onde parou`:'dá para fechar hoje'}</i></div>
@@ -519,7 +532,7 @@ function fichaHtml(s,et,ok){
     ${f.cards?`<p class="mx-dica">${I('brain')}Os cards dessa ficha já estão prontos (${esc(f.cards)}): importe no Anki.</p>`:`<p class="mx-dica">Terminou? ${pedir(`Terminei a ficha ${f.nome}. Faz os cards de Certo/Errado dela.`,'Pedir os cards da ficha')}</p>`}
     ${r&&r[0]===HOJE?`<div class="mx-ok">${I('circle-check-big')}<span>Ficha fechada${r[2]?`: ${r[1]} de ${r[2]} no TEC (${Math.round(r[1]/r[2]*100)}%)`:''}.</span><button class="mx-btn sec" data-acao="ficha-undo" data-id="${f.id}">${I('undo')}Desfazer</button></div>`
       :ok?`<div class="mx-ok">${I('circle-check-big')}<span>Parou por hoje. Amanhã continua de onde parou.</span><button class="mx-btn sec" data-acao="desmarcar" data-id="ficha">${I('undo')}Voltar</button></div>`
-      :`<div class="mx-acoes"><button class="mx-btn sec" data-acao="ficha-pausa">${I('pause')}Parar por hoje</button></div>${resultadoHtml('ficha-ok','No TEC acertei','Concluir fecha a ficha e a próxima da fila passa a ser a da vez.')}`}`;
+      :`<div class="mx-acoes"><button class="mx-btn sec" data-acao="ficha-pausa">${I('pause')}Parar por hoje</button></div>${resultadoHtml('ficha-ok','Nas questões acertei','Concluir fecha a ficha e a próxima da fila passa a ser a da vez.','f:'+f.id)}`}`;
 }
 
 function revItemHtml(p,ok){
@@ -531,13 +544,13 @@ function revItemHtml(p,ok){
   const aberto=abertoRev===p.u;
   return `<div class="mx-rv ${aberto?'aberto':''}" data-u="${esc(p.u)}">
     <button class="mx-rv-top" data-acao="rv-abre" aria-expanded="${aberto}"><span class="mx-fx ${fx[1]}">${fx[0]}</span>
-      <span class="mx-rv-n"><b>${esc(u.as)}</b><i>${esc(u.mat)} · ${esc(u.pp)} da prova · ${p.min} min${tipo?' · '+tipo:''}</i></span>
+      <span class="mx-rv-n"><b>${esc(u.as)} ${alvoB(p.u)}</b><i>${esc(u.mat)} · ${esc(u.pp)} da prova · ${p.min} min${tipo?' · '+tipo:''}</i></span>
       ${atr>0?`<span class="mx-chip am">${atr===1?'de ontem':'há '+atr+' dias'}</span>`:''}${I('chevron-down','mx-seta')}</button>
     ${aberto?`<div class="mx-rv-c">
       <ol class="mx-simples"><li>${p.tipo==='l'?`<b>Leitura final (10 min):</b> passe os olhos só nas caixas de pegadinha da ficha. Foco: ${esc(u.cai)}.`:`<b>Lembrar sem olhar (2 min):</b> fale ou rabisque o que você lembra de <i>${esc(u.cai)}</i>. Só depois confira na ficha o que faltou.`}</li>
-      <li><b>Questões no TEC (${n}):</b> ${tecLink(u,u.as)}<span class="mx-dica">Continue de onde parou: cada revisão pega as próximas questões do mesmo caderno.</span></li>
+      <li><b>Questões (${n}):</b> primeiro as da PMBA aqui; no fim, o Mentor já conclui a revisão com o seu resultado.${qb({u:p.u,n:p.tipo==='q'?20:10,orig:'r:'+p.u})}<span class="mx-dica">Quer mais volume? ${tecLink(u,u.as)} Continue de onde parou: cada revisão pega as próximas questões do mesmo caderno.</span></li>
       <li><b>Erros:</b> uma linha por erro.${errosHtml(p.u,'')}</li></ol>
-      ${resultadoHtml('rv-ok','Acertei','Abaixo de 60%, o assunto volta em 3 dias. De 85% para cima, a próxima revisão dele fica dispensada.')}
+      ${resultadoHtml('rv-ok','Acertei','Abaixo de 60%, o assunto volta em 3 dias. De 85% para cima, a próxima revisão dele fica dispensada.','r:'+p.u)}
       <div class="mx-acoes"><button class="mx-btn sec" data-acao="rv-adiar">${I('calendar-days')}Amanhã</button></div></div>`:''}
   </div>`;
 }
@@ -723,12 +736,14 @@ function render(){
   if(!MJ||!RJ) return;
   const s=S();
   topo.innerHTML=htmlTopo(s);
-  nav.innerHTML=ABAS.map(a=>`<button data-ir="${a[0]}" aria-current="${aba===a[0]?'page':'false'}">${I(a[2])}<span>${a[1]}</span></button>`).join('');
+  nav.innerHTML=ABAS.map(a=>`<button data-ir="${a[0]}" aria-current="${abaNav(aba)===a[0]?'page':'false'}">${I(a[2])}<span>${a[1]}</span></button>`).join('');
   const y=window.scrollY;
   app.dataset.aba=aba;
-  app.innerHTML=aba==='revisao'?vRevisao(s):aba==='plano'?vPlano(s):aba==='progresso'?vProgresso(s):aba==='mais'?vMais(s):vHoje(s);
+  const E=window.__estudo, eV=f=>E&&E.pronto?E[f](s):'<section class="mx-card"><b>Carregando questões e cards…</b></section>';
+  app.innerHTML=aba==='revisao'?vRevisao(s):aba==='plano'?segPlano()+vPlano(s):aba==='progresso'?segPlano()+vProgresso(s):aba==='alvo'?segPlano()+eV('vAlvo'):aba==='mais'?vMais(s):aba==='questoes'?eV('vQuestoes'):aba==='cards'?eV('vCards'):vHoje(s);
   window.scrollTo(0,y);
 }
+function segPlano(){return `<div class="mx-segp" role="group" aria-label="Plano">${[['plano','Plano'],['progresso','Progresso'],['alvo','Alvo SD × CFO']].map(([k,t])=>`<button data-ir="${k}" aria-current="${aba===k?'page':'false'}">${t}</button>`).join('')}</div>`;}
 function ir(a){aba=a;try{history.replaceState(null,'','#m-'+a);}catch(_){}render();window.scrollTo(0,0);}
 
 function lerRes(box){const a=parseInt((box.querySelector('[data-a]')||{}).value,10), t=parseInt((box.querySelector('[data-t]')||{}).value,10);
@@ -785,6 +800,7 @@ async function clique(ev){
     case 'fim': {dia(s).fim=1; salvar(s); T.zerar(); foco=null; render(); window.scrollTo({top:0,behavior:'smooth'}); return;}
     case 'fim-undo': {delete dia(s).fim; salvar(s); return render();}
     case 'antigo': return antigo(b.dataset.aba);
+    default: if(window.__estudo&&window.__estudo.acao) window.__estudo.acao(a,b,ev);
   }
 }
 /* revisão: quando a última do dia fecha, o "Agora" segue para a próxima etapa */
@@ -823,6 +839,7 @@ body.mx-velho #mx-voltar{display:flex;position:fixed;left:50%;transform:translat
 .mx-sync:not([hidden])+.mx-relogio{margin-left:0}
 .mx-relogio.on{border-color:var(--acc);color:var(--acc400);box-shadow:0 0 0 3px rgba(16,185,129,.15)}
 .mx-relogio .mx-ic{width:15px;height:15px}
+.mx-cfg{all:unset;cursor:pointer;width:38px;height:38px;display:grid;place-items:center;border-radius:11px;color:var(--soft);flex:none}.mx-cfg:hover{background:var(--hover)}.mx-cfg[aria-current=page]{color:var(--acc400);background:rgba(16,185,129,.12)}
 #mx-app{max-width:760px;margin:0 auto;padding:16px 16px calc(96px + env(safe-area-inset-bottom,0px))}
 #mx-nav{position:fixed;left:0;right:0;bottom:0;z-index:40;display:grid;grid-template-columns:repeat(5,1fr);background:rgba(11,15,26,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:.5px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
 #mx-nav button{all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 0 8px;font-size:11px;font-weight:600;color:var(--muted)}
@@ -960,7 +977,7 @@ function montar(){
     document.querySelectorAll('[data-crono]').forEach(el=>{const tt=T.doId(el.dataset.crono);el.textContent=mmss(T.ms(tt));});
     const r=document.querySelector('[data-relogio]'); if(r&&t&&t.ini) r.textContent=mmss(T.ms(t));},1000);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden){T.passo();render();} else {Object.keys(SYNC.pend).forEach(k=>{clearTimeout(SYNC.tm[k]);enviar(k);});}});
-  window.addEventListener('hashchange',()=>{const a=(location.hash||'').replace('#m-','');if(ABAS.some(x=>x[0]===a)&&a!==aba){aba=a;render();}});
+  window.addEventListener('hashchange',()=>{const a=(location.hash||'').replace('#m-','');if(ABAS_OK.includes(a)&&a!==aba){aba=a;render();}});
 }
 async function carregar(){
   const v=window.__REV2_V||VERSAO;
@@ -970,6 +987,9 @@ async function carregar(){
   const s=S(); if(s.cfg&&s.cfg.chegou) Object.keys(s.cfg.chegou).forEach(id=>{const f=MJ.fichas.find(x=>x.id===id);if(f&&!f.arq)f.arq='(ficha recebida no chat)';});
   iniciarEstado(); render();
 }
+window.__mx={esc,I,chip,barra,anel,dd,dLonga,add,entre,fmtM,mmss,plural,pct,pctTxt,cap,semana,gravarK,lerK,aviso,copiar,U,RV,ER,S,salvar,dia,HOJE,filaT,fichaDaVez,
+  get MJ(){return MJ;}, get RJ(){return RJ;}, render:()=>render(), ir:a=>ir(a), plano:()=>plano(S()), depoisRev:()=>depoisRev(),
+  marcar:id=>{const s=S();dia(s).ok[id]=1;salvar(s);}};
 montar(); carregar().catch(e=>{console.error(e);app.innerHTML='<section class="mx-card"><b>Deu erro ao montar a missão.</b><p class="mx-dica">'+esc(e.message)+'</p></section>';});
 window.__missao={render,S,RV,ER,plano:()=>plano(S()),T,versao:VERSAO};
 })();
