@@ -33,8 +33,10 @@ const I=(n,c)=>X.I(n,c);
 const diaNum=s=>Math.round((Date.UTC(+s.slice(0,4),+s.slice(5,7)-1,+s.slice(8,10))-DIA0)/864e5);
 const numDia=n=>{const d=new Date(DIA0+n*864e5);return d.toISOString().slice(0,10);};
 const hojeN=()=>diaNum(H());
-const nl2br=s=>esc(s).replace(/\n/g,'<br>');
-const negrito=s=>esc(s).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');
+const subl=s=>s.replace(/&lt;(\/?)u&gt;/g,'<$1u>');   /* trecho sublinhado da prova: <u>…</u> */
+const semTag=s=>(s||'').replace(/<\/?u>/g,'');
+const nl2br=s=>subl(esc(s)).replace(/\n/g,'<br>');
+const negrito=s=>subl(esc(s)).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');
 const embaralhar=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
 const alvoTxt=a=>a==='SDCFO'?'SD · CFO':a;
 const alvoChip=a=>`<span class="es-alvo ${a==='SDCFO'?'ambos':a==='CFO'?'cfo':'sd'}" title="${a==='SDCFO'?'Cai no Soldado e no CFO':a==='CFO'?'Só o CFO cobra':'Cai no Soldado'}">${alvoTxt(a)}</span>`;
@@ -313,7 +315,7 @@ function barraTopo(pos,tot,dir){
 }
 function textoHtml(t,aberto,tid){
   if(!t) return '';
-  const corpo=t.ln?`<div class="es-tx-c ln">${t.c.split('\n').map(l=>`<span>${esc(l)}</span>`).join('')}</div>`:`<div class="es-tx-c">${t.c.split(/\n{2,}/).map(p=>`<p>${nl2br(p)}</p>`).join('')}</div>`;
+  const corpo=t.ln?`<div class="es-tx-c ln">${t.c.split('\n').map(l=>`<span>${subl(esc(l))}</span>`).join('')}</div>`:`<div class="es-tx-c">${t.c.split(/\n{2,}/).map(p=>`<p>${nl2br(p)}</p>`).join('')}</div>`;
   return `<details class="es-texto" data-tx="${esc(tid||'')}" ${aberto?'open':''}><summary>${I('file-text')}<b>${esc(t.ti||'Texto da questão')}</b><i>toque para ${aberto?'fechar':'ler'}</i></summary>${corpo}${t.fo?`<p class="es-tx-f">${esc(t.fo)}</p>`:''}</details>`;
 }
 function metaQ(q){
@@ -544,7 +546,7 @@ function acao(a,b){
     case 'q-refazer': {const ids=ses.ids.filter(id=>ses.resp[id]&&!ses.resp[id].ok); abrirQuiz({ids}); return true;}
     case 'q-erro': {const q=questaoAtual();const r=ses.resp[q.id];const t=topico(q.t);const p=BQ.pv[q.p]||{};
       const certo=(q.a.find(x=>x[0]===q.g)||[])[1]||'';
-      X.ER.add(t.u||null,'Questões · '+t.as,`${p.conc==='CFO'?'CFO':'SD'} ${p.ano} Q${q.n}: marquei ${r.m}, a certa é ${q.g}. ${(q.e||'').replace(/\s+/g,' ').slice(0,110)}`,certo.replace(/\s+/g,' ').slice(0,200));
+      X.ER.add(t.u||null,'Questões · '+t.as,`${p.conc==='CFO'?'CFO':'SD'} ${p.ano} Q${q.n}: marquei ${r.m}, a certa é ${q.g}. ${semTag(q.e).replace(/\s+/g,' ').slice(0,110)}`,semTag(certo).replace(/\s+/g,' ').slice(0,200));
       X.aviso('Erro anotado: entra na lista para virar card','check'); b.disabled=true; b.textContent='Anotado'; return true;}
     case 'q-card': {const q=questaoAtual();const certo=(q.a.find(x=>x[0]===q.g)||[])[1]||'';const p=BQ.pv[q.p]||{};
       const tx=(q.e||'').trim(); const curtas=q.a.every(x=>x[1].length<60);
@@ -611,6 +613,7 @@ body.es-aberto{overflow:hidden}
 .es-tx-c.ln{counter-reset:l;display:flex;flex-direction:column}.es-tx-c.ln span{white-space:pre-wrap}
 .es-tx-f{padding:0 16px 12px;font-size:12px;color:var(--muted);text-align:right}
 .es-enun{font-size:16.5px;line-height:1.6;margin:0 0 12px}
+.es-enun u,.es-at u,.es-tx-c u{text-decoration-thickness:2px;text-underline-offset:3px;text-decoration-color:var(--acc,#2dd4bf)}
 .es-fig{display:block;max-width:100%;margin:8px auto 14px;border-radius:10px;background:#fff;min-height:40px;cursor:zoom-in}
 .es-zoom{position:fixed;inset:0;z-index:10050;background:rgba(0,0,0,.92);overflow:auto;-webkit-overflow-scrolling:touch;display:block;padding:64px 0 56px}
 .es-zoom img{display:block;margin:0 auto;background:#fff;max-width:none!important;width:auto;height:auto;flex:none;padding:8px;box-sizing:content-box;cursor:zoom-out}
