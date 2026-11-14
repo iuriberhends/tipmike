@@ -160,9 +160,14 @@ function painel(){
   </div>`;
   ligar(box,s);
 }
+function nomeAssunto(id){
+  for(const m of (window.__D&&window.__D.materias)||[]) for(const mo of m.modulos||[]) for(const a of mo.assuntos||[]) if(a.id===id) return m.nome+' · '+a.nome;
+  return 'aula do Mentor';
+}
+const rotulo=x=>x[1]?U(x[1]).mat+' · '+U(x[1]).as:(x[5]||'aula do Mentor');
 function textoErros(e){
   const l=e.er.filter(x=>!x[4]);
-  return 'Erros da revisão para virar card de Anki:\n'+l.map(x=>`- ${curta(x[0])} · ${U(x[1]).mat} · ${U(x[1]).as}: ${x[2]}${x[3]?' → certo: '+x[3]:''}`).join('\n');
+  return 'Erros da revisão para virar card de Anki:\n'+l.map(x=>`- ${curta(x[0])} · ${rotulo(x)}: ${x[2]}${x[3]?' → certo: '+x[3]:''}`).join('\n');
 }
 function ligar(box,s){
   box.querySelectorAll('.rv2-top').forEach(b=>b.onclick=()=>{const u=b.closest('.rv2-item').dataset.u;aberto=aberto===u?null:u;painel();});
@@ -205,6 +210,8 @@ if(typeof renderHoje==='function'){const h0=renderHoje;window.renderHoje=functio
 const api0=window.__api; let pularVelha=false;
 window.__api=function(path,body,tentou){
   if(pularVelha&&path==='/mentor/revisoes/hoje') return Promise.resolve({revisoes:[],materias:[],teto_minutos:0});
+  /* erro anotado na aula (caderno do Mentor) também entra na lista que vira card de Anki */
+  if(path==='/mentor/caderno'&&body&&body.linha&&!tentou&&body.tipo!=='desatencao'){try{const e=est();e.er.push([HOJE,null,String(body.linha).slice(0,240),String(body.verso||'').slice(0,240),0,nomeAssunto(body.assunto_id)]);salvar(e);}catch(_){}}
   return api0(path,body,tentou);
 };
 const rev0=window.renderRevisao;
