@@ -33,10 +33,11 @@ const I=(n,c)=>X.I(n,c);
 const diaNum=s=>Math.round((Date.UTC(+s.slice(0,4),+s.slice(5,7)-1,+s.slice(8,10))-DIA0)/864e5);
 const numDia=n=>{const d=new Date(DIA0+n*864e5);return d.toISOString().slice(0,10);};
 const hojeN=()=>diaNum(H());
-const subl=s=>s.replace(/&lt;(\/?)u&gt;/g,'<$1u>');   /* trecho sublinhado da prova: <u>…</u> */
-const semTag=s=>(s||'').replace(/<\/?u>/g,'');
+/* trecho sublinhado/destacado da prova: <u>…</u> ou **…** (as extrações usam os dois) */
+const subl=s=>s.replace(/&lt;(\/?)u&gt;/g,'<$1u>').replace(/\*\*(.+?)\*\*/g,'<b class="es-grifo">$1</b>');
+const semTag=s=>(s||'').replace(/<\/?u>|\*\*/g,'');
 const nl2br=s=>subl(esc(s)).replace(/\n/g,'<br>');
-const negrito=s=>subl(esc(s)).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');
+const negrito=s=>esc(s).replace(/&lt;(\/?)u&gt;/g,'<$1u>').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');
 const embaralhar=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
 const alvoTxt=a=>a==='SDCFO'?'SD · CFO':a;
 const alvoChip=a=>`<span class="es-alvo ${a==='SDCFO'?'ambos':a==='CFO'?'cfo':'sd'}" title="${a==='SDCFO'?'Cai no Soldado e no CFO':a==='CFO'?'Só o CFO cobra':'Cai no Soldado'}">${alvoTxt(a)}</span>`;
@@ -613,7 +614,8 @@ body.es-aberto{overflow:hidden}
 .es-tx-c.ln{counter-reset:l;display:flex;flex-direction:column}.es-tx-c.ln span{white-space:pre-wrap}
 .es-tx-f{padding:0 16px 12px;font-size:12px;color:var(--muted);text-align:right}
 .es-enun{font-size:16.5px;line-height:1.6;margin:0 0 12px}
-.es-enun u,.es-at u,.es-tx-c u{text-decoration-thickness:2px;text-underline-offset:3px;text-decoration-color:var(--acc,#2dd4bf)}
+.es-grifo{text-decoration:underline}
+.es-enun u,.es-at u,.es-tx-c u,.es-grifo{text-decoration-thickness:2px;text-underline-offset:3px;text-decoration-color:var(--acc,#2dd4bf)}
 .es-fig{display:block;max-width:100%;margin:8px auto 14px;border-radius:10px;background:#fff;min-height:40px;cursor:zoom-in}
 .es-zoom{position:fixed;inset:0;z-index:10050;background:rgba(0,0,0,.92);overflow:auto;-webkit-overflow-scrolling:touch;display:block;padding:64px 0 56px}
 .es-zoom img{display:block;margin:0 auto;background:#fff;max-width:none!important;width:auto;height:auto;flex:none;padding:8px;box-sizing:content-box;cursor:zoom-out}
