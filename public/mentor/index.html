@@ -478,7 +478,7 @@ window.__APP="\nconst D = window.__D;\nconst SEMANAS_DET = window.__S;\nconst HO
   window.__D=d.D;window.__S=d.SEMANAS;window.__H=d.HOJE_AULAS;window.__HX=d.HOJE_EXTRA||[];window.__HOJE=d.HOJE;window.__EST=d.ESTADO||{};window.__PROG=d.progresso;window.__HOJE_REV=d.HOJE_REV||{revisoes:0,questoes:0,lista:[],cards:0,caderno_abertas:0,caderno_por_materia:{}};window.__VERSAO=d.VERSAO||'';
   main.innerHTML=window.__MAIN;
   const s=document.createElement('script');s.textContent=window.__APP;document.body.appendChild(s);
-  window.__REV2_V='20261114d';const s2=document.createElement('script');s2.src='/mentor/revisao_v2.js?v='+window.__REV2_V;s2.onload=()=>{const s3=document.createElement('script');s3.src='/mentor/ajustes_v2.js?v='+window.__REV2_V;document.body.appendChild(s3);};document.body.appendChild(s2);
+  window.__REV2_V='20261114e';const s2=document.createElement('script');s2.src='/mentor/revisao_v2.js?v='+window.__REV2_V;s2.onload=()=>{const s3=document.createElement('script');s3.src='/mentor/ajustes_v2.js?v='+window.__REV2_V;document.body.appendChild(s3);};document.body.appendChild(s2);
   if(window.__PROG){const u=document.getElementById('usuario');if(u)u.innerHTML=`<span class="avatar">${window.__PROG.streak_dias||0}</span><span><b>${window.__PROG.patente}</b><i>${window.__PROG.xp_total} XP · ${window.__PROG.streak_dias||0} dia(s)</i></span>`}
 })();
 </script>
