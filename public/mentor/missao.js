@@ -18,7 +18,7 @@
 (function(){
 'use strict';
 if(window.__missao) return;
-const VERSAO='20261114q';
+const VERSAO='20261116a';
 const HOJE=window.__HOJE||new Date().toISOString().slice(0,10);
 const K='mm3_missao', RK='mm3_rev2', TK='mm_missao_timer';
 const TRILHA_ATE='2027-01-02';
@@ -187,16 +187,32 @@ const ER={
 
 /* ================================================================ trilha e fichas */
 const filaT=f=>MJ.trilha.filter(t=>t.fila===f);
+/* dia alternado (escolha de Santos em 16/11): seg/qua/sex só Português, ter/qui/sáb só Matemática, 2 sessões seguidas.
+   Mesmo número de sessões na semana, então a trilha fecha na mesma data. Em Mais dá para voltar às duas todo dia. */
+const ALT_DESDE='2026-11-17';
+const altOn=(s,d)=>s.cfg.alt!==0&&(d||HOJE)>=ALT_DESDE;
+function filasDoDia(s,d){d=d||HOJE;if(!altOn(s,d))return ['P','M'];const w=semana(d);return w===0?[]:(w%2?['P']:['M']);}
+function cotaTrilha(f,s,d){return altOn(s,d)?(filasDoDia(s,d).includes(f)?2:0):1;}
 function sessaoDoDia(f,s){
   const l=filaT(f);
   const hoje=l.filter(t=>s.td[t.id]&&s.td[t.id][0]===HOJE);
   const prox=l.find(t=>!s.td[t.id]);
   const adi=((s.d[HOJE]||{}).adi||{})[f];
-  /* "Adiantar a próxima": enquanto a próxima não fecha, ela é a sessão do dia */
-  const ultimaHoje=(adi!=null&&hoje.length<=adi&&prox)?null:(hoje[hoje.length-1]||null);
-  return {feitas:hoje,prox,ultimaHoje};
+  const cota=cotaTrilha(f,s);
+  /* dia com 2 sessões, ou "Adiantar a próxima": enquanto a cota não fecha, a próxima é a sessão do dia */
+  const segue=prox&&((hoje.length>0&&hoje.length<cota)||(adi!=null&&hoje.length<=adi));
+  const ultimaHoje=segue?null:(hoje[hoje.length-1]||null);
+  return {feitas:hoje,prox,ultimaHoje,cota};
 }
-function atrasoTrilha(f,s){const l=filaT(f);return l.filter(t=>!s.td[t.id]&&t.data<HOJE).length;}
+/* no dia alternado a matéria do dia seguinte está sempre 1 sessão "atrás" da data do plano diário: não conta como atraso */
+function atrasoTrilha(f,s){const l=filaT(f);const n=l.filter(t=>!s.td[t.id]&&t.data<HOJE).length;return altOn(s)?Math.max(0,n-1):n;}
+/* datas previstas no dia alternado (2 por dia da matéria, a partir de hoje) */
+function datasPrevistas(f,s){
+  const out={}; if(s.cfg.alt===0) return out;
+  let d=HOJE<ALT_DESDE?ALT_DESDE:HOJE, livre=Math.max(0,cotaTrilha(f,s,d)-(d===HOJE?sessaoDoDia(f,s).feitas.length:0));
+  filaT(f).filter(t=>!s.td[t.id]).forEach(t=>{let g=0;while(livre<=0&&g++<30){d=add(d,1);livre=cotaTrilha(f,s,d);} out[t.id]=d; livre--;});
+  return out;
+}
 function anteriores(t){const l=filaT(t.fila);const i=l.findIndex(x=>x.id===t.id);const cods=[];
   for(let j=i-1;j>=0&&cods.length<2;j--){if(l[j].cod!==t.cod&&!cods.some(c=>c.cod===l[j].cod))cods.push(l[j]);}return cods;}
 const filaF=prova=>MJ.fichas.filter(f=>!prova||f.prova===prova);
@@ -218,8 +234,9 @@ function plano(s){
   if(mc&&mc!=='fora'){const r=EC.resumoCards()||{rev:0,novos:0,min:0}; ets.push({id:'anki',tipo:'anki',cards:1,min:Math.max(5,Math.min(25,r.min||5)),titulo:'Cards do dia',sub:r.rev+r.novos?`${r.rev} ${plural(r.rev,'revisão','revisões')} · ${r.novos} ${plural(r.novos,'novo')}`:'nada vencido hoje'});}
   else ets.push({id:'anki',tipo:'anki',min:anki,titulo:'Aquecimento no Anki',sub:'os cards vencidos de hoje'});
   const tri=tot<=120?40:45;
-  const passoTrilha=f=>{const x=sessaoDoDia(f,s); const t=x.ultimaHoje||x.prox;
-    if(t) return {id:f,tipo:'trilha',fila:f,t,min:tri,titulo:(f==='P'?'Português':'Matemática')+' do zero',sub:`${t.cod} · ${t.nome}${t.n>1?` (${t.k}/${t.n})`:''}`};
+  const passoTrilha=f=>{const x=sessaoDoDia(f,s); const t=x.ultimaHoje||x.prox; const dupla=x.cota===2;
+    const deHoje=dupla?` · ${x.ultimaHoje?'2 de 2 feitas':(x.feitas.length+1)+'ª de 2 hoje'}`:'';
+    if(t) return {id:f,tipo:'trilha',fila:f,t,min:dupla?tri*2:tri,titulo:(f==='P'?'Português':'Matemática')+' do zero',sub:`${t.cod} · ${t.nome}${t.n>1?` (${t.k}/${t.n})`:''}${deHoje}`};
     return {id:f,tipo:'mistas',fila:f,min:30,titulo:(f==='P'?'Português':'Matemática')+': questões mistas',sub:'a trilha acabou; 20 questões misturadas'};};
   if(dom){
     /* domingo: sem conteúdo novo. Entra só o que ficou para trás, na ordem do que mais pesa, + questões da semana + inglês */
@@ -236,7 +253,9 @@ function plano(s){
     ets.push({id:'fim',tipo:'fim',min:fim,titulo:'Fechamento',sub:'erros para o Anki e a semana que vem'});
     return {h,tot:Math.max(tot,ets.reduce((a2,x)=>a2+x.min,0)),ets,dom,sab};
   }
-  ['P','M'].forEach(f=>ets.push(passoTrilha(f)));
+  const filas=filasDoDia(s);
+  /* a matéria fora do dia só aparece se ele adiantou uma sessão dela hoje */
+  ['P','M'].forEach(f=>{if(filas.includes(f)||sessaoDoDia(f,s).feitas.length)ets.push(passoTrilha(f));});
   /* teto da revisão no dia; com revisão atrasada, ela ganha mais 30 min e a ficha encolhe (a fila não pode crescer sem fim) */
   const atrasadas=pend.filter(p=>p.d<HOJE).length;
   const tetoRev=(tot<=120?30:tot<=180?35:tot<=240?45:60)+(atrasadas?30:0);
@@ -497,7 +516,7 @@ function trilhaHtml(s,et,ok){
     {k:'erros',t:'Erros: uma linha por erro',min:3,d:'Escreva o que você pensou e a frase certa. No fechamento, a lista vira card de Anki.',extra:errosHtml(t.u,`Trilha ${t.cod} · ${t.nome}`)},
   ];
   const r=s.td[t.id];
-  return `${u?`<p class="mx-meta">${chip(u.as,t.fila==='P'?'cy':'am')} ${chip(u.pp+' da prova','am')} ${alvoB(t.u)}</p>`:''}<p class="mx-porque">${I(t.fila==='P'?'type':'calc')}${t.fila==='P'?'Português vem primeiro porque é a matéria que você adia: cabeça fresca, sem desculpa.':'Matemática logo em seguida, antes das matérias que você gosta. Sessão curta, todo dia.'}</p>
+  return `${u?`<p class="mx-meta">${chip(u.as,t.fila==='P'?'cy':'am')} ${chip(u.pp+' da prova','am')} ${alvoB(t.u)}</p>`:''}<p class="mx-porque">${I(t.fila==='P'?'type':'calc')}${altOn(s)?(t.fila==='P'?'Dia de Português: 2 sessões de 45 min, com 10 min de pausa entre elas. Amanhã é Matemática.':'Dia de Matemática: 2 sessões de 45 min, com 10 min de pausa entre elas. Amanhã é Português.'):(t.fila==='P'?'Português vem primeiro porque é a matéria que você adia: cabeça fresca, sem desculpa.':'Matemática logo em seguida, antes das matérias que você gosta. Sessão curta, todo dia.')}</p>
     ${relogioHtml(et)}
     ${passosHtml(passos,tp,'t:'+t.id)}
     ${ok?`<div class="mx-ok">${I('circle-check-big')}<span>Sessão feita${r&&r[2]?`: ${r[1]} de ${r[2]} (${Math.round(r[1]/r[2]*100)}%)`:''}.</span><button class="mx-btn sec" data-acao="trilha-undo" data-id="${t.id}">${I('undo')}Desfazer</button>${proxTrilha(s,t)?`<button class="mx-btn sec" data-acao="trilha-mais" data-f="${t.fila}">${I('skip-forward')}Adiantar a próxima</button>`:''}</div>`
@@ -627,8 +646,9 @@ function vPlano(s){
   const okP=tP.filter(t=>s.td[t.id]).length, okM=tM.filter(t=>s.td[t.id]).length;
   const proj=projecao(s);
   const sec=(id,tit,sub,corpo,abertoPadrao)=>{const ab=planoAberto[id]!=null?planoAberto[id]:abertoPadrao;return `<section class="mx-card"><button class="mx-sec" data-acao="sec" data-id="${id}" aria-expanded="${ab}"><span><b>${tit}</b><i>${sub}</i></span>${I('chevron-down','mx-seta')}</button>${ab?corpo:''}</section>`;};
+  const prev={P:datasPrevistas('P',s),M:datasPrevistas('M',s)};
   const linhaT=t=>{const r=s.td[t.id];const prox=!r&&filaT(t.fila).find(x=>!s.td[x.id])===t;
-    return `<li class="${r?'ok':''} ${prox?'atual':''}"><span class="mx-n">${r?I('check'):esc(t.cod)}</span><span class="mx-lt"><b>${esc(t.cod)} · ${esc(t.nome)}${t.n>1?` (${t.k}/${t.n})`:''}</b><i>${r?(r[0]?'feita '+dd(r[0]):'feita antes')+(r[2]?` · ${r[1]}/${r[2]}`:''):'plano: '+dd(t.data)}${t.aula.length?' · aula do zero pronta':''}</i></span>
+    return `<li class="${r?'ok':''} ${prox?'atual':''}"><span class="mx-n">${r?I('check'):esc(t.cod)}</span><span class="mx-lt"><b>${esc(t.cod)} · ${esc(t.nome)}${t.n>1?` (${t.k}/${t.n})`:''}</b><i>${r?(r[0]?'feita '+dd(r[0]):'feita antes')+(r[2]?` · ${r[1]}/${r[2]}`:''):'plano: '+dd(prev[t.fila][t.id]||t.data)}${t.aula.length?' · aula do zero pronta':''}</i></span>
       ${r?`<button class="mx-mini" data-acao="trilha-undo" data-id="${t.id}" aria-label="Desfazer">${I('undo')}</button>`:prox?`<button class="mx-mini" data-acao="trilha-pular" data-id="${t.id}">Já fiz</button>`:''}</li>`;};
   const linhaF=f=>{const r=s.fd[f.id];const atual=vez===f;
     return `<li class="${r?'ok':''} ${atual?'atual':''}"><span class="mx-n">${r?I('check'):I(f.arq?'file-text':'hourglass')}</span><span class="mx-lt"><b>${esc(f.nome)}</b><i>${esc(f.mat)} · ${esc(f.nivel)} · ${String(f.horas).replace('.',',')}h · ${esc(f.pp)}${r?` · feita ${r[0]?dd(r[0]):''}`:` · semana de ${dd(f.ini)}`}${s.fm[f.id]&&!r?` · ${fmtM(s.fm[f.id])} feitos`:''}</i></span>
@@ -724,6 +744,8 @@ function vMais(s){
   return `<header class="mx-cab"><h1>Mais</h1></header>
   <section class="mx-card"><h2 class="mx-h3">${I('cog')}Horas por dia</h2><p class="mx-dica">O plano de cada dia se ajusta a isso. No próprio dia você ainda pode trocar no "Hoje eu tenho".</p>
     <ul class="mx-hsem">${[1,2,3,4,5,6,0].map(w=>{const v=h[w]!=null?h[w]:(w===0?2:4);return `<li><span>${cap(SEMX[w])}</span><div class="mx-horas mini">${[0,2,3,4,5,6].map(n=>`<button data-acao="hsem" data-w="${w}" data-h="${n}" aria-pressed="${v===n}">${n?n+'h':'folga'}</button>`).join('')}</div></li>`;}).join('')}</ul></section>
+  <section class="mx-card"><h2 class="mx-h3">${I('type')}Português e Matemática</h2><p class="mx-dica">Dia alternado: segunda, quarta e sexta só Português; terça, quinta e sábado só Matemática, 2 sessões seguidas. A trilha termina na mesma data.</p>
+    <div class="mx-horas mini"><button data-acao="alt" data-v="1" aria-pressed="${s.cfg.alt!==0}">Dia alternado</button><button data-acao="alt" data-v="0" aria-pressed="${s.cfg.alt===0}">As duas todo dia</button></div></section>
   <section class="mx-card"><h2 class="mx-h3">${I('external-link')}Atalhos</h2>
     <div class="mx-atalhos"><a href="${TEC_PASTA}" target="_blank" rel="noopener">${I('folder')||I('layers')}Minha pasta no TEC</a><button data-acao="como">${I('info')}Como funciona a missão</button><button data-acao="copiar" data-txt="O que estudar hoje? Olha meu Mentor.">${I('msg')}Perguntar no chat</button></div></section>
   <section class="mx-card"><h2 class="mx-h3">${I('layers')}Ferramentas antigas</h2><p class="mx-dica">O Mentor de antes continua aqui, do jeito que era.</p>
@@ -760,6 +782,7 @@ async function clique(ev){
     case 'intro': s.cfg.intro=1; salvar(s); return render();
     case 'como': s.cfg.intro=0; salvar(s); return ir('hoje');
     case 'horas': {dia(s).h=+b.dataset.h; salvar(s); aviso(`Dia de ${b.dataset.h}h: o plano se ajustou`,'clock'); return render();}
+    case 'alt': {s.cfg.alt=+b.dataset.v; salvar(s); return render();}
     case 'hsem': {s.cfg.h=s.cfg.h||{}; s.cfg.h[b.dataset.w]=+b.dataset.h; salvar(s); return render();}
     case 'relogio': {const t=T.ler(); if(t&&t.ini){T.pausar();render();} else {ir('hoje');} return;}
     case 'iniciar': {const et=etapaAtual(etId); if(et){T.iniciar(et); aviso('Valendo. Foco total por '+fmtM(et.min),'play');} return render();}
