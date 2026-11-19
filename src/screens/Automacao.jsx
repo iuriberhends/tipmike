@@ -20,7 +20,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle, BarChart3, History, Loader2, Lock, Pause, Pencil, Plus, RefreshCw,
-  ShieldAlert, ShieldCheck, Wallet, X, Zap,
+  ShieldAlert, ShieldCheck, Trash2, Wallet, X, Zap,
 } from 'lucide-react';
 import MikeHeader from '../shared/MikeHeader.jsx';
 import { EstadoErro, EstadoVazio } from '../shared/Estados.jsx';
@@ -203,6 +203,7 @@ export default function Automacao({ onNavegar }) {
   const [modalConta, setModalConta] = useState(null);       // { conta } | { nova: true }
   const [analiseBot, setAnaliseBot] = useState(null);
   const [ocupadoBot, setOcupadoBot] = useState(null);
+  const [apagarConta, setApagarConta] = useState(null);     // { conta, erro, ocupado }
   const [toasts, setToasts] = useState([]);
 
   const avisar = useCallback((mensagem, tipo = 'info') => {
@@ -253,6 +254,20 @@ export default function Automacao({ onNavegar }) {
     } catch (e) {
       avisar((e && e.message) || 'Não deu para pausar.', 'error');
     } finally { setOcupadoBot(null); }
+  };
+
+  const confirmarApagarConta = async () => {
+    const c = apagarConta?.conta;
+    if (!c) return;
+    setApagarConta({ conta: c, erro: '', ocupado: true });
+    try {
+      await ApiAutomacao.apagarConta(c.id);
+      setApagarConta(null);
+      avisar(`Conta "${c.apelido}" apagada.`, 'success');
+      await carregar();
+    } catch (e) {
+      setApagarConta({ conta: c, erro: (e && e.message) || 'Não deu para apagar a conta.', ocupado: false });
+    }
   };
 
   const limite = (usado, teto) => (teto === null || teto === undefined ? `${usado} (sem limite)` : `${usado} de ${teto}`);
@@ -382,6 +397,11 @@ export default function Automacao({ onNavegar }) {
                                 className="p-1.5 rounded-md text-slate-400 hover:text-slate-100 transition"
                                 title={admin ? 'Editar apelido, dono, estado, observação e acesso' : 'Mudar o estado, a observação ou o acesso'}>
                                 <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button type="button" onClick={() => setApagarConta({ conta: c, erro: '', ocupado: false })}
+                                className="p-1.5 rounded-md text-slate-400 hover:text-rose-300 transition"
+                                title="Apagar esta conta" data-acao="apagar-conta">
+                                <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             </div>
                           </td>
@@ -516,6 +536,28 @@ export default function Automacao({ onNavegar }) {
           avisar={avisar}
           onFechar={() => setModalConta(null)}
           onGravou={() => { setModalConta(null); avisar('Conta gravada.', 'success'); carregar(); }} />
+      )}
+      {apagarConta && (
+        <Modal titulo="Apagar esta conta?" onFechar={() => !apagarConta.ocupado && setApagarConta(null)} perigo>
+          <p className="text-xs text-slate-300 leading-relaxed">
+            A conta <b>{apagarConta.conta.apelido}</b> ({nomeCasa(apagarConta.conta.casa)}) sai da lista
+            {apagarConta.conta.tem_acesso ? ', e o login e a senha guardados dela são removidos junto' : ''}. Não dá para desfazer.
+          </p>
+          <p className="text-[11px] text-slate-400 leading-relaxed mt-2">
+            Conta com bot ligado nela, ou que já tem sinais ou apostas registradas, não é apagada: nesse caso, mude o estado para encerrada.
+          </p>
+          {apagarConta.erro && (
+            <p className="text-[11px] mt-3 leading-relaxed" style={{ color: '#fda4af' }} role="alert">{apagarConta.erro}</p>
+          )}
+          <div className="flex justify-end gap-2 mt-5">
+            <button type="button" className="mike-btn-ghost" onClick={() => setApagarConta(null)} disabled={apagarConta.ocupado}>Cancelar</button>
+            <button type="button" disabled={apagarConta.ocupado} onClick={confirmarApagarConta}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-xs font-bold transition disabled:opacity-40"
+              style={{ backgroundColor: '#f43f5e', color: '#fff' }}>
+              {apagarConta.ocupado && <Loader2 className="w-4 h-4 animate-spin" />} Apagar conta
+            </button>
+          </div>
+        </Modal>
       )}
       {analiseBot && <AnaliseAutomacao botId={analiseBot} onFechar={() => setAnaliseBot(null)} />}
 
