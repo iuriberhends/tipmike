@@ -15,7 +15,7 @@
 
 import {
   Home, Activity, Store, Bot, Table2, BarChart3, Plus, FlaskConical, Users,
-  Radar, ListChecks,
+  Radar, ListChecks, Zap,
 } from 'lucide-react';
 
 export const PAINEIS = [
@@ -30,6 +30,11 @@ export const PAINEIS = [
   },
 
   { id: 'bots',        rota: '/bots',           label: 'Bots',            icon: Bot,          ativo: true },
+
+  // Automação (19/11/2026): contas das casas, limites e trava geral. `recurso`
+  // = só entra no menu quando a API responde às rotas /automacao (lib/recursos.js);
+  // com a API antiga no ar o item simplesmente não aparece.
+  { id: 'automacao',   rota: '/automacao',      label: 'Automação',       icon: Zap,          ativo: true, recurso: 'automacao' },
 
   // Em desenvolvimento: fora do painel por enquanto (13/11/2026).
   {
@@ -79,8 +84,14 @@ export function rotaDoPainel(id) {
   return painelAtivo(id) ? POR_ID[id].rota : '/';
 }
 
-/** Itens do menu para quem está logado (admin vê os itens de admin). */
-export function paineisDoMenu(usuario) {
+/**
+ * Itens do menu para quem está logado (admin vê os itens de admin).
+ * `recursos` = o que a API tem no ar, ex.: { automacao: true }. Painel com
+ * `recurso` só aparece quando o recurso dele está presente.
+ */
+export function paineisDoMenu(usuario, recursos = {}) {
   const ehAdmin = usuario?.role === 'admin';
-  return PAINEIS.filter((p) => p.ativo && p.menu !== false && (!p.admin || ehAdmin));
+  return PAINEIS.filter((p) => p.ativo && p.menu !== false
+    && (!p.admin || ehAdmin)
+    && (!p.recurso || Boolean(recursos && recursos[p.recurso])));
 }

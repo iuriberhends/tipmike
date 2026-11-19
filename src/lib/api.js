@@ -86,7 +86,11 @@ async function request(method, path, body, params) {
   }
   const res = await fetchComAuth(url, options);
   if (!res.ok) {
-    throw new Error(await _erroDaResposta(res));
+    // o status vai junto no erro: quem chama distingue "rota não existe" (404)
+    // de "recusado" (403/409) sem precisar ler o texto da mensagem
+    const erro = new Error(await _erroDaResposta(res));
+    erro.status = res.status;
+    throw erro;
   }
   return res.json();
 }
@@ -317,6 +321,30 @@ export const ApiBacktest = {
   baixarPlanilha: (jobId) =>
     _downloadBlob(`${BASE_URL}/backtest/jobs/${jobId}/planilha`,
                   `backtest_job_${jobId}_apostas.xlsx`),
+};
+
+// ─────────── Automação (nov/2026): modo de cada bot, contas, limites e trava ───────────
+// As regras valem no servidor: usuário comum só mexe nos próprios bots e contas,
+// dentro dos limites que o admin definiu. Passar para 'real' e desligar a trava
+// geral exigem confirmação explícita no corpo (confirmar_real / confirmar).
+export const ApiAutomacao = {
+  resumo:         ()              => api.get('/automacao/resumo'),
+  contexto:       ({ botId, casa }) => api.get('/automacao/contexto', botId ? { bot_id: botId } : { casa }),
+  salvarBot:      (botId, body)   => api.put(`/automacao/bots/${botId}`, body),
+  pausarBot:      (botId)         => api.post(`/automacao/bots/${botId}/pausar`),
+  modos:          ()              => api.get('/automacao/bots'),
+  analise:        (botId, dias = 7) => api.get(`/automacao/bots/${botId}/analise`, { dias }),
+  contas:         ()              => api.get('/automacao/contas'),
+  criarConta:     (body)          => api.post('/automacao/contas', body),
+  editarConta:    (id, body)      => api.patch(`/automacao/contas/${id}`, body),
+  historico:      (params)        => api.get('/automacao/historico', params),
+  // só admin
+  usuarios:       ()              => api.get('/automacao/usuarios'),
+  definirLimites: (id, body)      => api.put(`/automacao/usuarios/${id}/limites`, body),
+  pausarTudo:     (id)            => api.post(`/automacao/usuarios/${id}/pausar-tudo`),
+  trava:          ()              => api.get('/automacao/trava'),
+  mudarTrava:     (body)          => api.put('/automacao/trava', body),
+  limitesGlobais: (body)          => api.put('/automacao/limites-globais', body),
 };
 
 // ─────────── Admin (Fase 5): gestão de usuários e convites ───────────

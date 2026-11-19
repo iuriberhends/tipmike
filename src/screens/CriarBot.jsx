@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import MikeHeader from '../shared/MikeHeader.jsx';
 import MercadoFiltros from './MercadoFiltros';
+import AutomacaoBot from '../shared/AutomacaoBot.jsx';
 import { ApiTorneios, ApiBots } from '../lib/api';
 import { usePais } from '../context/PaisContext.jsx';
 
@@ -969,7 +970,7 @@ function BlocoFiltrosHistorico({
                   onChange={(e) => c.onChange(e.target.value === '' ? null : parseFloat(e.target.value))}
                   className="mike-border-thin w-24 px-2 py-1.5 rounded text-xs text-center bg-transparent text-[--mike-fg] outline-none mike-no-spin"
                   style={{ opacity: c.ativo ? 1 : 0.4 }} />
-                {!c.ativo && <span className="text-[10px]" style={{ color: '#2bcdb9' }}>auto</span>}
+                {!c.ativo && <span className="text-[10px]" style={{ color: '#2bcdb9' }}>{c.semTexto || 'auto'}</span>}
               </div>
             )}
           </LinhaCampoHist>
@@ -1486,7 +1487,10 @@ function formStateToPayload(s) {
 
   // filtros JSONB: backup de TODO o formState pra reidratação fiel ao editar
   // (permite recuperar fixarJ1Casa, gradesModo, filtros hist, comp, live, etc)
+  // nov/2026: `torneiosReais` (a lista do catálogo, só para a tela) NÃO vai mais
+  // para o JSONB: não é filtro, é grande e muda sozinha com o catálogo.
   payload.filtros = { ...s, lados };  // adiciona 'lados' (canonico) no JSONB
+  delete payload.filtros.torneiosReais;
   // v26: TETO da diferenca de placar. O motor le `diferencaPlacarMax`
   // (ausente/null = sem teto). Slider no topo (50+) = sem teto: grava null
   // pra NAO introduzir um corte que o bot nao tinha.
@@ -1514,6 +1518,91 @@ function formStateToPayload(s) {
   return payload;
 }
 
+// ============================================================
+// EDITAR SEM APAGAR O QUE A TELA NÃO CONHECE (nov/2026)
+// ============================================================
+// Antes, salvar um bot regravava a coluna `filtros` inteira com o que a tela
+// tinha na mão. Bot criado fora da tela (esteira, script) perdia as chaves que
+// a tela não mostra — por exemplo `momentoMin`.
+//
+// Agora, ao EDITAR, a tela compara o que ela mostrava logo depois de abrir o
+// bot (`base`) com o que mostra na hora de salvar (`agora`) e manda só a
+// diferença:
+//   • em `filtros`: parte do JSONB gravado e troca só as chaves que a pessoa
+//     mudou; o resto fica byte a byte como estava;
+//   • nas colunas (linha, odd, torneios...): manda a coluna só se a pessoa
+//     mexeu nos campos de que ela depende. Filtro desligado manda null (antes
+//     a coluna ficava com o valor antigo sem ninguém ver).
+// Abrir e salvar sem mexer em nada = nenhuma mudança, nem pedido ao servidor.
+function igualProfundo(a, b) {
+  if (a === b) return true;
+  if (a === null || b === null || a === undefined || b === undefined) return false;
+  if (typeof a !== typeof b) return false;
+  if (typeof a !== 'object') return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  if (Array.isArray(a)) {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i += 1) if (!igualProfundo(a[i], b[i])) return false;
+    return true;
+  }
+  const ka = Object.keys(a).filter((k) => a[k] !== undefined);
+  const kb = Object.keys(b).filter((k) => b[k] !== undefined);
+  if (ka.length !== kb.length) return false;
+  for (const k of ka) if (!igualProfundo(a[k], b[k])) return false;
+  return true;
+}
+
+// coluna do banco -> campos da tela de que ela depende
+const FONTES_DA_COLUNA = {
+  nome: ['nome'],
+  descricao: ['descricao'],
+  casa: ['casa'],
+  esporte: ['esporte'],
+  mercado: ['mercado'],
+  torneios: ['torneioAtivo', 'torneios', 'gradesAtivo', 'gradesModo', 'gradesSelecionadas'],
+  torneios_excluir: ['gradesAtivo', 'gradesModo', 'gradesSelecionadas'],
+  linha_min: ['linhaAtivo', 'linhaMin', 'linhaMax'],
+  linha_max: ['linhaAtivo', 'linhaMin', 'linhaMax'],
+  odd_min: ['limitarOddsAtivo', 'limitarOdds'],
+  odd_max: ['limitarOddsAtivo', 'limitarOdds'],
+  whitelist_pares: ['apenasEspecificasAtivo', 'apenasEspecificasEstado'],
+  blacklist_pares: ['ignorarEspecificasAtivo', 'ignorarEspecificasEstado'],
+  whitelist_cenarios: ['cenarioPartidaAtivo', 'cenarioPartida'],
+  max_apostas_partida: ['evitarLinhasSeq', 'maxTipsPorJogo'],
+};
+
+function montarPatchEdicao(base, agora, filtrosGravados) {
+  const pBase = formStateToPayload(base);
+  const pAgora = formStateToPayload(agora);
+  const patch = {};
+
+  for (const [coluna, fontes] of Object.entries(FONTES_DA_COLUNA)) {
+    if (fontes.every((f) => igualProfundo(base[f], agora[f]))) continue;     // a pessoa não mexeu nisso
+    // Com "evitar linhas em sequência" marcado a tela nem mostra o teto de tips por
+    // jogo: então não mexe nele (há bots com teto 1 E evitar linhas, combinação que
+    // a tela não cria e que precisa sobreviver).
+    if (coluna === 'max_apostas_partida' && agora.evitarLinhasSeq) continue;
+    const novo = pAgora[coluna] === undefined ? null : pAgora[coluna];
+    const antigo = pBase[coluna] === undefined ? null : pBase[coluna];
+    if (igualProfundo(novo, antigo)) continue;                                // mexeu e voltou ao mesmo valor
+    patch[coluna] = novo;
+  }
+
+  // filtros: começa do que está GRAVADO e troca só as chaves que mudaram na tela
+  const fBase = pBase.filtros || {};
+  const fAgora = pAgora.filtros || {};
+  const filtros = { ...(filtrosGravados || {}) };
+  let mudouFiltro = false;
+  for (const k of new Set([...Object.keys(fBase), ...Object.keys(fAgora)])) {
+    if (igualProfundo(fBase[k], fAgora[k])) continue;
+    mudouFiltro = true;
+    if (fAgora[k] === undefined) delete filtros[k];
+    else filtros[k] = fAgora[k];
+  }
+  if (mudouFiltro) patch.filtros = filtros;
+  return patch;
+}
+
 function botRowToFormState(row) {
   // Converte row do banco de volta pro formState (modo edição)
   // Estratégia: pega `filtros` JSONB que tem o formState completo;
@@ -1530,11 +1619,30 @@ function botRowToFormState(row) {
     base.torneios = row.torneios;
     base.torneioAtivo = true;
   }
-  if (row.linha_min !== null && row.linha_min !== undefined) base.linhaMin = row.linha_min;
-  if (row.linha_max !== null && row.linha_max !== undefined) base.linhaMax = row.linha_max;
-  if (row.odd_min !== null && row.odd_max !== null) {
+  // nov/2026: as colunas mandam SEMPRE, inclusive quando estão vazias. Uma ponta
+  // vazia é "sem limite" (o bot só tem mínimo, ou só máximo) e precisa chegar
+  // assim na tela; antes ela herdava o valor do mercado padrão e a tela mostrava
+  // (e podia gravar) um limite que o bot não tem.
+  base.linhaMin = row.linha_min ?? null;
+  base.linhaMax = row.linha_max ?? null;
+  const temOddMin = row.odd_min !== null && row.odd_min !== undefined;
+  const temOddMax = row.odd_max !== null && row.odd_max !== undefined;
+  if (temOddMin || temOddMax) {
     base.limitarOddsAtivo = true;
-    base.limitarOdds = [row.odd_min, row.odd_max];
+    base.limitarOdds = [temOddMin ? row.odd_min : 1, temOddMax ? row.odd_max : 10];
+  }
+  // Bot criado fora da tela guarda o lado em `lados` (over/under...), sem o
+  // `inner` da tela: mostra o lado que o bot realmente usa.
+  if (base.inner === undefined && Array.isArray(base.lados) && base.lados.length > 0) {
+    const ROTULO_DO_LADO = {
+      over: 'Over', under: 'Under', sim: 'Sim', nao: 'Não', casa: 'Casa', empate: 'Empate',
+      fora: 'Fora', par: 'Par', impar: 'Ímpar',
+    };
+    base.inner = base.lados.map((l) => ROTULO_DO_LADO[String(l).toLowerCase()] || l);
+  }
+  // Teto de tips por jogo: se o JSONB não traz a escolha da tela, vale a coluna.
+  if (base.maxTipsPorJogo === undefined && row.max_apostas_partida !== null && row.max_apostas_partida !== undefined) {
+    base.maxTipsPorJogo = String(row.max_apostas_partida);
   }
   return base;
 }
@@ -1568,17 +1676,18 @@ async function apiMutate(method, endpoint, body) {
 
 // Hook: busca bot pra editar
 function useBotPorId(id) {
-  const [state, setState] = useState({ data: null, loading: !!id, error: null });
+  const [state, setState] = useState({ data: null, row: null, loading: !!id, error: null });
   useEffect(() => {
-    if (!id) { setState({ data: null, loading: false, error: null }); return; }
-    setState({ data: null, loading: true, error: null });
+    if (!id) { setState({ data: null, row: null, loading: false, error: null }); return; }
+    setState({ data: null, row: null, loading: true, error: null });
     ApiBots.get(id)
       .then(row => {
         const formData = botRowToFormState(row);
         formData.id = row.id;
-        setState({ data: formData, loading: false, error: null });
+        // `row` = o bot como está gravado (o `filtros` dele é a base do que será regravado)
+        setState({ data: formData, row, loading: false, error: null });
       })
-      .catch(error => setState({ data: null, loading: false, error }));
+      .catch(error => setState({ data: null, row: null, loading: false, error }));
   }, [id]);
   return state;
 }
@@ -1586,13 +1695,14 @@ function useBotPorId(id) {
 // Hook: cria/edita bot
 function useBotSalvar({ onSuccess, onError } = {}) {
   const [state, setState] = useState({ loading: false, error: null });
+  // Criar: `config` é o formState inteiro. Editar: `config` já é o PATCH pronto
+  // (só o que mudou — ver montarPatchEdicao); nunca regrava o bot inteiro.
   const salvar = async (config, idEdicao) => {
     setState({ loading: true, error: null });
     try {
-      const payload = formStateToPayload(config);
       const data = idEdicao
-        ? await ApiBots.update(idEdicao, payload)
-        : await ApiBots.create(payload);
+        ? await ApiBots.update(idEdicao, config)
+        : await ApiBots.create(formStateToPayload(config));
       setState({ loading: false, error: null });
       onSuccess?.(data);
       return data;
@@ -1614,21 +1724,25 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
   const modoEdicao = !!botId;
 
   // Busca bot pra editar (só quando botId existe)
-  const { data: botInicial, loading: loadingBot } = useBotPorId(botId);
+  const { data: botInicial, row: botGravado, loading: loadingBot } = useBotPorId(botId);
 
-  // Hook de salvar
-  const { salvar, loading: salvando } = useBotSalvar({
-    onSuccess: (bot) => {
-      adicionarToast(modoEdicao ? `Bot "${bot.nome}" editado` : `Bot "${bot.nome}" criado`, 'success');
-      // Notifica callback externo (app pai navega de volta pra lista)
-      if (onSalvar) {
-        setTimeout(() => onSalvar(bot), 800);
-      }
-    },
+  // Hook de salvar. O aviso de sucesso e a volta para a lista ficam no salvarBot,
+  // porque depois do bot ainda pode haver a automação para gravar.
+  const { salvar, loading: salvandoBot } = useBotSalvar({
     onError: (err) => {
       adicionarToast(`Erro: ${err.message}`, 'error');
     },
   });
+  const [salvandoAuto, setSalvandoAuto] = useState(false);
+  const salvando = salvandoBot || salvandoAuto;
+
+  // nov/2026 — seção Automação (shared/AutomacaoBot.jsx) e edição sem apagar filtro:
+  //   hidratadoEm  sobe a cada vez que um bot SALVO é posto na tela;
+  //   baseEdicao   = o que a tela mostrava logo depois disso (ver montarPatchEdicao).
+  const automacaoRef = useRef(null);
+  const [hidratadoEm, setHidratadoEm] = useState(0);
+  const baseEdicao = useRef(null);
+  const salvarBotRef = useRef(null);
 
   // Telas auxiliares
   const [telaAtiva, setTelaAtiva] = useState('bots');
@@ -1734,6 +1848,10 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
   const [histBase, setHistBase] = useState('match');
   const [histIndivAlvo, setHistIndivAlvo] = useState('zebra'); // v11: alvo do individual no HC
   const [histMinPartidas, setHistMinPartidas] = useState(1);
+  // nov/2026: teto de partidas (maxPartidas) — o motor lê em cada filtro de histórico;
+  // a tela não criava. Desligado = sem teto (a chave nem é gravada).
+  const [histMaxPartidasAtivo, setHistMaxPartidasAtivo] = useState(false);
+  const [histMaxPartidas, setHistMaxPartidas] = useState(null);
   const [histProb, setHistProb] = useState([0, 100]);
   const [filtrosHistAdicionados, setFiltrosHistAdicionados] = useState([]);
   const [filtroHistHover, setFiltroHistHover] = useState(null);
@@ -1817,6 +1935,8 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
   const [folgaMax, setFolgaMax] = useState('');
   const [momentoAtivo, setMomentoAtivo] = useState(false);
   const [momentoMax, setMomentoMax] = useState('2');
+  // nov/2026: o motor também lê momentoMin ("só a partir de"); a tela não criava. '' = sem mínimo.
+  const [momentoMin, setMomentoMin] = useState('');
   // ATROPELO (v16 do motor): % dos jogos ANTERIORES de cada jogador que
   // terminaram com N+ de diferenca; vale o PIOR dos dois. Eixo de DOIS
   // sentidos: zebra quer atropelo BAIXO (goleada mata a almofada), favorito
@@ -1993,6 +2113,8 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     folgaMax: folgaMax === '' ? null : Number(folgaMax),
     momentoAtivo,
     momentoMax: momentoMax === '' ? null : Number(momentoMax),
+    // sem mínimo = a chave não é gravada (undefined some do JSON): bot sem ela fica como estava
+    momentoMin: momentoMin === '' ? undefined : Number(momentoMin),
     atropeloAtivo,
     atropeloMin: atropeloMin === '' ? null : Number(atropeloMin),
     atropeloMax: atropeloMax === '' ? null : Number(atropeloMax),
@@ -2010,6 +2132,14 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     errMinJogos: errMinJogos === '' ? null : Number(errMinJogos),
     errJanelaHoras: errJanelaHoras === '' ? null : Number(errJanelaHoras),
   };
+
+  // nov/2026: fotografia da tela logo depois de abrir um bot gravado. É contra ela
+  // que o salvar compara (montarPatchEdicao). Tirada na PRIMEIRA renderização em que
+  // os valores do bot já estão na tela — antes de a pessoa poder mexer em algo.
+  if (modoEdicao && hidratadoEm > 0
+      && (!baseEdicao.current || baseEdicao.current.hid !== hidratadoEm)) {
+    baseEdicao.current = { hid: hidratadoEm, id: botId, form: formState };
+  }
 
   // Aplica state salvo: chama todos os setters
   const aplicarFormSalvo = (s) => {
@@ -2109,7 +2239,9 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     if (s.folgaMin !== undefined && s.folgaMin !== null) setFolgaMin(String(s.folgaMin)); else setFolgaMin('');
     if (s.folgaMax !== undefined && s.folgaMax !== null) setFolgaMax(String(s.folgaMax)); else setFolgaMax('');
     if (s.momentoAtivo !== undefined) setMomentoAtivo(!!s.momentoAtivo);
-    if (s.momentoMax !== undefined && s.momentoMax !== null) setMomentoMax(String(s.momentoMax));
+    // null gravado = sem máximo: precisa chegar na tela como "sem máximo", não como o padrão
+    if (s.momentoMax !== undefined) setMomentoMax(s.momentoMax === null ? '' : String(s.momentoMax));
+    setMomentoMin(s.momentoMin !== undefined && s.momentoMin !== null ? String(s.momentoMin) : '');
     if (s.atropeloAtivo !== undefined) setAtropeloAtivo(!!s.atropeloAtivo);
     if (s.atropeloMin !== undefined && s.atropeloMin !== null) setAtropeloMin(String(s.atropeloMin)); else setAtropeloMin('');
     if (s.atropeloMax !== undefined && s.atropeloMax !== null) setAtropeloMax(String(s.atropeloMax)); else setAtropeloMax('');
@@ -2150,6 +2282,8 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     setOponUlt8Ativo(false); setOponUlt8WR('all');
     setHistVersao('all'); setHistJanela('all'); setHistTipo('all');
     setHistBase('match'); setHistIndivAlvo('zebra'); setHistMinPartidas(1); setHistProb([0, 100]);
+    setHistMaxPartidasAtivo(false); setHistMaxPartidas(null);
+    setMomentoAtivo(false); setMomentoMax('2'); setMomentoMin('');
     setFiltrosHistAdicionados([]);
     setFiltrosComplementaresAtivo(false);
     setCompTipo('media'); setCompJanela(10);
@@ -2238,7 +2372,8 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
     const handler = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
-        salvarBot();
+        // sempre a versão mais nova do salvar (a deste efeito pode estar com a tela de antes)
+        salvarBotRef.current?.();
       }
       if (e.key === 'Escape') {
         if (previewAberto) setPreviewAberto(false);
@@ -2271,19 +2406,77 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
       adicionarToast('Selecione pelo menos 1 torneio ou desative o filtro', 'error');
       return;
     }
-    // 🔌 BACKEND: salvar via API (em vez de só toast)
-    try {
-      await salvar(formState, botId);
-      // Sucesso: toast já mostrado pelo onSuccess do hook
-    } catch (e) {
-      // Erro: toast já mostrado pelo onError
+    // Automação (seção no fim da tela): o que há para gravar junto com o bot.
+    // Em bot novo vale o que foi escolhido; em bot existente, só se a pessoa mexeu.
+    const auto = automacaoRef.current;
+    const pendAuto = auto?.pendente?.() || null;
+    if (pendAuto?.falta) {
+      adicionarToast(`Automação: ${pendAuto.falta}`, 'error');
+      return;
     }
+
+    // EDIÇÃO: manda só o que mudou desde que o bot foi aberto (nunca o bot inteiro)
+    let patch = null;
+    if (modoEdicao) {
+      if (!baseEdicao.current || baseEdicao.current.id !== botId) {
+        adicionarToast('O bot ainda está carregando. Espere um instante e salve de novo.', 'error');
+        return;
+      }
+      patch = montarPatchEdicao(baseEdicao.current.form, formState, botGravado?.filtros || {});
+    }
+
+    // Passar para 'real' pede confirmação ANTES de qualquer coisa ser gravada
+    if (pendAuto?.precisaConfirmar && !(await auto.confirmar())) return;
+
+    let bot = null;
+    try {
+      if (modoEdicao) {
+        bot = Object.keys(patch).length > 0 ? await salvar(patch, botId) : { id: botId, nome: nome.trim() };
+      } else {
+        bot = await salvar(formState, null);
+      }
+    } catch (e) {
+      return;   // o aviso de erro já saiu pelo onError do hook
+    }
+
+    let autoOk = true;
+    if (pendAuto) {
+      setSalvandoAuto(true);
+      try {
+        const r = await auto.gravar(bot.id, pendAuto.precisaConfirmar);
+        (r.avisos || []).forEach((a) => adicionarToast(a, 'warn'));
+      } catch (e) {
+        autoOk = false;
+        adicionarToast(`O bot foi salvo, mas a automação NÃO foi gravada: ${e.message}`, 'error');
+      } finally {
+        setSalvandoAuto(false);
+      }
+    }
+
+    const nadaMudou = modoEdicao && Object.keys(patch).length === 0 && !pendAuto;
+    if (nadaMudou) adicionarToast('Nada mudou: o bot ficou como estava', 'info');
+    else if (autoOk) adicionarToast(modoEdicao ? `Bot "${bot.nome}" editado` : `Bot "${bot.nome}" criado`, 'success');
+
+    if (!autoOk) {
+      // fica na tela para a pessoa ver o motivo; bot recém-criado passa a ser editado
+      // (salvar de novo não pode criar outro bot)
+      if (!modoEdicao) setBotId(bot.id);
+      return;
+    }
+    if (modoEdicao && Object.keys(patch).length > 0) {
+      // o que acabou de ser gravado vira a nova base (salvar de novo não repete nada)
+      baseEdicao.current = { ...baseEdicao.current, form: formState };
+    }
+    if (onSalvar) setTimeout(() => onSalvar(bot), 800);
   };
+
+  salvarBotRef.current = salvarBot;
 
   // Pré-preenche form quando vem bot pra editar
   useEffect(() => {
     if (botInicial && modoEdicao) {
       aplicarFormSalvo(botInicial);
+      setHidratadoEm((n) => n + 1);     // no mesmo lote: a tela sabe que estes valores vieram do bot gravado
       adicionarToast(`Editando "${botInicial.nome}"`, 'info');
     }
   // eslint-disable-next-line
@@ -2317,8 +2510,16 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
   const cenariosDisp = capacidades.cenariosFull ? CENARIOS_FULL : CENARIOS_REDUZIDO;
   const filtrosLiveDisp = capacidades.filtrosLive;
 
+  // nov/2026: os dois efeitos abaixo arrumam a tela quando A PESSOA troca de esporte
+  // ou de casa. Quando a troca vem de um bot gravado sendo aberto, não podem mexer
+  // em nada: o bot fica exatamente como está no banco (antes, abrir um bot de
+  // basquete apagava da tela os torneios dele).
+  const hidratacaoEsporte = useRef(0);
+  const hidratacaoCasa = useRef(0);
+
   // Quando troca de esporte: reseta mercado, cenario, torneios e mercado complementar
   useEffect(() => {
+    if (hidratadoEm !== hidratacaoEsporte.current) { hidratacaoEsporte.current = hidratadoEm; return; }
     // Mercado: se nao existe no novo esporte, vai pro primeiro
     if (mercadosDisp.length > 0 && !mercadosDisp.find((m) => m.value === mercado)) {
       setMercado(mercadosDisp[0].value);
@@ -2335,14 +2536,15 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
       }
     }
 
-  }, [esporte]); // eslint-disable-line
+  }, [esporte, hidratadoEm]); // eslint-disable-line
 
   // v37: trocou pra uma casa sem o mercado escolhido -> volta pro primeiro
   useEffect(() => {
+    if (hidratadoEm !== hidratacaoCasa.current) { hidratacaoCasa.current = hidratadoEm; return; }
     if (mercadosDisp.length > 0 && !mercadosDisp.find((m) => m.value === mercado)) {
       setMercado(mercadosDisp[0].value);
     }
-  }, [casa]); // eslint-disable-line
+  }, [casa, hidratadoEm]); // eslint-disable-line
 
   // nov/2026: bot NOVO num país sem a casa padrão (ex.: 'betano' no Peru)
   // -> vai pra primeira casa do país. Edição nunca troca a casa do bot.
@@ -2814,6 +3016,8 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
               onLinhaChange={(min, max) => { setLinhaMin(min); setLinhaMax(max); }}
               linhaAtivo={linhaAtivo}
               onLinhaAtivoChange={setLinhaAtivo}
+              permitirAberto
+              hidratadoEm={hidratadoEm}
             />
 
             {/* LIMITAR ODDS - filtro de odds min/max */}
@@ -2847,13 +3051,27 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
                 ? [{ tipo: 'select', label: 'Alvo (handicap)', value: histIndivAlvo, onChange: setHistIndivAlvo, options: INDIV_ALVOS }]
                 : []),
               { tipo: 'slider', label: 'Mínimo de partidas', value: histMinPartidas, onChange: setHistMinPartidas, min: 1, max: 50, sufixoMax: '50+' },
+              // nov/2026: teto de partidas (maxPartidas). Desligado = sem teto.
+              { tipo: 'toggle_input', label: 'Máximo de partidas', ativo: histMaxPartidasAtivo,
+                onToggle: (v) => { setHistMaxPartidasAtivo(v); if (!v) setHistMaxPartidas(null); },
+                value: histMaxPartidas, onChange: setHistMaxPartidas, placeholder: 'ex.: 40', semTexto: 'sem teto' },
               { tipo: 'range', label: 'Probabilidade', value: histProb, onChange: setHistProb, min: 0, max: 100 },
             ]}
             filtrosAdicionados={filtrosHistAdicionados}
             onAdicionar={() => {
+              const teto = histMaxPartidasAtivo ? Math.trunc(Number(histMaxPartidas)) : null;
+              if (histMaxPartidasAtivo && !(teto >= 1)) {
+                adicionarToast('Máximo de partidas: informe um número inteiro (1 ou mais) ou desligue o teto', 'error');
+                return;
+              }
+              if (teto !== null && teto < histMinPartidas) {
+                adicionarToast('O máximo de partidas está abaixo do mínimo: assim o filtro não passa nunca', 'error');
+                return;
+              }
               setFiltrosHistAdicionados([...filtrosHistAdicionados, {
                 versao: histVersao, janela: histJanela, tipo: histTipo,
                 base: histBase, minPartidas: histMinPartidas, prob: [...histProb],
+                ...(teto !== null ? { maxPartidas: teto } : {}),
                 ...(histBase === 'individual' ? { indivAlvo: histIndivAlvo } : {}),
               }]);
               adicionarToast(`Filter ${filtrosHistAdicionados.length + 1} adicionado`, 'success');
@@ -2873,9 +3091,16 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
                 ? [{ label: 'Alvo (HC)', valor: INDIV_ALVOS.find((v) => v.value === (f.indivAlvo || 'zebra'))?.label }]
                 : []),
               { label: 'Mín. partidas', valor: f.minPartidas },
+              ...(f.maxPartidas !== undefined && f.maxPartidas !== null && f.maxPartidas !== ''
+                ? [{ label: 'Máx. partidas', valor: f.maxPartidas }]
+                : []),
               { label: 'Probabilidade', valor: `${f.prob[0]}% - ${f.prob[1]}%` },
             ]}
           />
+          <p className="text-[10px] text-[--mike-fg-muted] mt-2">
+            Máximo de partidas = teto de maturidade do confronto: com o teto ligado, par que já jogou MAIS que isso fica de fora.
+            Vale para o filtro que você adicionar depois de ligar. Grava em cada filtro como maxPartidas.
+          </p>
         </SecaoForm>
 
         {/* FILTROS COMPLEMENTARES */}
@@ -3145,6 +3370,7 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
                   onChange={setMaxTipsPorJogo}
                   options={[
                     { value: 'ilimitado', label: 'ilimitadas' },
+                    { value: '1',  label: 'só 1' },
                     { value: '2',  label: 'até 2' },
                     { value: '3',  label: 'até 3' },
                     { value: '4',  label: 'até 4' },
@@ -3183,21 +3409,42 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
           <div className="pt-3 mt-1" style={{ borderTop: '0.5px solid rgba(50,100,104,0.25)' }}>
             <label className="inline-flex items-center gap-2 cursor-pointer">
               <input type="checkbox" className="mike-checkbox" checked={momentoAtivo} onChange={(e) => setMomentoAtivo(e.target.checked)} />
-              <span className="text-xs text-[--mike-fg-soft]">Momento: so apostar ate certo ponto do jogo (linha da casa ainda defasada no comeco).</span>
+              <span className="text-xs text-[--mike-fg-soft]">Momento: so apostar numa faixa do jogo (ex.: so no comeco, com a linha da casa ainda defasada; ou so do 2o tempo em diante).</span>
             </label>
             {momentoAtivo && (
               <div className="flex items-center gap-3 flex-wrap mt-2">
-                <span className="text-xs text-[--mike-fg-soft]">Ate o fim do</span>
+                <span className="text-xs text-[--mike-fg-soft]">A partir do</span>
+                <div className="w-56">
+                  <MikeSelect value={momentoMin} onChange={setMomentoMin} options={[
+                    { value: '', label: 'comeco do jogo (sem minimo)' },
+                    { value: '1', label: '1o quarto' },
+                    { value: '2', label: '2o quarto' },
+                    { value: '3', label: '3o quarto (2o tempo)' },
+                    { value: '4', label: '4o quarto' },
+                    // valor gravado fora da lista continua aparecendo (e sendo respeitado)
+                    ...(['', '1', '2', '3', '4'].includes(momentoMin) ? [] : [{ value: momentoMin, label: `estagio ${momentoMin} (gravado no bot)` }]),
+                  ]} />
+                </div>
+                <span className="text-xs text-[--mike-fg-soft]">ate o fim do</span>
                 <div className="w-56">
                   <MikeSelect value={momentoMax} onChange={setMomentoMax} options={[
                     { value: '1', label: '1o quarto (so o comeco)' },
                     { value: '2', label: '1o tempo (1Q+2Q) - recomendado' },
                     { value: '3', label: '3o quarto' },
+                    { value: '4', label: '4o quarto / prorrogacao' },
+                    { value: '', label: 'fim do jogo (sem maximo)' },
+                    ...(['', '1', '2', '3', '4'].includes(momentoMax) ? [] : [{ value: momentoMax, label: `estagio ${momentoMax} (gravado no bot)` }]),
                   ]} />
                 </div>
               </div>
             )}
-            <p className="text-[10px] text-[--mike-fg-muted] mt-1.5">Lido do estagio do jogo no tick (1Q/2Q/3Q/4Q). Comprovado no vivo: apostas do 1o tempo renderam <b>+18,7%</b> vs <b>-7,6%</b> no 2o. So funciona onde o coletor marca o periodo (hoje: Superbet). Grava em filtros.momentoMax.</p>
+            {momentoAtivo && momentoMin !== '' && momentoMax !== '' && Number(momentoMin) > Number(momentoMax) && (
+              <p className="text-[10px] mt-1.5 font-semibold" style={{ color: '#fcd34d' }}>O comeco da faixa esta depois do fim: assim o bot nao aposta nunca.</p>
+            )}
+            {momentoAtivo && momentoMin === '' && momentoMax === '' && (
+              <p className="text-[10px] mt-1.5 font-semibold" style={{ color: '#fcd34d' }}>Sem minimo e sem maximo o filtro nao faz nada (o motor trata como desligado).</p>
+            )}
+            <p className="text-[10px] text-[--mike-fg-muted] mt-1.5">Lido do estagio do jogo no tick (1Q=1, 2Q e intervalo=2, 3Q=3, 4Q e prorrogacao=4). Comprovado no vivo: apostas do 1o tempo renderam <b>+18,7%</b> vs <b>-7,6%</b> no 2o. So funciona onde o coletor marca o periodo; onde nao marca, o bot com este filtro ligado nao aposta. Grava em filtros.momentoMin / filtros.momentoMax.</p>
           </div>
 
           {/* ATROPELO (v16) — taxa de goleada do jogador. Eixo de dois sentidos. */}
@@ -3262,6 +3509,12 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
             <p className="text-[10px] text-[--mike-fg-muted] mt-1.5">Err do jogo = total real − linha de <b>abertura</b>; na aposta vale a média dos últimos <b>{errJanela || 5}</b> jogos de cada jogador, ficando o <b>MENOR</b> dos dois. Ao vivo é estado recalculado a cada jogo que fecha (janela de 30h reconstruída na subida). Validado no holdout: BATTLE Over <b>err≥5</b> → +18,4% · Blitz Over <b>err≥1</b> → +7,7%. Grava em filtros.errAtivo/errMin/errMax/errJanela/errMinJogos/errJanelaHoras.</p>
           </div>
           )}
+        </div>
+
+        {/* AUTOMAÇÃO (nov/2026): modo, conta, stake e regras de envio. Some sozinha
+            enquanto a API não tiver as rotas dela. */}
+        <div className="mt-6 pt-6" style={{ borderTop: '0.5px solid rgba(50, 100, 104, 0.2)' }}>
+          <AutomacaoBot ref={automacaoRef} botId={modoEdicao ? botId : null} botNome={nome} casa={casa} avisar={adicionarToast} />
         </div>
 
         {/* AÇÕES */}

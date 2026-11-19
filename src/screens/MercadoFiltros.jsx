@@ -13,7 +13,7 @@
  * `selecaoAtivo = false`: bot ignora completamente o filtro de seleção.
  */
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Info } from 'lucide-react';
 
 // ════════════════════════════════════════════════════════════════════
@@ -26,9 +26,16 @@ const R_ASIATICO_GOLS    = { vals: Array.from({length: 121}, (_, i) => 0.5 + i *
 const R_ASIATICO_GOLS_HT = { vals: Array.from({length: 73}, (_, i) => 0.5 + i * 0.25)  };
 const R_OU_PONTOS_FT     = { min: 79.5,  max: 249.5, step: 5.0  };
 const R_OU_PONTOS_HT     = { min: 34.5,  max: 124.5, step: 5.0  };
-const R_AH_GOLS          = { vals: Array.from({length: 42}, (_, i) => -10.5 + i) };
-const R_EH_GOLS          = { vals: Array.from({length: 42}, (_, i) => -10.5 + i) };
-const R_AH_PONTOS        = { vals: Array.from({length: 42}, (_, i) => -10.5 + i) };
+// nov/2026: faixas de handicap esticadas para cobrir as linhas REAIS dos dois lados
+// (antes iam de -10,5 a +30,5, de 1 em 1: não alcançavam o favorito do basquete nem
+// as linhas de quarto do futebol). Medido nos ticks em 19/11/2026, 40 min ao vivo:
+//   basquete, jogo inteiro: -22,5 a +22,5, sempre em ,5
+//   futebol: -8 a +8, com inteiras, meias e quartos (0,25 / 0,75)
+// Linha negativa = favorito (dá pontos); positiva = zebra (recebe). É o sinal da
+// faixa que escolhe o lado do handicap.
+const R_AH_GOLS          = { vals: Array.from({length: 85}, (_, i) => -10.5 + i * 0.25), nota: 'passo 0,25' };
+const R_EH_GOLS          = { vals: Array.from({length: 41}, (_, i) => -10 + i * 0.5),    nota: 'passo 0,5' };
+const R_AH_PONTOS        = { vals: Array.from({length: 82}, (_, i) => -40.5 + i),        nota: 'apenas ,5' };
 // v38: e-hockey vai ate 7,5 no total por time
 const R_JOGADOR_GOLS     = { vals: [0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5] };
 // v37: faixa real do total por time no e-basket (Mixed/H2H: 40-70 no FT;
@@ -86,20 +93,34 @@ function normalizeInner(inner) {
 // ════════════════════════════════════════════════════════════════════
 // SLIDERS (inalterados de v7)
 // ════════════════════════════════════════════════════════════════════
-function MappedRangeSlider({ vals, valueMin, valueMax, onChange, primeiroInner }) {
-  const idxMin = vals.indexOf(valueMin);
-  const idxMax = vals.indexOf(valueMax);
-  const safeIdxMin = idxMin >= 0 ? idxMin : 0;
-  const safeIdxMax = idxMax >= 0 ? idxMax : vals.length - 1;
+// Posição, na lista, do valor mais perto de `v` (bot antigo pode ter linha fora
+// da grade; o rótulo mostra o valor de verdade, o botão fica no vizinho).
+function indiceMaisPerto(vals, v, reserva) {
+  if (v === null || v === undefined || isNaN(v)) return reserva;
+  let melhor = reserva;
+  let dist = Infinity;
+  for (let i = 0; i < vals.length; i += 1) {
+    const d = Math.abs(vals[i] - v);
+    if (d < dist) { dist = d; melhor = i; }
+  }
+  return melhor;
+}
+
+// `aberto` = a faixa aceita ponta sem limite (valor null): "sem mínimo" / "sem máximo".
+function MappedRangeSlider({ vals, nota, valueMin, valueMax, onChange, primeiroInner, aberto = false }) {
+  const semMin = valueMin === null || valueMin === undefined;
+  const semMax = valueMax === null || valueMax === undefined;
+  const safeIdxMin = indiceMaisPerto(vals, valueMin, 0);
+  const safeIdxMax = indiceMaisPerto(vals, valueMax, vals.length - 1);
   const pctMin = (safeIdxMin / (vals.length - 1)) * 100;
   const pctMax = (safeIdxMax / (vals.length - 1)) * 100;
 
   return (
     <div className="w-full space-y-2">
       <div className="flex items-center justify-between text-[11px] font-mono font-bold" style={{ color: '#2bcdb9' }}>
-        <span>{fmtLinha(valueMin, primeiroInner)}</span>
+        <span>{semMin ? 'sem mínimo' : fmtLinha(valueMin, primeiroInner)}</span>
         <span style={{ color: '#6c8689', fontSize: '10px' }}>até</span>
-        <span>{fmtLinha(valueMax, primeiroInner)}</span>
+        <span>{semMax ? 'sem máximo' : fmtLinha(valueMax, primeiroInner)}</span>
       </div>
       <div className="relative h-6 flex items-center w-full">
         <div className="absolute inset-x-0 h-1 rounded-full" style={{ backgroundColor: 'rgba(50,100,104,0.4)' }} />
@@ -113,9 +134,25 @@ function MappedRangeSlider({ vals, valueMin, valueMax, onChange, primeiroInner }
       </div>
       <div className="flex items-center justify-between text-[10px] font-mono" style={{ color: '#3f5a60' }}>
         <span>{fmtLinha(vals[0], primeiroInner)}</span>
-        <span>apenas .5</span>
+        <span>{nota || 'apenas .5'}</span>
         <span>{fmtLinha(vals[vals.length - 1], primeiroInner)}</span>
       </div>
+      {aberto && (
+        <div className="flex items-center justify-between text-[10px]">
+          <button type="button" disabled={semMin} onClick={() => onChange(null, valueMax)}
+            className="underline decoration-dotted disabled:no-underline disabled:opacity-50"
+            style={{ color: semMin ? '#6c8689' : '#2bcdb9' }}
+            title="Tira o limite de baixo: aceita qualquer linha até o máximo">
+            {semMin ? 'sem mínimo' : 'tirar o mínimo'}
+          </button>
+          <button type="button" disabled={semMax} onClick={() => onChange(valueMin, null)}
+            className="underline decoration-dotted disabled:no-underline disabled:opacity-50"
+            style={{ color: semMax ? '#6c8689' : '#2bcdb9' }}
+            title="Tira o limite de cima: aceita qualquer linha a partir do mínimo">
+            {semMax ? 'sem máximo' : 'tirar o máximo'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -256,6 +293,10 @@ export default function MercadoFiltros({
   onSelecaoAtivoChange,   // fn(bool)
   linhaAtivo,             // bool: filtro de linha ativo
   onLinhaAtivoChange,     // fn(bool)
+
+  // nov/2026 (tela de bot):
+  permitirAberto = false, // faixa de linha pode ter ponta sem limite (null) e valor fora da grade
+  hidratadoEm = 0,        // muda quando os valores vêm de um bot SALVO: aí nada é reajustado
 }) {
   const cfg = getConfigMercado(mercado, esporte);
   const innerArr = useMemo(() => normalizeInner(inner), [inner]);
@@ -271,7 +312,15 @@ export default function MercadoFiltros({
   const ultimoValor   = (r) => r.vals ? r.vals[r.vals.length - 1] : r.max;
 
   // Reset inteligente quando muda mercado/esporte
+  const hidratacaoVista = useRef(hidratadoEm);
   useEffect(() => {
+    // Os valores acabaram de vir de um bot salvo: ficam EXATAMENTE como estão
+    // gravados (linha fora da grade, ponta sem limite, lado). Abrir um bot não
+    // pode mudar o bot. O reajuste só vale quando é a pessoa que troca o mercado.
+    if (hidratadoEm !== hidratacaoVista.current) {
+      hidratacaoVista.current = hidratadoEm;
+      return;
+    }
     if (cfg.inner) {
       const validas = innerArr.filter(op => cfg.inner.includes(op));
       if (validas.length !== innerArr.length) {
@@ -282,8 +331,11 @@ export default function MercadoFiltros({
     }
 
     if (cfg.range) {
-      const minOk = valorValidoParaRange(linhaMin, cfg.range);
-      const maxOk = valorValidoParaRange(linhaMax, cfg.range);
+      const vazio = (v) => v === null || v === undefined;
+      // com faixa aberta, UMA ponta sem limite é válida; as duas vazias = mercado novo
+      const umaPontaAberta = permitirAberto && (vazio(linhaMin) !== vazio(linhaMax));
+      const minOk = valorValidoParaRange(linhaMin, cfg.range) || (umaPontaAberta && vazio(linhaMin));
+      const maxOk = valorValidoParaRange(linhaMax, cfg.range) || (umaPontaAberta && vazio(linhaMax));
       if (!minOk || !maxOk) {
         onLinhaChange(primeiroValor(cfg.range), ultimoValor(cfg.range));
       }
@@ -293,7 +345,7 @@ export default function MercadoFiltros({
       }
     }
     // eslint-disable-next-line
-  }, [mercado, esporte]);
+  }, [mercado, esporte, hidratadoEm]);
 
   const toggleOpcao = (opcao) => {
     if (innerArr.includes(opcao)) {
@@ -318,13 +370,20 @@ export default function MercadoFiltros({
 
   const primeiroInner = innerArr[0] || (cfg.inner ? cfg.inner[0] : null);
 
+  const semMinimo = linhaMin === null || linhaMin === undefined;
+  const semMaximo = linhaMax === null || linhaMax === undefined;
+  // a faixa aparece quando há pelo menos uma ponta; com `permitirAberto` a outra pode ser "sem limite"
+  const temFaixa = Boolean(cfg.range) && (permitirAberto ? !(semMinimo && semMaximo) : !(semMinimo || semMaximo));
+  const ehHandicap = /^(ah|eh)_/.test(String(mercado || ''));
+
   const renderSlider = () => {
-    if (!cfg.range || linhaMin === null || linhaMin === undefined || linhaMax === null || linhaMax === undefined) return null;
+    if (!temFaixa) return null;
     const r = cfg.range;
     if (r.vals) {
-      return <MappedRangeSlider vals={r.vals} valueMin={linhaMin} valueMax={linhaMax} onChange={onLinhaChange} primeiroInner={primeiroInner} />;
+      return <MappedRangeSlider vals={r.vals} nota={r.nota} valueMin={linhaMin} valueMax={linhaMax} onChange={onLinhaChange} primeiroInner={primeiroInner} aberto={permitirAberto} />;
     }
-    return <ContinuousRangeSlider min={r.min} max={r.max} step={r.step} valueMin={linhaMin} valueMax={linhaMax} onChange={onLinhaChange} primeiroInner={primeiroInner} />;
+    // faixa contínua (totais do basquete) não tem ponta aberta na tela: mostra a ponta gravada ou o extremo
+    return <ContinuousRangeSlider min={r.min} max={r.max} step={r.step} valueMin={semMinimo ? r.min : linhaMin} valueMax={semMaximo ? r.max : linhaMax} onChange={onLinhaChange} primeiroInner={primeiroInner} />;
   };
 
   // Hint da seleção
@@ -408,7 +467,7 @@ export default function MercadoFiltros({
       )}
 
       {/* LINHA (slider, com toggle on/off opcional) */}
-      {cfg.range && linhaMin !== null && linhaMin !== undefined && (
+      {temFaixa && (
         <div className="space-y-1.5">
           <div className="flex items-start gap-3">
             {temToggleLinha && (
@@ -434,6 +493,12 @@ export default function MercadoFiltros({
           {hintLinha && (
             <div className="text-[10px] italic ml-[78px]" style={{ color: '#6c8689', opacity: 0.85 }}>
               {hintLinha}
+            </div>
+          )}
+          {!hintLinha && ehHandicap && (
+            <div className="text-[10px] italic ml-[78px]" style={{ color: '#6c8689', opacity: 0.85 }}>
+              Linha positiva = zebra (recebe); negativa = favorito (dá). O sinal da faixa escolhe o lado: só positivas
+              aposta só na zebra, só negativas aposta só no favorito.
             </div>
           )}
         </div>
