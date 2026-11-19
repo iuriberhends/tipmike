@@ -22,14 +22,16 @@ import {
   AlertCircle, AlertTriangle, CheckCircle2, ChevronRight,
   Star, Share2, Clock, Download, History, Maximize2, Minimize2,
   TrendingUp, TrendingDown, DollarSign, Percent,
-  Power,
+  Power, Zap,
   Folder, FolderPlus, FolderInput, CheckSquare, Square, Pencil,
 } from 'lucide-react';
 import MikeHeader from '../shared/MikeHeader.jsx';
 import IconeEsporte from '../shared/IconeEsporte.jsx';
 import BacktestModal from './BacktestModal';
 import { ModalHistorico } from './Historico';
-import { ApiBots, ApiBotsOrg } from '../lib/api';
+import { ApiBots, ApiBotsOrg, ApiAutomacao } from '../lib/api';
+import AnaliseAutomacao from '../shared/AnaliseAutomacao.jsx';
+import { automacaoDisponivel } from '../lib/recursos.js';
 import { usePais } from '../context/PaisContext.jsx';
 import { corDaCasa } from '../lib/pais.js';
 
@@ -228,8 +230,39 @@ function CorpoExpandido({ bot, stats, statsLoading, onAcao, loadingAcao, isAtivo
 // LINHA DO BOT
 // ============================================================
 
+// Selo do modo da automação (nov/2026). Só existe para bot de casa que tem braço.
+// `auto` = { modo, sinais_hoje, base_hoje, pegou_hoje, captura_hoje_pct } ou undefined
+// (bot sem linha de automação = desligado). Clicar abre a análise dos 7 dias.
+const SELO_MODO = {
+  desligado: { rotulo: 'Auto: desligado', cor: '#8ba5a6', fundo: 'rgba(50, 100, 104, 0.2)', borda: 'rgba(50, 100, 104, 0.5)' },
+  papel:     { rotulo: 'Papel',           cor: '#fbbf24', fundo: 'rgba(251, 191, 36, 0.12)', borda: 'rgba(251, 191, 36, 0.45)' },
+  real:      { rotulo: 'Real',            cor: '#fb7185', fundo: 'rgba(244, 63, 94, 0.14)',  borda: 'rgba(244, 63, 94, 0.5)' },
+};
+
+function SeloAutomacao({ auto, onAbrir }) {
+  const modo = auto?.modo || 'desligado';
+  const s = SELO_MODO[modo] || SELO_MODO.desligado;
+  const ligado = modo !== 'desligado';
+  const temBase = ligado && auto && auto.base_hoje > 0;
+  const captura = !ligado ? '' : (temBase ? `${auto.captura_hoje_pct}% hoje` : 'sem captura hoje');
+  const dica = !ligado
+    ? 'Automação desligada: o bot só simula. Clique para ver a análise.'
+    : (modo === 'real'
+      ? `Apostando de verdade. Hoje: ${auto?.pegou_hoje ?? 0} aceita(s) de ${auto?.base_hoje ?? 0} enviada(s), em ${auto?.sinais_hoje ?? 0} sinal(is). Clique para a análise.`
+      : `Em papel (sem dinheiro). Hoje: a casa aceitaria ${auto?.pegou_hoje ?? 0} de ${auto?.base_hoje ?? 0} julgado(s), em ${auto?.sinais_hoje ?? 0} sinal(is). Clique para a análise.`);
+  return (
+    <button type="button" onClick={onAbrir} title={dica}
+      className="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 flex-shrink-0 transition hover:brightness-125"
+      style={{ backgroundColor: s.fundo, color: s.cor, border: `0.5px solid ${s.borda}` }}>
+      <Zap className="w-3 h-3" />
+      {s.rotulo}
+      {captura && <span className="normal-case font-semibold" style={{ opacity: temBase ? 1 : 0.7 }}>· {captura}</span>}
+    </button>
+  );
+}
+
 function LinhaBot({ bot, expandido, onToggleExpand, onAcao, loadingAcao, onAbrirHistorico, stats, statsLoading, onBaixarCsv, loadingCsv,
-                    onToggleFav, favLoading, modoSelecao, selecionado, onToggleSel, grupo }) {
+                    onToggleFav, favLoading, modoSelecao, selecionado, onToggleSel, grupo, auto, mostrarSeloAuto, onAbrirAnalise }) {
   const { buscarCasa } = usePais();
   const casaCad = buscarCasa(bot.casa);
   const casa = casaCad
@@ -285,7 +318,9 @@ function LinhaBot({ bot, expandido, onToggleExpand, onAcao, loadingAcao, onAbrir
           border: `0.5px solid ${isAtivo ? 'rgba(43, 205, 185, 0.4)' : 'rgba(50, 100, 104, 0.5)'}`,
         }}>
           {isAtivo ? <Activity className="w-3 h-3" /> : <Power className="w-3 h-3" />}
-          {isAtivo ? 'Apostando' : 'Automatizar'}
+          {/* nov/2026: era "Apostando / Automatizar". Bot ligado SIMULA; quem diz se ele
+              aposta de verdade é o selo da automação ao lado (Papel / Real). */}
+          {isAtivo ? 'Simulando' : 'Parado'}
         </div>
 
         {bot.em_treinamento && (
@@ -297,6 +332,8 @@ function LinhaBot({ bot, expandido, onToggleExpand, onAcao, loadingAcao, onAbrir
             🎓 Treinando
           </div>
         )}
+
+        {mostrarSeloAuto && <SeloAutomacao auto={auto} onAbrir={() => onAbrirAnalise(bot.id)} />}
 
         <span className="text-[11px] text-[--mike-fg-muted] font-mono flex-shrink-0">
           {bot.id.toString().padStart(6, '0')}
@@ -753,6 +790,24 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
   }, [page, filtroCasa, filtroEsporte, filtroStatus, escopo, visao]);
 
   useEffect(() => { fetchBots(); }, [fetchBots]);
+
+  // ============================================================
+  // nov/2026 — AUTOMAÇÃO: selo do modo e captura do dia
+  // ============================================================
+  // Uma chamada por carga da lista. Com a API antiga (sem as rotas) nada
+  // aparece e a lista segue igual; falha de rede também não derruba a tela.
+  const [autoModos, setAutoModos] = useState({ casas: [], itens: {} });
+  const [analiseBotId, setAnaliseBotId] = useState(null);
+  useEffect(() => {
+    let vivo = true;
+    automacaoDisponivel().then((tem) => {
+      if (!tem || !vivo) return;
+      ApiAutomacao.modos()
+        .then((d) => { if (vivo) setAutoModos({ casas: d.casas_com_braco || [], itens: d.itens || {} }); })
+        .catch(() => {});
+    });
+    return () => { vivo = false; };
+  }, [bots]);
 
   // ============================================================
   // v50 — FAVORITOS E GRUPOS
@@ -1229,6 +1284,9 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
                 selecionado={selecionados.has(bot.id)}
                 onToggleSel={toggleSel}
                 grupo={(bot.grupo_id != null && visao !== bot.grupo_id) ? grupoPorId[bot.grupo_id] : null}
+                auto={autoModos.itens[String(bot.id)]}
+                mostrarSeloAuto={autoModos.casas.includes(bot.casa)}
+                onAbrirAnalise={setAnaliseBotId}
               />
             ))}
           </div>
@@ -1315,6 +1373,8 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
       {historicoBotId && (
         <ModalHistorico botId={historicoBotId} aberto={!!historicoBotId} onClose={() => setHistoricoBotId(null)} />
       )}
+
+      {analiseBotId && <AnaliseAutomacao botId={analiseBotId} onFechar={() => setAnaliseBotId(null)} />}
 
       {modoSelecao && (
         <BarraSelecao

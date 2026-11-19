@@ -13,12 +13,14 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Ban, CheckCircle2, Copy, KeyRound, Loader2, Plus, RefreshCw,
-  Search, Shield, ShieldOff, Ticket, Trash2, X,
+  Ban, CheckCircle2, Copy, KeyRound, Loader2, Pause, Plus, RefreshCw,
+  Search, Shield, ShieldOff, Ticket, Trash2, X, Zap,
 } from 'lucide-react';
 import MikeHeader from '../shared/MikeHeader.jsx';
-import { ApiAdmin } from '../lib/api.js';
+import { ApiAdmin, ApiAutomacao } from '../lib/api.js';
+import { automacaoDisponivel } from '../lib/recursos.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { usePais } from '../context/PaisContext.jsx';
 
 // ───────────────────────── estilos base ─────────────────────────
 const CARD = {
@@ -85,9 +87,197 @@ function Modal({ titulo, onFechar, children }) {
   );
 }
 
+// ───────────────────── Automação de um usuário (nov/2026) ─────────────────────
+// Resumo curto para a coluna da tabela.
+function resumoAutomacao(a) {
+  if (!a) return '—';
+  const { limites: l, uso: u } = a;
+  if (l.admin) return `sem limite · papel ${u.papel} · real ${u.real}`;
+  if (!l.pode_automatizar) return 'fechada';
+  return `papel ${u.papel}/${l.max_auto_papel} · real ${u.real}/${l.max_auto_real}`;
+}
+
+// Limites (editáveis), contas, uso e "pausar tudo" de um usuário.
+function ModalAutomacaoUsuario({ usuario, dados, casasComBraco, nomeCasa, onFechar, onMudou, onIrParaContas }) {
+  const l = dados.limites;
+  const ehAdmin = Boolean(l.admin);
+  const [pode, setPode] = useState(Boolean(l.pode_automatizar));
+  const [maxBots, setMaxBots] = useState(l.max_bots === null || l.max_bots === undefined ? '' : String(l.max_bots));
+  const [maxPapel, setMaxPapel] = useState(String(l.max_auto_papel ?? 0));
+  const [maxReal, setMaxReal] = useState(String(l.max_auto_real ?? 0));
+  const [stakeMax, setStakeMax] = useState(l.stake_max === null || l.stake_max === undefined ? '' : String(l.stake_max));
+  const [casas, setCasas] = useState(() => new Set(l.casas_liberadas || []));
+  const [erro, setErro] = useState('');
+  const [aviso, setAviso] = useState('');
+  const [ocupado, setOcupado] = useState('');
+
+  // casas que dá para liberar: as que têm braço + as que ele já tinha
+  const opcoes = Array.from(new Set([...(casasComBraco || []), ...(l.casas_liberadas || [])])).sort();
+  const alternar = (c) => setCasas((s) => { const n = new Set(s); if (n.has(c)) n.delete(c); else n.add(c); return n; });
+  const inteiro = (v) => /^\d+$/.test(String(v).trim());
+
+  const gravar = async () => {
+    setErro(''); setAviso('');
+    if (maxBots.trim() !== '' && !inteiro(maxBots)) { setErro('Máximo de bots: número inteiro, ou vazio para sem limite.'); return; }
+    if (!inteiro(maxPapel) || !inteiro(maxReal)) { setErro('Máximo de automações: número inteiro (0 = nenhuma).'); return; }
+    if (stakeMax.trim() !== '' && !(Number(stakeMax) > 0)) { setErro('Stake máxima: maior que zero, ou vazio para não apostar em real.'); return; }
+    setOcupado('gravar');
+    try {
+      const r = await ApiAutomacao.definirLimites(usuario.id, {
+        pode_automatizar: pode,
+        max_bots: maxBots.trim() === '' ? null : Number(maxBots),
+        max_auto_papel: Number(maxPapel),
+        max_auto_real: Number(maxReal),
+        stake_max: stakeMax.trim() === '' ? null : Number(stakeMax),
+        casas_liberadas: Array.from(casas),
+      });
+      const partes = ['Limites gravados.'];
+      if (r.bots_desligados?.length) partes.push(`${r.bots_desligados.length} bot(s) ficaram fora da nova regra e foram desligados (${r.bots_desligados.join(', ')}).`);
+      if (r.acima_do_limite?.papel || r.acima_do_limite?.real || r.acima_do_limite?.bots) partes.push('Ele já usa mais do que o novo máximo: o que está ligado continua, mas não liga nada novo.');
+      setAviso(partes.join(' '));
+      onMudou();
+    } catch (e) {
+      setErro((e && e.message) || 'Não deu para gravar os limites.');
+    } finally { setOcupado(''); }
+  };
+
+  const pausarTudo = async () => {
+    if (!window.confirm(`Pausar a automação de TODOS os bots de ${usuario.nome}? Os bots continuam simulando; só param de gerar sinal.`)) return;
+    setErro(''); setAviso('');
+    setOcupado('pausar');
+    try {
+      const r = await ApiAutomacao.pausarTudo(usuario.id);
+      setAviso(r.bots_desligados?.length ? `${r.bots_desligados.length} automação(ões) pausada(s).` : 'Ele não tinha nenhuma automação ligada.');
+      onMudou();
+    } catch (e) {
+      setErro((e && e.message) || 'Não deu para pausar.');
+    } finally { setOcupado(''); }
+  };
+
+  const campo = 'w-full px-3 py-2 rounded-md text-sm outline-none focus:ring-1 focus:ring-mike-accent/60';
+  const u = dados.uso;
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto" style={{ backgroundColor: 'rgba(3, 6, 9, 0.75)' }} onClick={() => !ocupado && onFechar()}>
+      <div className="w-full max-w-lg rounded-2xl p-6 my-6" role="dialog" aria-modal="true" aria-label={`Automação de ${usuario.nome}`}
+        style={{ ...CARD, backgroundColor: 'rgba(10, 18, 22, 0.98)' }} onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-1">
+          <h3 className="text-sm font-black">Automação — {usuario.nome}</h3>
+          <button onClick={onFechar} className="text-slate-400 hover:text-slate-100 transition" title="Fechar"><X className="w-4 h-4" /></button>
+        </div>
+        <p className="text-[11px] text-slate-500 mb-4">
+          Em uso agora: {u.bots} bot(s) · {u.papel} automação(ões) em papel · {u.real} em real.
+        </p>
+
+        {ehAdmin ? (
+          <p className="text-xs text-slate-400 mb-4">Administrador não tem limite por usuário: valem só a trava geral e os limites gerais.</p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" className="mike-checkbox" checked={pode} onChange={(e) => setPode(e.target.checked)} disabled={Boolean(ocupado)} />
+              <span className="text-xs font-semibold">Pode automatizar</span>
+              <span className="text-[11px] text-slate-500">desmarcado = não liga papel nem real (e o que estiver ligado é desligado)</span>
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 mb-1">Máximo de bots</label>
+                <input type="number" min="0" step="1" value={maxBots} onChange={(e) => setMaxBots(e.target.value)} placeholder="sem limite"
+                  className={campo} style={INPUT} disabled={Boolean(ocupado)} />
+                <p className="text-[10px] text-slate-500 mt-1">Vazio = sem limite (como é hoje).</p>
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 mb-1">Stake máxima por aposta</label>
+                <input type="number" min="0" step="0.5" value={stakeMax} onChange={(e) => setStakeMax(e.target.value)} placeholder="não aposta em real"
+                  className={campo} style={{ ...INPUT, opacity: pode ? 1 : 0.5 }} disabled={Boolean(ocupado) || !pode} />
+                <p className="text-[10px] text-slate-500 mt-1">Vazio = não aposta em real. Na moeda da conta.</p>
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 mb-1">Máximo de automações em papel</label>
+                <input type="number" min="0" step="1" value={maxPapel} onChange={(e) => setMaxPapel(e.target.value)}
+                  className={campo} style={{ ...INPUT, opacity: pode ? 1 : 0.5 }} disabled={Boolean(ocupado) || !pode} />
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 mb-1">Máximo de automações em real</label>
+                <input type="number" min="0" step="1" value={maxReal} onChange={(e) => setMaxReal(e.target.value)}
+                  className={campo} style={{ ...INPUT, opacity: pode ? 1 : 0.5 }} disabled={Boolean(ocupado) || !pode} />
+              </div>
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-400 mb-1">Casas liberadas</label>
+              {opcoes.length === 0 ? (
+                <p className="text-[11px] text-slate-500">Nenhuma casa tem automação no momento.</p>
+              ) : (
+                <div className="flex flex-wrap gap-x-4 gap-y-1.5" style={{ opacity: pode ? 1 : 0.5 }}>
+                  {opcoes.map((c) => (
+                    <label key={c} className="flex items-center gap-1.5 cursor-pointer">
+                      <input type="checkbox" className="mike-checkbox" checked={casas.has(c)} onChange={() => alternar(c)} disabled={Boolean(ocupado) || !pode} />
+                      <span className="text-xs">{nomeCasa(c)}</span>
+                      {!(casasComBraco || []).includes(c) && <span className="text-[10px] text-slate-500">(sem automação hoje)</span>}
+                    </label>
+                  ))}
+                </div>
+              )}
+              <p className="text-[10px] text-slate-500 mt-1">Só aparecem as casas que já têm automação.</p>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-4 pt-3" style={{ borderTop: '0.5px solid rgba(50, 100, 104, 0.25)' }}>
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="text-[11px] font-semibold text-slate-400">Contas dele</span>
+            <div className="flex-1" />
+            <button type="button" className="text-[11px] underline" style={{ color: '#2bcdb9' }} onClick={onIrParaContas}>criar ou editar na tela Automação</button>
+          </div>
+          {dados.contas.length === 0 ? (
+            <p className="text-[11px] text-slate-500">Nenhuma conta. Sem conta ele só mede em papel.</p>
+          ) : (
+            <ul className="text-xs text-slate-300 flex flex-col gap-1">
+              {dados.contas.map((c) => (
+                <li key={c.id}>{c.apelido} · {nomeCasa(c.casa)} · {c.moeda} · <span className="text-slate-500">{c.estado}</span></li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {erro && <p className="text-xs font-semibold mt-3" style={{ color: '#fca5a5' }}>{erro}</p>}
+        {aviso && <p className="text-xs font-semibold mt-3" style={{ color: '#8ff1e2' }}>{aviso}</p>}
+
+        <div className="flex flex-wrap items-center gap-2 mt-4">
+          <button type="button" onClick={pausarTudo} disabled={Boolean(ocupado) || (u.papel + u.real) === 0}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-md text-xs font-bold transition disabled:opacity-40"
+            style={{ backgroundColor: 'rgba(251, 191, 36, 0.12)', border: '0.5px solid rgba(251, 191, 36, 0.45)', color: '#fcd34d' }}
+            title={(u.papel + u.real) === 0 ? 'Ele não tem automação ligada' : 'Desliga a automação de todos os bots dele de uma vez'}>
+            {ocupado === 'pausar' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pause className="w-4 h-4" />}
+            Pausar tudo dele
+          </button>
+          <div className="flex-1" />
+          {!ehAdmin && (
+            <button type="button" onClick={gravar} disabled={Boolean(ocupado)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold transition disabled:opacity-60"
+              style={{ backgroundColor: '#2bcdb9', color: '#060b0f' }}>
+              {ocupado === 'gravar' && <Loader2 className="w-4 h-4 animate-spin" />}
+              Gravar limites
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ═════════════════════════ Tela principal ═════════════════════════
 export default function AdminUsuarios({ onNavegar }) {
   const { usuario: eu } = useAuth();
+  const { buscarCasa } = usePais();
+  const nomeCasa = useCallback((cod) => (buscarCasa?.(cod)?.nome) || cod, [buscarCasa]);
+
+  // automação (nov/2026): limites, uso e contas por usuário. null = a API ainda não tem as rotas
+  const [auto, setAuto] = useState(null);
+  const [modalAuto, setModalAuto] = useState(null);        // usuário alvo
+  const carregarAuto = useCallback(async () => {
+    if (!(await automacaoDisponivel())) { setAuto(null); return; }
+    try { setAuto(await ApiAutomacao.usuarios()); } catch { setAuto(null); }
+  }, []);
+  useEffect(() => { carregarAuto(); }, [carregarAuto]);
 
   // usuários
   const [usuarios, setUsuarios] = useState([]);
@@ -311,6 +501,7 @@ export default function AdminUsuarios({ onNavegar }) {
                     <th className="py-2 pr-3 font-bold">Papel</th>
                     <th className="py-2 pr-3 font-bold">Status</th>
                     <th className="py-2 pr-3 font-bold">Bots</th>
+                    {auto && <th className="py-2 pr-3 font-bold">Automação</th>}
                     <th className="py-2 pr-3 font-bold">Último login</th>
                     <th className="py-2 font-bold text-right">Ações</th>
                   </tr>
@@ -340,7 +531,20 @@ export default function AdminUsuarios({ onNavegar }) {
                             {u.ativo ? '● Ativo' : '○ Desativado'}
                           </span>
                         </td>
-                        <td className="py-2.5 pr-3 text-slate-300">{u.qtd_bots}</td>
+                        <td className="py-2.5 pr-3 text-slate-300">
+                          {u.qtd_bots}
+                          {auto?.itens?.[String(u.id)]?.limites?.max_bots != null && (
+                            <span className="text-slate-500"> de {auto.itens[String(u.id)].limites.max_bots}</span>
+                          )}
+                        </td>
+                        {auto && (
+                          <td className="py-2.5 pr-3 text-slate-300 whitespace-nowrap">
+                            {resumoAutomacao(auto.itens?.[String(u.id)])}
+                            {(auto.itens?.[String(u.id)]?.contas?.length || 0) > 0 && (
+                              <span className="text-slate-500"> · {auto.itens[String(u.id)].contas.length} conta(s)</span>
+                            )}
+                          </td>
+                        )}
                         <td className="py-2.5 pr-3 text-slate-500">{fmtData(u.ultimo_login)}</td>
                         <td className="py-2.5">
                           <div className="flex items-center gap-1.5 justify-end">
@@ -348,6 +552,15 @@ export default function AdminUsuarios({ onNavegar }) {
                               <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
                             ) : (
                               <>
+                                {auto?.itens?.[String(u.id)] && (
+                                  <button
+                                    onClick={() => setModalAuto(u)}
+                                    className="p-1.5 rounded-md text-slate-400 hover:text-cyan-300 transition"
+                                    title="Automação: limites, contas e pausar tudo"
+                                  >
+                                    <Zap className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
                                 <button
                                   onClick={() => alternarRole(u)}
                                   disabled={souEu}
@@ -391,7 +604,7 @@ export default function AdminUsuarios({ onNavegar }) {
                     );
                   })}
                   {usuarios.length === 0 && (
-                    <tr><td colSpan={7} className="py-8 text-center text-slate-500">Nenhum usuário encontrado.</td></tr>
+                    <tr><td colSpan={auto ? 8 : 7} className="py-8 text-center text-slate-500">Nenhum usuário encontrado.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -482,6 +695,20 @@ export default function AdminUsuarios({ onNavegar }) {
           )}
         </section>
       </main>
+
+      {/* ═══════════ MODAL: automação do usuário ═══════════ */}
+      {modalAuto && auto?.itens?.[String(modalAuto.id)] && (
+        <ModalAutomacaoUsuario
+          key={modalAuto.id}
+          usuario={modalAuto}
+          dados={auto.itens[String(modalAuto.id)]}
+          casasComBraco={auto.casas_com_braco}
+          nomeCasa={nomeCasa}
+          onFechar={() => setModalAuto(null)}
+          onMudou={() => { carregarAuto(); carregarUsuarios(buscaUsuario.trim()); }}
+          onIrParaContas={() => { setModalAuto(null); onNavegar?.('automacao'); }}
+        />
+      )}
 
       {/* ═══════════ MODAL: resetar senha ═══════════ */}
       {modalReset && (
