@@ -24,12 +24,13 @@ import {
   TrendingUp, TrendingDown, DollarSign, Percent,
   Power, Zap,
   Folder, FolderPlus, FolderInput, CheckSquare, Square, Pencil,
+  ArrowDown, ArrowUp,
 } from 'lucide-react';
 import MikeHeader from '../shared/MikeHeader.jsx';
 import IconeEsporte from '../shared/IconeEsporte.jsx';
 import BacktestModal from './BacktestModal';
 import { ModalHistorico } from './Historico';
-import { ApiBots, ApiBotsOrg, ApiAutomacao } from '../lib/api';
+import { ApiBots, ApiBotsOrg, ApiAutomacao, ApiStats } from '../lib/api';
 import AutomacaoBot from '../shared/AutomacaoBot.jsx';
 import { automacaoDisponivel } from '../lib/recursos.js';
 import { usePais } from '../context/PaisContext.jsx';
@@ -85,6 +86,66 @@ const MOSTRAR_BOTOES_EM_BREVE = false;
 
 const CORES_GRUPO = ['#2bcdb9', '#0284c7', '#3b82f6', '#8b5cf6', '#f59e0b', '#f43f5e', '#6c8689'];
 
+// ============================================================
+// nov/2026 — RESULTADO POR PERÍODO: ordenar e filtrar a lista
+// A conta vem pronta do servidor (/stats/bots-resultado), por bot.
+// ============================================================
+const PERIODOS_RES = [
+  { id: 'hoje', label: 'Hoje' },
+  { id: '7d', label: '7 dias' },
+  { id: '14d', label: '14 dias' },
+  { id: '30d', label: '30 dias' },
+  { id: 'tudo', label: 'Tudo' },
+];
+const ORDENACOES = [
+  { value: 'unidades', label: 'Unidades' },
+  { value: 'roi', label: 'ROI' },
+  { value: 'wr', label: 'WR' },
+  { value: 'greens', label: 'Greens' },
+  { value: 'reds', label: 'Reds' },
+  { value: 'apostas', label: 'Nº de apostas' },
+  { value: 'drawdown', label: 'Drawdown' },
+  { value: 'lucro_dd', label: 'Lucro ÷ drawdown' },
+];
+const MODOS_AUTO_FILTRO = [
+  { value: 'todos', label: 'Todos' },
+  { value: 'desligado', label: 'Desligado' },
+  { value: 'papel', label: 'Papel' },
+  { value: 'real', label: 'Real' },
+];
+
+// Os filtros ficam lembrados enquanto a pessoa navega (até fechar a aba do navegador).
+const CHAVE_FILTROS = 'tipmike_bots_filtros_v1';
+function lerFiltrosSalvos() {
+  try {
+    const j = JSON.parse(window.sessionStorage.getItem(CHAVE_FILTROS) || 'null');
+    return (j && typeof j === 'object') ? j : {};
+  } catch { return {}; }
+}
+function salvarFiltros(f) {
+  try { window.sessionStorage.setItem(CHAVE_FILTROS, JSON.stringify(f)); } catch { /* sem storage: só não lembra */ }
+}
+
+// campo de faixa vazio = sem filtro; aceita vírgula ou ponto
+function numOuNull(txt) {
+  const t = String(txt ?? '').trim().replace(',', '.');
+  if (t === '') return null;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : null;
+}
+
+// Valor usado na ordenação. Lucro ÷ drawdown: sem queda nenhuma e com lucro vale "infinito";
+// sem queda e sem lucro não tem valor (vai para o fim).
+function valorOrdenacao(res, chave) {
+  if (!res) return null;
+  if (chave === 'lucro_dd') {
+    if (res.drawdown > 0) return res.unidades / res.drawdown;
+    return res.unidades > 0 ? Infinity : null;
+  }
+  const v = res[chave];
+  return (v === null || v === undefined) ? null : Number(v);
+}
+
 function normaliza(s) {
   return (s || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
@@ -117,6 +178,71 @@ function CardStat({ label, valor, negativo = false, loading = false }) {
            style={{ backgroundColor: bgValor, color: colorValor }}>
         {loading ? '...' : valor}
       </div>
+    </div>
+  );
+}
+
+// ============================================================
+// nov/2026 — RESULTADO DO PERÍODO (linha do bot e resumo do filtro)
+// ============================================================
+function ItemRes({ rotulo, valor, cor, title }) {
+  return (
+    <span className="flex items-baseline gap-1" title={title}>
+      <span className="text-[9px] uppercase tracking-wider text-[--mike-fg-muted]">{rotulo}</span>
+      <span className="font-mono font-bold" style={cor ? { color: cor } : undefined}>{valor}</span>
+    </span>
+  );
+}
+
+function corDoResultado(unidades) {
+  if (unidades > 0) return '#2bcdb9';
+  if (unidades < 0) return '#f43f5e';
+  return '#8ba5a6';
+}
+
+function ResultadoBot({ res, fonte }) {
+  if (!res) {
+    return (
+      <div className="px-3 pb-2 text-[10px] text-[--mike-fg-muted]" data-resultado="vazio">
+        {fonte === 'real' ? 'Sem bilhete real no período.' : 'Sem aposta no período.'}
+      </div>
+    );
+  }
+  const cor = corDoResultado(res.unidades);
+  const lucroDd = res.drawdown > 0 ? fmtNum(res.unidades / res.drawdown) : (res.unidades > 0 ? '∞' : '—');
+  return (
+    <div className="px-3 pb-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-[--mike-fg-soft]" data-resultado="ok">
+      <ItemRes rotulo="Apostas" valor={res.apostas} title="Apostas feitas no período (inclui devolvidas e abertas)" />
+      <ItemRes rotulo="G-R" valor={`${res.greens}-${res.reds}`} />
+      <ItemRes rotulo="WR" valor={res.wr === null ? '—' : fmtNum(res.wr, { casas: 1, sufixo: '%' })} />
+      <ItemRes rotulo="Unidades" valor={fmtNum(res.unidades, { sinal: true, sufixo: 'u' })} cor={cor} />
+      <ItemRes rotulo="ROI" valor={res.roi === null ? '—' : fmtNum(res.roi, { sinal: true, casas: 1, sufixo: '%' })} cor={cor} />
+      <ItemRes rotulo="Drawdown" valor={fmtNum(res.drawdown, { sufixo: 'u' })} title="Maior queda da curva de unidades no período" />
+      <ItemRes rotulo="Lucro÷DD" valor={lucroDd} title="Unidades divididas pelo drawdown" />
+      {res.abertas > 0 && <ItemRes rotulo="Abertas" valor={res.abertas} />}
+      {fonte === 'real' && res.dinheiro !== undefined && res.dinheiro !== null && (
+        <ItemRes rotulo="Dinheiro" valor={`${res.moeda ? `${res.moeda} ` : ''}${fmtNum(res.dinheiro, { sinal: true })}`} cor={cor}
+          title={`Apostado: ${res.moeda ? `${res.moeda} ` : ''}${fmtNum(res.apostado)}`} />
+      )}
+    </div>
+  );
+}
+
+function CampoFaixa({ rotulo, valor, onChange, placeholder, nome }) {
+  const invalido = String(valor ?? '').trim() !== '' && numOuNull(valor) === null;
+  return (
+    <div>
+      <label className="block text-[10px] text-[--mike-fg-muted] mb-1">{rotulo}</label>
+      <input
+        value={valor}
+        onChange={(e) => onChange(e.target.value)}
+        inputMode="decimal"
+        placeholder={placeholder}
+        data-faixa={nome}
+        className="mike-border-thin w-full px-3 py-1.5 rounded-md bg-transparent text-xs text-[--mike-fg] placeholder:text-[--mike-fg-muted] outline-none"
+        style={invalido ? { borderColor: 'rgba(244, 63, 94, 0.7)' } : undefined}
+        title={invalido ? 'Digite um número' : undefined}
+      />
     </div>
   );
 }
@@ -298,7 +424,8 @@ function PainelAutomacao({ bot, hoje, avisar, onFechar, onMudou }) {
 }
 
 function LinhaBot({ bot, expandido, onToggleExpand, onAcao, loadingAcao, onAbrirHistorico, stats, statsLoading, onBaixarCsv, loadingCsv,
-                    onToggleFav, favLoading, modoSelecao, selecionado, onToggleSel, grupo, auto, autoDisponivel, autoBloqueio, onAbrirAutomacao }) {
+                    onToggleFav, favLoading, modoSelecao, selecionado, onToggleSel, grupo, auto, autoDisponivel, autoBloqueio, onAbrirAutomacao,
+                    res, resFonte, resLigado }) {
   const { buscarCasa } = usePais();
   const casaCad = buscarCasa(bot.casa);
   const casa = casaCad
@@ -308,7 +435,8 @@ function LinhaBot({ bot, expandido, onToggleExpand, onAcao, loadingAcao, onAbrir
   const isAtivo = bot.status === 'ativo';
   const mercadoLabel = MERCADOS_LABEL[bot.mercado] || bot.mercado;
 
-  const lucro = stats?.lucro;
+  // a seta acompanha o resultado do período escolhido; sem ele, o do card (carregado ao expandir)
+  const lucro = (resLigado && res) ? res.unidades : stats?.lucro;
   const tendUp = lucro !== undefined && parseFloat(lucro) >= 0;
   const TendIcon = tendUp ? TrendingUp : TrendingDown;
   const tendColor = lucro === undefined ? '#6c8689' : (tendUp ? '#2bcdb9' : '#f43f5e');
@@ -446,6 +574,8 @@ function LinhaBot({ bot, expandido, onToggleExpand, onAcao, loadingAcao, onAbrir
           {expandido ? 'Minimizar' : 'Ver'}
         </button>
       </div>
+
+      {resLigado && <ResultadoBot res={res} fonte={resFonte} />}
 
       {expandido && (
         <CorpoExpandido
@@ -739,8 +869,10 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState(null);
 
-  const [busca, setBusca] = useState('');
-  const [filtroCasa, setFiltroCasa] = useState('todas');
+  // nov/2026: os filtros voltam como a pessoa deixou (enquanto navega)
+  const salvos = useRef(lerFiltrosSalvos()).current;
+  const [busca, setBusca] = useState(typeof salvos.busca === 'string' ? salvos.busca : '');
+  const [filtroCasa, setFiltroCasa] = useState(typeof salvos.filtroCasa === 'string' ? salvos.filtroCasa : 'todas');
   // nov/2026: opções do filtro = casas do país (reserva: CASAS fixa)
   const { casas: casasPais } = usePais();
   const opcoesCasa = useMemo(() => (
@@ -748,17 +880,51 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
       ? casasPais.map((c) => ({ value: c.codigo, label: String(c.nome || c.codigo).toUpperCase() }))
       : Object.values(CASAS).map((c) => ({ value: c.id, label: c.label }))
   ), [casasPais]);
-  const [filtroEsporte, setFiltroEsporte] = useState('todas');
-  const [filtroStatus, setFiltroStatus] = useState('todos');
+  const [filtroEsporte, setFiltroEsporte] = useState(typeof salvos.filtroEsporte === 'string' ? salvos.filtroEsporte : 'todas');
+  const [filtroStatus, setFiltroStatus] = useState(['ativo', 'pausado'].includes(salvos.filtroStatus) ? salvos.filtroStatus : 'todos');
   // v2 (11/ago): admin escolhe entre TODOS os bots e SÓ OS DELE. Pro usuário
   // comum o seletor nem aparece — o backend já devolve só os dele, e a
   // permissão continua vindo de lá (o parâmetro não dá acesso a nada).
-  const [escopo, setEscopo] = useState('todos');
+  const [escopo, setEscopo] = useState(salvos.escopo === 'meus' ? 'meus' : 'todos');
   const [ehAdmin, setEhAdmin] = useState(false);
-  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
+  const [filtrosAbertos, setFiltrosAbertos] = useState(Boolean(salvos.filtrosAbertos));
 
   const [page, setPage] = useState(0);
   const LIMIT = 50;
+
+  // nov/2026 — resultado por período: chave simulado/real, período, ordenação e faixas
+  const [fonteRes, setFonteRes] = useState(salvos.fonteRes === 'real' ? 'real' : 'simulado');
+  const [periodo, setPeriodo] = useState(PERIODOS_RES.some((p) => p.id === salvos.periodo) ? salvos.periodo : '7d');
+  const [ordenar, setOrdenar] = useState(ORDENACOES.some((o) => o.value === salvos.ordenar) ? salvos.ordenar : 'unidades');
+  const [ordemDesc, setOrdemDesc] = useState(salvos.ordemDesc !== false);
+  const [filtroAuto, setFiltroAuto] = useState(MODOS_AUTO_FILTRO.some((m) => m.value === salvos.filtroAuto) ? salvos.filtroAuto : 'todos');
+  const [minApostas, setMinApostas] = useState(typeof salvos.minApostas === 'string' ? salvos.minApostas : '');
+  const [roiMin, setRoiMin] = useState(typeof salvos.roiMin === 'string' ? salvos.roiMin : '');
+  const [unidMin, setUnidMin] = useState(typeof salvos.unidMin === 'string' ? salvos.unidMin : '');
+  const [wrMin, setWrMin] = useState(typeof salvos.wrMin === 'string' ? salvos.wrMin : '');
+  const [ddMax, setDdMax] = useState(typeof salvos.ddMax === 'string' ? salvos.ddMax : '');
+  // disponivel: null = ainda não sei; false = a API ainda não tem a rota (a lista segue como era); true = tem
+  const [resBots, setResBots] = useState({ disponivel: null, itens: {}, carregando: false, erro: false });
+  const seqRes = useRef(0);
+  const fetchResultado = useCallback(async () => {
+    const meu = ++seqRes.current;
+    setResBots((prev) => ({ ...prev, carregando: true, erro: false }));
+    try {
+      const d = await ApiStats.botsResultado(periodo, fonteRes);
+      if (meu !== seqRes.current) return;
+      setResBots({ disponivel: true, itens: (d && d.itens) || {}, carregando: false, erro: false });
+    } catch (e) {
+      if (meu !== seqRes.current) return;
+      const semRota = Boolean(e && e.status === 404);
+      setResBots((prev) => ({
+        disponivel: semRota ? false : prev.disponivel,
+        itens: semRota ? {} : prev.itens,
+        carregando: false,
+        erro: !semRota,
+      }));
+    }
+  }, [periodo, fonteRes]);
+  useEffect(() => { fetchResultado(); }, [fetchResultado]);
 
   const [loadingAcao, setLoadingAcao] = useState({});
   const [loadingCsv, setLoadingCsv] = useState({});
@@ -776,7 +942,9 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
   // v50: organização por usuário (favoritos + grupos)
   const [org, setOrg] = useState({ grupos: [], favoritos: [], sem_grupo: 0 });
   const [orgIndisponivel, setOrgIndisponivel] = useState(false);
-  const [visao, setVisao] = useState('todos');          // 'todos' | 'favoritos' | 'sem' | id do grupo
+  const [visao, setVisao] = useState(                  // 'todos' | 'favoritos' | 'sem' | id do grupo
+    (salvos.visao === 'favoritos' || salvos.visao === 'sem' || typeof salvos.visao === 'number') ? salvos.visao : 'todos');
+  const [orgCarregado, setOrgCarregado] = useState(false);
   const [modoSelecao, setModoSelecao] = useState(false);
   const [selecionados, setSelecionados] = useState(() => new Set());
   const [menuMover, setMenuMover] = useState(false);
@@ -801,7 +969,9 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
     setLoading(true);
     setErro(null);
     try {
-      const params = { limit: LIMIT, offset: page * LIMIT };
+      // nov/2026: a lista vem inteira (em lotes), porque a ordenação e os filtros por
+      // resultado valem para todos os bots, não só para os 50 da página.
+      const params = {};
       if (filtroCasa !== 'todas') params.casa = filtroCasa;
       if (filtroEsporte !== 'todas') params.esporte = filtroEsporte;
       if (filtroStatus !== 'todos') params.status = filtroStatus;
@@ -810,11 +980,22 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
       else if (visao === 'sem') params.grupo = 'sem';
       else if (typeof visao === 'number') params.grupo = String(visao);
 
-      const data = await ApiBots.list(params);
-      if (meu !== seqFetch.current) return;
-      setBots(data.items || []);
-      setTotal(data.total || 0);
-      setEhAdmin(Boolean(data.admin));
+      const LOTE = 200;
+      let itens = [];
+      let tot = 0;
+      let admin = false;
+      for (let i = 0; i < 100; i += 1) {
+        const data = await ApiBots.list({ ...params, limit: LOTE, offset: i * LOTE });
+        if (meu !== seqFetch.current) return;
+        const lote = data.items || [];
+        itens = itens.concat(lote);
+        tot = data.total || itens.length;
+        admin = Boolean(data.admin);
+        if (lote.length < LOTE || itens.length >= tot) break;
+      }
+      setBots(itens);
+      setTotal(tot);
+      setEhAdmin(admin);
     } catch (e) {
       if (meu !== seqFetch.current) return;
       setErro(e.message);
@@ -823,7 +1004,7 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
     } finally {
       if (meu === seqFetch.current) setLoading(false);
     }
-  }, [page, filtroCasa, filtroEsporte, filtroStatus, escopo, visao]);
+  }, [filtroCasa, filtroEsporte, filtroStatus, escopo, visao]);
 
   useEffect(() => { fetchBots(); }, [fetchBots]);
 
@@ -870,10 +1051,12 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
         sem_grupo: Number(data?.sem_grupo) || 0,
       });
       setOrgIndisponivel(false);
+      setOrgCarregado(true);
     } catch (e) {
       // backend sem a v50 / migration não aplicada: a tela segue funcionando sem grupos
       console.error('Erro carregando favoritos/grupos', e);
       setOrgIndisponivel(true);
+      setVisao('todos');          // sem favoritos/grupos não há visão lembrada que valha
     }
   }, []);
 
@@ -882,11 +1065,11 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
 
   // grupo apagado enquanto estava aberto -> volta pra "Todos"
   useEffect(() => {
-    if (typeof visao === 'number' && !org.grupos.some(g => g.id === visao)) {
+    if (orgCarregado && typeof visao === 'number' && !org.grupos.some(g => g.id === visao)) {
       setVisao('todos');
       setPage(0);
     }
-  }, [org.grupos, visao]);
+  }, [org.grupos, visao, orgCarregado]);
 
   const grupoPorId = useMemo(() => {
     const m = {};
@@ -995,11 +1178,99 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
     return () => document.removeEventListener('keydown', handler);
   }, [modalGrupo, menuMover, modoSelecao, sairSelecao]);
 
-  const botsFiltrados = useMemo(() => {
-    if (!busca.trim()) return bots;
-    const q = normaliza(busca);
-    return bots.filter(b => normaliza(b.nome).includes(q));
-  }, [bots, busca]);
+  // nov/2026 — busca, modo de automação, faixas de resultado e ordenação valem para TODOS
+  // os bots carregados; a página é só um recorte de 50 do resultado.
+  const resLigado = resBots.disponivel === true;
+  const faixas = useMemo(() => ({
+    minApostas: numOuNull(minApostas),
+    roiMin: numOuNull(roiMin),
+    unidMin: numOuNull(unidMin),
+    wrMin: numOuNull(wrMin),
+    ddMax: numOuNull(ddMax),
+  }), [minApostas, roiMin, unidMin, wrMin, ddMax]);
+  const algumaFaixa = resLigado && Object.values(faixas).some((v) => v !== null);
+  const filtroAutoAtivo = autoModos.disponivel && filtroAuto !== 'todos';
+
+  const botsVisiveis = useMemo(() => {
+    let lista = bots;
+    if (busca.trim()) {
+      const q = normaliza(busca);
+      lista = lista.filter((b) => normaliza(b.nome).includes(q));
+    }
+    if (filtroAutoAtivo) {
+      lista = lista.filter((b) => (autoModos.itens[String(b.id)]?.modo || 'desligado') === filtroAuto);
+    }
+    if (!resLigado) return lista;
+    const R = resBots.itens;
+    // em "real", bot sem bilhete some da lista
+    if (fonteRes === 'real') lista = lista.filter((b) => R[String(b.id)]);
+    if (algumaFaixa) {
+      lista = lista.filter((b) => {
+        const r = R[String(b.id)];
+        if (!r) return false;       // sem aposta no período não passa em faixa nenhuma
+        if (faixas.minApostas !== null && r.apostas < faixas.minApostas) return false;
+        if (faixas.roiMin !== null && (r.roi === null || r.roi < faixas.roiMin)) return false;
+        if (faixas.unidMin !== null && r.unidades < faixas.unidMin) return false;
+        if (faixas.wrMin !== null && (r.wr === null || r.wr < faixas.wrMin)) return false;
+        if (faixas.ddMax !== null && r.drawdown > faixas.ddMax) return false;
+        return true;
+      });
+    }
+    const sinal = ordemDesc ? -1 : 1;
+    return [...lista].sort((a, b) => {
+      const va = valorOrdenacao(R[String(a.id)], ordenar);
+      const vb = valorOrdenacao(R[String(b.id)], ordenar);
+      if (va === null && vb === null) return b.id - a.id;
+      if (va === null) return 1;         // sem valor vai sempre para o fim
+      if (vb === null) return -1;
+      if (va === vb) return b.id - a.id;
+      return (va < vb ? -1 : 1) * sinal;
+    });
+  }, [bots, busca, filtroAutoAtivo, filtroAuto, autoModos.itens, resLigado, resBots.itens, fonteRes, algumaFaixa, faixas, ordenar, ordemDesc]);
+
+  const totalPages = Math.max(1, Math.ceil(botsVisiveis.length / LIMIT));
+  const pagina = Math.min(page, totalPages - 1);
+  const botsFiltrados = useMemo(
+    () => botsVisiveis.slice(pagina * LIMIT, pagina * LIMIT + LIMIT),
+    [botsVisiveis, pagina]);
+
+  // total do que está filtrado (todas as páginas)
+  const resumoFiltro = useMemo(() => {
+    if (!resLigado) return null;
+    let apostas = 0; let greens = 0; let reds = 0; let unidades = 0; let apostado = 0; let dinheiro = 0;
+    for (const b of botsVisiveis) {
+      const r = resBots.itens[String(b.id)];
+      if (!r) continue;
+      apostas += r.apostas; greens += r.greens; reds += r.reds; unidades += r.unidades;
+      apostado += r.apostado || 0; dinheiro += r.dinheiro || 0;
+    }
+    const roi = fonteRes === 'real'
+      ? (apostado > 0 ? (dinheiro * 100) / apostado : null)
+      : ((greens + reds) > 0 ? (unidades * 100) / (greens + reds) : null);
+    return { bots: botsVisiveis.length, apostas, greens, reds, unidades, roi };
+  }, [resLigado, botsVisiveis, resBots.itens, fonteRes]);
+
+  // mudar busca, ordenação ou faixa volta para a primeira página
+  useEffect(() => { setPage(0); },
+    [busca, fonteRes, periodo, ordenar, ordemDesc, filtroAuto, minApostas, roiMin, unidMin, wrMin, ddMax]);
+
+  // lembra os filtros enquanto a pessoa navega
+  useEffect(() => {
+    salvarFiltros({ busca, filtroCasa, filtroEsporte, filtroStatus, escopo, visao, filtrosAbertos,
+      fonteRes, periodo, ordenar, ordemDesc, filtroAuto, minApostas, roiMin, unidMin, wrMin, ddMax });
+  }, [busca, filtroCasa, filtroEsporte, filtroStatus, escopo, visao, filtrosAbertos,
+    fonteRes, periodo, ordenar, ordemDesc, filtroAuto, minApostas, roiMin, unidMin, wrMin, ddMax]);
+
+  const limparFiltros = useCallback(() => {
+    setFiltroCasa('todas');
+    setFiltroEsporte('todas');
+    setFiltroStatus('todos');
+    setEscopo('todos');
+    setBusca('');
+    setFiltroAuto('todos');
+    setMinApostas(''); setRoiMin(''); setUnidMin(''); setWrMin(''); setDdMax('');
+    adicionarToast('Filtros limpos', 'info');
+  }, [adicionarToast]);
 
   const carregarStats = useCallback(async (botId) => {
     if (statsPorBot[botId]) return;
@@ -1130,8 +1401,13 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
     return () => document.removeEventListener('keydown', handler);
   }, [modalConfirm, filtrosAbertos]);
 
-  const algumFiltroAtivo = filtroCasa !== 'todas' || filtroEsporte !== 'todas' || filtroStatus !== 'todos' || escopo !== 'todos' || busca;
-  const totalPages = Math.max(1, Math.ceil(total / LIMIT));
+  const filtrosAtivos = [
+    filtroCasa !== 'todas', filtroEsporte !== 'todas', filtroStatus !== 'todos', escopo !== 'todos', Boolean(busca),
+    filtroAutoAtivo,
+    resLigado && faixas.minApostas !== null, resLigado && faixas.roiMin !== null, resLigado && faixas.unidMin !== null,
+    resLigado && faixas.wrMin !== null, resLigado && faixas.ddMax !== null,
+  ].filter(Boolean).length;
+  const algumFiltroAtivo = filtrosAtivos > 0;
 
   const themeVars = {
     '--mike-bg': '#060b0f',
@@ -1183,8 +1459,8 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
             </h1>
             <p className="text-[11px] text-[--mike-fg-muted] mt-0.5">
               Total: <span className="text-[--mike-fg] font-semibold">{total}</span>
-              {algumFiltroAtivo && botsFiltrados.length !== total && (
-                <span> · Mostrando: <span className="text-[--mike-fg] font-semibold">{botsFiltrados.length}</span></span>
+              {botsVisiveis.length !== total && (
+                <span> · Mostrando: <span className="text-[--mike-fg] font-semibold">{botsVisiveis.length}</span></span>
               )}
             </p>
           </div>
@@ -1192,7 +1468,7 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
           <div className="flex-1" />
 
           <button
-            onClick={() => fetchBots()}
+            onClick={() => { fetchBots(); fetchResultado(); }}
             disabled={loading}
             className="mike-border-thin flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-transparent text-xs font-semibold text-[--mike-fg-soft] hover:text-[--mike-fg] transition disabled:opacity-50"
           >
@@ -1239,7 +1515,7 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
             Filtros
             {algumFiltroAtivo && (
               <span className="ml-0.5 px-1.5 py-0 rounded-full bg-[--mike-accent] text-[--mike-bg] text-[9px] font-black">
-                {[filtroCasa !== 'todas', filtroEsporte !== 'todas', filtroStatus !== 'todos', escopo !== 'todos', busca].filter(Boolean).length}
+                {filtrosAtivos}
               </span>
             )}
           </button>
@@ -1292,7 +1568,74 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
                   ]} />
                 </div>
               )}
+              {autoModos.disponivel && (
+                <div>
+                  <label className="block text-[10px] text-[--mike-fg-muted] mb-1">Automação</label>
+                  <MikeSelect value={filtroAuto} onChange={setFiltroAuto} options={MODOS_AUTO_FILTRO} />
+                </div>
+              )}
             </div>
+            {resLigado && (
+              <>
+                <p className="text-[10px] text-[--mike-fg-muted] mt-3 mb-2">
+                  Resultado no período escolhido. Campo vazio não filtra; com qualquer um preenchido, bot sem aposta no período sai da lista.
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                  <CampoFaixa nome="min-apostas" rotulo="Mínimo de apostas" valor={minApostas} onChange={setMinApostas} placeholder="ex.: 30" />
+                  <CampoFaixa nome="roi-min" rotulo="ROI mínimo (%)" valor={roiMin} onChange={setRoiMin} placeholder="ex.: 5" />
+                  <CampoFaixa nome="unid-min" rotulo="Unidades mínimas" valor={unidMin} onChange={setUnidMin} placeholder="ex.: 10" />
+                  <CampoFaixa nome="wr-min" rotulo="WR mínimo (%)" valor={wrMin} onChange={setWrMin} placeholder="ex.: 55" />
+                  <CampoFaixa nome="dd-max" rotulo="Drawdown máximo (u)" valor={ddMax} onChange={setDdMax} placeholder="ex.: 15" />
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {resBots.disponivel !== false && (
+          <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2" data-barra="resultado">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] uppercase tracking-wider text-[--mike-fg-muted]">Resultado</span>
+              <ChipVisao ativo={fonteRes === 'simulado'} onClick={() => setFonteRes('simulado')} title="Todas as apostas do bot">Simulado</ChipVisao>
+              <ChipVisao ativo={fonteRes === 'real'} onClick={() => setFonteRes('real')} cor="#f43f5e" title="Só os bilhetes da automação em real">Real</ChipVisao>
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] uppercase tracking-wider text-[--mike-fg-muted]">Período</span>
+              {PERIODOS_RES.map((p) => (
+                <ChipVisao key={p.id} ativo={periodo === p.id} onClick={() => setPeriodo(p.id)}>{p.label}</ChipVisao>
+              ))}
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] uppercase tracking-wider text-[--mike-fg-muted]">Ordenar</span>
+              <MikeSelect value={ordenar} onChange={setOrdenar} options={ORDENACOES} width="w-44" />
+              <button
+                onClick={() => setOrdemDesc((v) => !v)}
+                className="mike-border-thin p-1.5 rounded-md bg-transparent text-[--mike-fg-soft] hover:text-[--mike-fg] transition"
+                title={ordemDesc ? 'Do maior para o menor (clique para inverter)' : 'Do menor para o maior (clique para inverter)'}
+                data-ordem={ordemDesc ? 'desc' : 'asc'}
+              >
+                {ordemDesc ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUp className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+            {resBots.carregando && <RefreshCw className="w-3.5 h-3.5 mike-spin text-[--mike-fg-muted]" />}
+            {resBots.erro && (
+              <span className="text-[11px] text-rose-300">
+                Não deu para calcular o resultado agora.{' '}
+                <button onClick={fetchResultado} className="underline hover:text-white">Tentar de novo</button>
+              </span>
+            )}
+          </div>
+        )}
+
+        {resumoFiltro && (
+          <div className="mb-3 rounded-md px-3 py-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-[11px] text-[--mike-fg-soft]"
+            style={{ border: '0.5px solid rgba(50, 100, 104, 0.4)' }} data-resumo="filtro">
+            <span className="text-[10px] uppercase tracking-wider text-[--mike-fg-muted]">No filtro</span>
+            <ItemRes rotulo="Bots" valor={resumoFiltro.bots} />
+            <ItemRes rotulo="Apostas" valor={resumoFiltro.apostas} />
+            <ItemRes rotulo="G-R" valor={`${resumoFiltro.greens}-${resumoFiltro.reds}`} />
+            <ItemRes rotulo="Unidades" valor={fmtNum(resumoFiltro.unidades, { sinal: true, sufixo: 'u' })} cor={corDoResultado(resumoFiltro.unidades)} />
+            <ItemRes rotulo="ROI" valor={resumoFiltro.roi === null ? '—' : fmtNum(resumoFiltro.roi, { sinal: true, casas: 1, sufixo: '%' })} cor={corDoResultado(resumoFiltro.unidades)} />
           </div>
         )}
 
@@ -1337,6 +1680,9 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
                 autoDisponivel={autoModos.disponivel}
                 autoBloqueio={bloqueioAuto(bot)}
                 onAbrirAutomacao={setPainelAuto}
+                res={resBots.itens[String(bot.id)]}
+                resFonte={fonteRes}
+                resLigado={resLigado}
               />
             ))}
           </div>
@@ -1347,8 +1693,9 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
           }}>
             <Bot className="w-12 h-12 text-[--mike-fg-muted] opacity-40 mx-auto mb-3" />
             <p className="text-sm text-[--mike-fg] font-semibold mb-1">
-              {visao === 'favoritos' ? 'Nenhum favorito ainda'
-                : typeof visao === 'number' ? 'Grupo vazio'
+              {(bots.length > 0 && resLigado && fonteRes === 'real') ? 'Nenhum bot com bilhete real neste período'
+                : visao === 'favoritos' && bots.length === 0 ? 'Nenhum favorito ainda'
+                : typeof visao === 'number' && bots.length === 0 ? 'Grupo vazio'
                 : 'Nenhum bot encontrado'}
             </p>
             <p className="text-xs text-[--mike-fg-muted] mb-4">
@@ -1362,14 +1709,7 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
             </p>
             {algumFiltroAtivo ? (
               <button
-                onClick={() => {
-                  setFiltroCasa('todas');
-                  setFiltroEsporte('todas');
-                  setFiltroStatus('todos');
-                  setEscopo('todos');
-                  setBusca('');
-                  adicionarToast('Filtros limpos', 'info');
-                }}
+                onClick={limparFiltros}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-mike-accent/10 border border-mike-accent/40 text-[--mike-accent] hover:bg-mike-accent/15 transition"
               >
                 <FilterX className="w-3 h-3" /> Limpar filtros
@@ -1388,18 +1728,18 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
         {totalPages > 1 && (
           <div className="flex items-center justify-center gap-2 mt-6">
             <button
-              onClick={() => setPage(p => Math.max(0, p - 1))}
-              disabled={page === 0 || loading}
+              onClick={() => setPage(Math.max(0, pagina - 1))}
+              disabled={pagina === 0 || loading}
               className="mike-border-thin px-3 py-1.5 rounded-md text-xs font-semibold text-[--mike-fg-soft] hover:text-[--mike-fg] transition disabled:opacity-30 disabled:cursor-not-allowed"
             >
               Anterior
             </button>
             <span className="text-xs text-[--mike-fg-muted]">
-              Página {page + 1} de {totalPages}
+              Página {pagina + 1} de {totalPages}
             </span>
             <button
-              onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-              disabled={page >= totalPages - 1 || loading}
+              onClick={() => setPage(Math.min(totalPages - 1, pagina + 1))}
+              disabled={pagina >= totalPages - 1 || loading}
               className="mike-border-thin px-3 py-1.5 rounded-md text-xs font-semibold text-[--mike-fg-soft] hover:text-[--mike-fg] transition disabled:opacity-30 disabled:cursor-not-allowed"
             >
               Próxima
