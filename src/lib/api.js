@@ -257,6 +257,8 @@ export const ApiStats = {
   // Endpoints antigos (sistema/bots)
   dashboard: ()   => api.get('/stats/dashboard'),
   bots:      ()   => api.get('/stats/bots'),
+  // aba Bots (nov/2026): resultado de cada bot no período. periodo: hoje|7d|14d|30d|tudo; fonte: simulado|real
+  botsResultado: (periodo, fonte) => api.get('/stats/bots-resultado', { periodo, fonte }),
   bot:       (id) => api.get(`/stats/bots/${id}`),
   // v2 - tela Stats.jsx (jogadores/jogos por esporte)
   overview:        (esporte)               => api.get('/stats/overview', { esporte }),
