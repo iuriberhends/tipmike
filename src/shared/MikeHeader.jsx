@@ -31,6 +31,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { usePais } from '../context/PaisContext.jsx';
 import Bandeira from './Bandeira.jsx';
 import { PAINEIS, paineisDoMenu, painelAtivo } from '../config/paineis.js';
+import { useAutomacaoDisponivel } from '../lib/recursos.js';
 import { LogoMarca, Wordmark } from './Logo.jsx';
 import PaletaComandos from './PaletaComandos.jsx';
 
@@ -197,7 +198,9 @@ export default function MikeHeader({ telaAtiva, onNavegar }) {
   const papel = usuario?.role === 'admin' ? 'Administrador' : 'Usuário';
 
   // só painéis ligados; itens de admin só para admin
-  const itensNav = useMemo(() => paineisDoMenu(usuario), [usuario]);
+  // Automação só entra no menu quando a API já tem as rotas dela
+  const automacaoNoAr = useAutomacaoDisponivel();
+  const itensNav = useMemo(() => paineisDoMenu(usuario, { automacao: automacaoNoAr }), [usuario, automacaoNoAr]);
 
   const ir = useCallback((id, contexto) => {
     setMenuAberto(false);
