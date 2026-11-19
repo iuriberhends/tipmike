@@ -337,6 +337,9 @@ export const ApiAutomacao = {
   contas:         ()              => api.get('/automacao/contas'),
   criarConta:     (body)          => api.post('/automacao/contas', body),
   editarConta:    (id, body)      => api.patch(`/automacao/contas/${id}`, body),
+  // acesso (login e senha) da conta: só escrita. A API guarda num cofre e nunca devolve.
+  gravarAcesso:   (id, login, senha) => api.put(`/automacao/contas/${id}/acesso`, { login, senha }),
+  removerAcesso:  (id)            => api.delete(`/automacao/contas/${id}/acesso`),
   historico:      (params)        => api.get('/automacao/historico', params),
   // só admin
   usuarios:       ()              => api.get('/automacao/usuarios'),
