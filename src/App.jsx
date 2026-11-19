@@ -31,6 +31,7 @@ import { ModalHistorico } from './screens/Historico.jsx';
 import Login from './screens/Login.jsx';
 import Registro from './screens/Registro.jsx';
 import AdminUsuarios from './screens/AdminUsuarios.jsx';
+import Automacao from './screens/Automacao.jsx';
 import RequireAuth from './shared/RequireAuth.jsx';
 import RequireAdmin from './shared/RequireAdmin.jsx';
 import MikeHeader from './shared/MikeHeader.jsx';
@@ -160,6 +161,8 @@ function AppRoutes() {
               <Route path="/criar-bot" element={<CriarBot botId={location.state?.botId || null} onSalvar={() => navigate('/bots')} onCancelar={() => navigate('/bots')} onNavegar={navegar} />} />
             </>
           )}
+          {/* Automação: a rota existe sempre; o item de menu só aparece quando a API já tem as rotas dela */}
+          {painelAtivo('automacao') && <Route path="/automacao" element={<Automacao onNavegar={navegar} />} />}
           {painelAtivo('stats') && <Route path="/stats" element={<Stats onNavegar={navegar} />} />}
           {painelAtivo('backtest') && <Route path="/backtest" element={<BacktestAvulso onNavegar={navegar} />} />}
           {painelAtivo('varredura') && <Route path="/varredura" element={<Varredura onNavegar={navegar} />} />}
