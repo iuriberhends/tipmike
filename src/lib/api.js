@@ -340,6 +340,8 @@ export const ApiAutomacao = {
   // acesso (login e senha) da conta: só escrita. A API guarda num cofre e nunca devolve.
   gravarAcesso:   (id, login, senha) => api.put(`/automacao/contas/${id}/acesso`, { login, senha }),
   removerAcesso:  (id)            => api.delete(`/automacao/contas/${id}/acesso`),
+  // apaga a conta (o servidor recusa se há bot ligado nela ou se ela já tem sinais/apostas registradas)
+  apagarConta:    (id)            => api.delete(`/automacao/contas/${id}`),
   historico:      (params)        => api.get('/automacao/historico', params),
   // só admin
   usuarios:       ()              => api.get('/automacao/usuarios'),
