@@ -18,13 +18,21 @@
 //   automacao.current.confirmar() → Promise<boolean> (abre a confirmação do real)
 //   automacao.current.gravar(id)  → grava no bot `id` (o próprio ou o recém-criado)
 // Se a API ainda não tem as rotas (404), a seção não aparece.
+//
+// É o MESMO componente no painel da lista de bots (Bots.jsx): lá ele
+// entra com `compacto` (sem o título grande, com a captura de hoje) e
+// avisa quem chamou pelo `onMudou` quando algo é gravado.
+// O seletor de conta mostra se cada conta tem acesso cadastrado e tem
+// o atalho "adicionar conta", que abre o cadastro ali mesmo
+// (shared/ContaCasa.jsx, o mesmo da tela Automação).
 // ============================================================
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, BarChart3, Info, Loader2, Lock, Pause, Save, ShieldAlert, X } from 'lucide-react';
+import { AlertTriangle, BarChart3, Info, KeyRound, Loader2, Lock, Pause, Plus, Save, ShieldAlert, X } from 'lucide-react';
 import { ApiAutomacao } from '../lib/api.js';
 import { automacaoDisponivel } from '../lib/recursos.js';
 import AnaliseAutomacao from './AnaliseAutomacao.jsx';
+import { ModalConta, textoAcesso } from './ContaCasa.jsx';
 
 export const MODOS = [
   { value: 'desligado', label: 'Desligado', dica: 'O bot só simula. Nenhum sinal é gerado.', cor: '#8ba5a6' },
@@ -52,11 +60,11 @@ function Rotulo({ children, largura = 'w-44' }) {
   );
 }
 
-function Linha({ rotulo, children, ajuda }) {
+function Linha({ rotulo, children, ajuda, compacto = false }) {
   return (
     <div className="flex items-start gap-2 mb-2">
-      <div className="w-9 flex-shrink-0" />
-      <div className="pt-0.5"><Rotulo>{rotulo}</Rotulo></div>
+      {!compacto && <div className="w-9 flex-shrink-0" />}
+      <div className="pt-0.5"><Rotulo largura={compacto ? 'w-36' : 'w-44'}>{rotulo}</Rotulo></div>
       <div className="flex-1 min-w-0">
         {children}
         {ajuda && <p className="text-[10px] text-[--mike-fg-muted] mt-1 leading-relaxed">{ajuda}</p>}
@@ -127,13 +135,14 @@ function ConfirmarReal({ dados, onCancelar, onConfirmar }) {
 }
 
 // ═════════════════════════ seção ═════════════════════════
-const AutomacaoBot = forwardRef(function AutomacaoBot({ botId = null, botNome = '', casa, avisar }, ref) {
+const AutomacaoBot = forwardRef(function AutomacaoBot({ botId = null, botNome = '', casa, avisar, compacto = false, hoje = null, onMudou = null }, ref) {
   const [ctx, setCtx] = useState(null);
   const [estado, setEstado] = useState('carregando');     // carregando | pronto | erro | ausente
   const [erro, setErro] = useState('');
   const [ocupado, setOcupado] = useState('');             // '' | 'salvar' | 'pausar'
   const [analise, setAnalise] = useState(false);
   const [pedido, setPedido] = useState(null);             // confirmação do real aberta: { resolver }
+  const [cadastro, setCadastro] = useState(null);         // cadastro de conta aberto: { nova: true } | { conta }
 
   // campos
   const [modo, setModo] = useState('desligado');
@@ -226,6 +235,7 @@ const AutomacaoBot = forwardRef(function AutomacaoBot({ botId = null, botNome = 
     if (corpo.modo === 'real') {
       if (!conta) return 'Escolha a conta para apostar em real.';
       if (conta.estado !== 'ativa') return `A conta ${conta.apelido} está ${conta.estado}: só conta ativa aposta em real.`;
+      if (conta.tem_acesso === false) return `A conta ${conta.apelido} não tem acesso cadastrado: cadastre o login e a senha dela.`;
       if (corpo.stake === null) return 'Informe a stake para apostar em real.';
       if (!lim.admin && (lim.stake_max === null || lim.stake_max === undefined)) return 'Você ainda não tem stake liberada para apostas reais.';
       if (!lim.admin && corpo.stake > lim.stake_max) return `Stake acima do seu limite (${fmtDinheiro(lim.stake_max, moeda)} por aposta).`;
@@ -262,6 +272,7 @@ const AutomacaoBot = forwardRef(function AutomacaoBot({ botId = null, botNome = 
       const r = await gravar(botId, precisaConfirmar);
       avisar?.(r.automacao.modo === 'desligado' ? 'Automação desligada' : `Automação gravada: ${r.automacao.modo}`, 'success');
       (r.avisos || []).forEach((a) => avisar?.(a, 'warn'));
+      onMudou?.(r.automacao);
     } catch (e) {
       avisar?.((e && e.message) || 'Não deu para gravar a automação.', 'error');
       carregar(true);                       // limites e uso podem ter mudado: relê sem apagar o que a pessoa digitou
@@ -277,11 +288,20 @@ const AutomacaoBot = forwardRef(function AutomacaoBot({ botId = null, botNome = 
       setCtx(r);
       preencher(r);
       avisar?.('Automação pausada. As regras ficaram guardadas.', 'success');
+      onMudou?.(r.automacao);
     } catch (e) {
       avisar?.((e && e.message) || 'Não deu para pausar.', 'error');
     } finally {
       setOcupado('');
     }
+  };
+
+  // cadastro de conta gravado: relê o contexto sem apagar o que a pessoa digitou e, se criou, já escolhe a conta nova
+  const contaGravada = async (c, info) => {
+    setCadastro(null);
+    avisar?.(info?.criada ? `Conta "${c.apelido}" criada.` : 'Conta gravada.', 'success');
+    await carregar(true);
+    if (info?.criada && c?.id) setContaId(String(c.id));
   };
 
   if (estado === 'ausente') return null;
@@ -296,12 +316,15 @@ const AutomacaoBot = forwardRef(function AutomacaoBot({ botId = null, botNome = 
     </div>
   );
 
-  const moldura = (filho) => (
-    <section className="mb-6 pb-6" style={{ borderBottom: '0.5px solid rgba(50, 100, 104, 0.2)' }} data-secao="automacao">
-      {titulo}
-      {filho}
-    </section>
-  );
+  const moldura = (filho) => (compacto
+    ? <div data-secao="automacao">{filho}</div>
+    : (
+      <section className="mb-6 pb-6" style={{ borderBottom: '0.5px solid rgba(50, 100, 104, 0.2)' }} data-secao="automacao">
+        {titulo}
+        {filho}
+      </section>
+    ));
+  const recuo = compacto ? '' : 'pl-11';
 
   if (estado === 'carregando') {
     return moldura(
@@ -337,7 +360,7 @@ const AutomacaoBot = forwardRef(function AutomacaoBot({ botId = null, botNome = 
       )}
 
       <div className={bloqueado ? 'opacity-40 pointer-events-none select-none' : ''} aria-disabled={bloqueado}>
-        <Linha rotulo="Modo" ajuda={(MODOS.find((m) => m.value === modo) || MODOS[0]).dica}>
+        <Linha compacto={compacto} rotulo="Modo" ajuda={(MODOS.find((m) => m.value === modo) || MODOS[0]).dica}>
           <div className="inline-flex rounded-md overflow-hidden" style={{ border: '0.5px solid rgba(50, 100, 104, 0.5)' }} role="radiogroup" aria-label="Modo da automação">
             {MODOS.map((m) => {
               const ativo = modo === m.value;
@@ -356,22 +379,40 @@ const AutomacaoBot = forwardRef(function AutomacaoBot({ botId = null, botNome = 
           </div>
         </Linha>
 
-        <Linha rotulo="Conta"
+        <Linha compacto={compacto} rotulo="Conta"
           ajuda={contas.length === 0
-            ? 'Você não tem conta nesta casa. Quem cadastra a conta e define o dono é o administrador. Para medir em papel não precisa de conta.'
-            : 'A conta que envia as apostas em real. A moeda vem da conta.'}>
-          <select value={contaId} onChange={(e) => setContaId(e.target.value)} disabled={bloqueado || contas.length === 0}
-            className={`${input} w-72 max-w-full`} aria-label="Conta">
-            <option value="">{contas.length === 0 ? 'nenhuma conta nesta casa' : 'sem conta'}</option>
-            {contas.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.apelido} · {c.moeda}{c.estado !== 'ativa' ? ` · ${c.estado}` : ''}{c.tem_braco ? '' : ' · sem braço rodando'}
-              </option>
-            ))}
-          </select>
+            ? (ctx.pode_criar_conta
+              ? 'Ainda não há conta nesta casa: use "adicionar conta". Para medir em papel não precisa de conta.'
+              : 'Não há conta nesta casa. Peça ao administrador. Para medir em papel não precisa de conta.')
+            : 'A conta que envia as apostas em real. A moeda vem da conta. Em real, a conta precisa estar ativa e com acesso cadastrado.'}>
+          <div className="flex items-center gap-2 flex-wrap">
+            <select value={contaId} onChange={(e) => setContaId(e.target.value)} disabled={bloqueado || contas.length === 0}
+              className={`${input} w-72 max-w-full`} aria-label="Conta">
+              <option value="">{contas.length === 0 ? 'nenhuma conta nesta casa' : 'sem conta'}</option>
+              {contas.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.apelido} · {c.moeda}{c.estado !== 'ativa' ? ` · ${c.estado}` : ''}{textoAcesso(c) ? ` · ${textoAcesso(c)}` : ''}{c.tem_braco ? '' : ' · sem braço rodando'}
+                </option>
+              ))}
+            </select>
+            {conta && conta.tem_acesso === false && (
+              <button type="button" onClick={() => setCadastro({ conta })} disabled={bloqueado}
+                className="inline-flex items-center gap-1 text-[11px] font-bold transition hover:brightness-125" style={{ color: '#fcd34d' }}
+                title="Abre o cadastro desta conta para informar o login e a senha">
+                <KeyRound className="w-3 h-3" /> cadastrar acesso
+              </button>
+            )}
+            {ctx.pode_criar_conta && (
+              <button type="button" onClick={() => setCadastro({ nova: true })} disabled={bloqueado}
+                className="inline-flex items-center gap-1 text-[11px] font-bold transition hover:brightness-125" style={{ color: '#2bcdb9' }}
+                title="Cadastra uma conta nesta casa sem sair daqui">
+                <Plus className="w-3 h-3" /> adicionar conta
+              </button>
+            )}
+          </div>
         </Linha>
 
-        <Linha rotulo="Stake por aposta" ajuda="Valor de cada aposta em real. Em papel não é usada.">
+        <Linha compacto={compacto} rotulo="Stake por aposta" ajuda="Valor de cada aposta em real. Em papel não é usada.">
           <div className="flex items-center gap-2">
             <input type="number" min="0" step="0.5" inputMode="decimal" value={stake} onChange={(e) => setStake(e.target.value)}
               disabled={bloqueado} placeholder="ex.: 5" className={`${input} w-28 mike-no-spin`} aria-label="Stake por aposta" />
@@ -379,7 +420,7 @@ const AutomacaoBot = forwardRef(function AutomacaoBot({ botId = null, botNome = 
           </div>
         </Linha>
 
-        <Linha rotulo="Queda máxima de odd" ajuda="Se a odd da casa cair mais que isso em relação à do sinal, a aposta não é enviada.">
+        <Linha compacto={compacto} rotulo="Queda máxima de odd" ajuda="Se a odd da casa cair mais que isso em relação à do sinal, a aposta não é enviada.">
           <div className="flex items-center gap-2">
             <input type="number" min="0" max="99.9" step="0.5" value={queda} onChange={(e) => setQueda(e.target.value)}
               disabled={bloqueado} className={`${input} w-28 mike-no-spin`} aria-label="Queda máxima de odd em porcento" />
@@ -387,12 +428,12 @@ const AutomacaoBot = forwardRef(function AutomacaoBot({ botId = null, botNome = 
           </div>
         </Linha>
 
-        <Linha rotulo="Reenvios" ajuda="Quantas vezes tentar de novo quando a casa devolve a odd mudada (dentro da queda permitida).">
+        <Linha compacto={compacto} rotulo="Reenvios" ajuda="Quantas vezes tentar de novo quando a casa devolve a odd mudada (dentro da queda permitida).">
           <input type="number" min="0" max="10" step="1" value={reenvios} onChange={(e) => setReenvios(e.target.value)}
             disabled={bloqueado} className={`${input} w-28 mike-no-spin`} aria-label="Reenvios" />
         </Linha>
 
-        <Linha rotulo="Teto por jogo" ajuda="Máximo de apostas deste bot no mesmo jogo. Vazio = sem teto.">
+        <Linha compacto={compacto} rotulo="Teto por jogo" ajuda="Máximo de apostas deste bot no mesmo jogo. Vazio = sem teto.">
           <div className="flex items-center gap-4 flex-wrap">
             <input type="number" min="1" step="1" value={teto} onChange={(e) => setTeto(e.target.value)}
               disabled={bloqueado} placeholder="sem teto" className={`${input} w-28 mike-no-spin`} aria-label="Teto de apostas por jogo" />
@@ -405,19 +446,26 @@ const AutomacaoBot = forwardRef(function AutomacaoBot({ botId = null, botNome = 
         </Linha>
       </div>
 
-      <div className="flex items-center gap-2 flex-wrap mt-3 pl-11">
+      <div className={`flex items-center gap-2 flex-wrap mt-3 ${recuo}`}>
         <span className="inline-flex items-center gap-1.5 text-[11px] text-[--mike-fg-muted]">
-          <Info className="w-3.5 h-3.5" style={{ color: '#2bcdb9' }} /> {usoTexto}
+          <Info className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#2bcdb9' }} /> {usoTexto}
         </span>
       </div>
+      {compacto && hoje && (salvo.modo || 'desligado') !== 'desligado' && (
+        <p className="text-[11px] text-[--mike-fg-muted] mt-1.5" data-bloco="captura-hoje">
+          Hoje, em <b style={{ color: corDoModo(salvo.modo) }}>{salvo.modo}</b>: {hoje.sinais_hoje ?? 0} sinal(is);{' '}
+          {salvo.modo === 'real' ? 'aceitas' : 'a casa aceitaria'} <b className="text-[--mike-fg]">{hoje.pegou_hoje ?? 0} de {hoje.base_hoje ?? 0}</b>
+          {hoje.base_hoje > 0 && hoje.captura_hoje_pct !== null && hoje.captura_hoje_pct !== undefined ? ` (${hoje.captura_hoje_pct}% de captura)` : ' (sem captura ainda)'}.
+        </p>
+      )}
 
       {!bloqueado && falta && (
-        <p className="flex items-center gap-1.5 text-[11px] font-semibold mt-2 pl-11" style={{ color: '#fcd34d' }}>
+        <p className={`flex items-center gap-1.5 text-[11px] font-semibold mt-2 ${recuo}`} style={{ color: '#fcd34d' }}>
           <AlertTriangle className="w-3.5 h-3.5" /> {falta}
         </p>
       )}
 
-      <div className="flex items-center gap-2 flex-wrap mt-3 pl-11">
+      <div className={`flex items-center gap-2 flex-wrap mt-3 ${recuo}`}>
         {botId ? (
           <>
             <button type="button" onClick={salvarAqui} disabled={bloqueado || !mudou || Boolean(ocupado)}
@@ -457,6 +505,13 @@ const AutomacaoBot = forwardRef(function AutomacaoBot({ botId = null, botNome = 
         />
       )}
       {analise && botId && <AnaliseAutomacao botId={botId} onFechar={() => setAnalise(false)} />}
+      {cadastro && (
+        <ModalConta conta={cadastro.conta || null} admin={Boolean(ctx.admin)} camada="z-[60]"
+          casas={[{ codigo: ctx.casa, nome: ctx.casa_nome }]} casaFixa={ctx.casa}
+          donoFixo={ctx.admin ? ctx.dono_id : null}
+          usuarios={ctx.admin && ctx.dono_id ? [{ id: ctx.dono_id, nome: ctx.dono_nome || 'dono do bot', email: `#${ctx.dono_id}` }] : []}
+          onFechar={() => setCadastro(null)} onGravou={contaGravada} avisar={avisar} />
+      )}
     </>,
   );
 });

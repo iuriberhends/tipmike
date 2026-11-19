@@ -30,7 +30,7 @@ import IconeEsporte from '../shared/IconeEsporte.jsx';
 import BacktestModal from './BacktestModal';
 import { ModalHistorico } from './Historico';
 import { ApiBots, ApiBotsOrg, ApiAutomacao } from '../lib/api';
-import AnaliseAutomacao from '../shared/AnaliseAutomacao.jsx';
+import AutomacaoBot from '../shared/AutomacaoBot.jsx';
 import { automacaoDisponivel } from '../lib/recursos.js';
 import { usePais } from '../context/PaisContext.jsx';
 import { corDaCasa } from '../lib/pais.js';
@@ -234,35 +234,71 @@ function CorpoExpandido({ bot, stats, statsLoading, onAcao, loadingAcao, isAtivo
 // `auto` = { modo, sinais_hoje, base_hoje, pegou_hoje, captura_hoje_pct } ou undefined
 // (bot sem linha de automação = desligado). Clicar abre a análise dos 7 dias.
 const SELO_MODO = {
-  desligado: { rotulo: 'Auto: desligado', cor: '#8ba5a6', fundo: 'rgba(50, 100, 104, 0.2)', borda: 'rgba(50, 100, 104, 0.5)' },
-  papel:     { rotulo: 'Papel',           cor: '#fbbf24', fundo: 'rgba(251, 191, 36, 0.12)', borda: 'rgba(251, 191, 36, 0.45)' },
-  real:      { rotulo: 'Real',            cor: '#fb7185', fundo: 'rgba(244, 63, 94, 0.14)',  borda: 'rgba(244, 63, 94, 0.5)' },
+  desligado: { rotulo: 'Automatizar', cor: '#8ba5a6', fundo: 'rgba(50, 100, 104, 0.2)', borda: 'rgba(50, 100, 104, 0.5)' },
+  papel:     { rotulo: 'Papel',       cor: '#fbbf24', fundo: 'rgba(251, 191, 36, 0.12)', borda: 'rgba(251, 191, 36, 0.45)' },
+  real:      { rotulo: 'Real',        cor: '#fb7185', fundo: 'rgba(244, 63, 94, 0.14)',  borda: 'rgba(244, 63, 94, 0.5)' },
 };
 
-function SeloAutomacao({ auto, onAbrir }) {
+// Botão de automatizar de cada bot. A cor diz o estado (cinza desligado, amarelo papel, vermelho real);
+// clicar abre o painel de automação sem sair da lista. `bloqueio` (texto) = não dá para automatizar este bot.
+function BotaoAutomacao({ auto, bloqueio, onAbrir }) {
   const modo = auto?.modo || 'desligado';
   const s = SELO_MODO[modo] || SELO_MODO.desligado;
   const ligado = modo !== 'desligado';
   const temBase = ligado && auto && auto.base_hoje > 0;
   const captura = !ligado ? '' : (temBase ? `${auto.captura_hoje_pct}% hoje` : 'sem captura hoje');
-  const dica = !ligado
-    ? 'Automação desligada: o bot só simula. Clique para ver a análise.'
-    : (modo === 'real'
-      ? `Apostando de verdade. Hoje: ${auto?.pegou_hoje ?? 0} aceita(s) de ${auto?.base_hoje ?? 0} enviada(s), em ${auto?.sinais_hoje ?? 0} sinal(is). Clique para a análise.`
-      : `Em papel (sem dinheiro). Hoje: a casa aceitaria ${auto?.pegou_hoje ?? 0} de ${auto?.base_hoje ?? 0} julgado(s), em ${auto?.sinais_hoje ?? 0} sinal(is). Clique para a análise.`);
+  const dica = bloqueio
+    || (!ligado
+      ? 'Automação desligada: o bot só simula. Clique para automatizar.'
+      : (modo === 'real'
+        ? `Apostando de verdade. Hoje: ${auto?.pegou_hoje ?? 0} aceita(s) de ${auto?.base_hoje ?? 0} enviada(s), em ${auto?.sinais_hoje ?? 0} sinal(is). Clique para abrir a automação.`
+        : `Em papel (sem dinheiro). Hoje: a casa aceitaria ${auto?.pegou_hoje ?? 0} de ${auto?.base_hoje ?? 0} julgado(s), em ${auto?.sinais_hoje ?? 0} sinal(is). Clique para abrir a automação.`));
   return (
-    <button type="button" onClick={onAbrir} title={dica}
-      className="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 flex-shrink-0 transition hover:brightness-125"
+    <button type="button" onClick={onAbrir} disabled={Boolean(bloqueio)} title={dica}
+      aria-label={`Automação do bot: ${bloqueio || modo}`} data-automacao={bloqueio ? 'bloqueado' : modo}
+      className="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 flex-shrink-0 transition hover:brightness-125 disabled:opacity-45 disabled:cursor-not-allowed disabled:hover:brightness-100"
       style={{ backgroundColor: s.fundo, color: s.cor, border: `0.5px solid ${s.borda}` }}>
-      <Zap className="w-3 h-3" />
+      <Zap className="w-3.5 h-3.5" fill={ligado ? 'currentColor' : 'none'} />
       {s.rotulo}
       {captura && <span className="normal-case font-semibold" style={{ opacity: temBase ? 1 : 0.7 }}>· {captura}</span>}
     </button>
   );
 }
 
+// Painel de automação aberto de dentro da lista. É a MESMA seção "Automação" da tela do bot (shared/AutomacaoBot.jsx),
+// em modo compacto: modo, conta, stake, queda de odd, reenvios, uma por seleção, teto por jogo, pausar e análise.
+function PainelAutomacao({ bot, hoje, avisar, onFechar, onMudou }) {
+  const modo = hoje?.modo || 'desligado';
+  const s = SELO_MODO[modo] || SELO_MODO.desligado;
+  useEffect(() => {
+    const tecla = (e) => { if (e.key === 'Escape') onFechar(); };
+    window.addEventListener('keydown', tecla);
+    return () => window.removeEventListener('keydown', tecla);
+  }, [onFechar]);
+  return (
+    <div className="fixed inset-0 z-40 flex items-start justify-center p-4 overflow-y-auto" style={{ backgroundColor: 'rgba(3, 6, 9, 0.78)' }} onClick={onFechar}>
+      <div className="w-full max-w-2xl rounded-2xl p-5 my-8" role="dialog" aria-modal="true" aria-label={`Automação do bot ${bot.nome}`}
+        style={{ backgroundColor: 'rgba(10, 18, 22, 0.98)', border: '0.5px solid rgba(50, 100, 104, 0.5)' }}
+        onClick={(e) => e.stopPropagation()} data-painel="automacao-bot">
+        <div className="flex items-center gap-2 mb-4">
+          <Zap className="w-4 h-4 flex-shrink-0" style={{ color: s.cor }} fill={modo !== 'desligado' ? 'currentColor' : 'none'} />
+          <div className="min-w-0">
+            <h3 className="text-sm font-black text-[--mike-fg] truncate">Automação · {bot.nome}</h3>
+            <p className="text-[10px] text-[--mike-fg-muted]">Bot {String(bot.id).padStart(6, '0')} · {bot.casa}</p>
+          </div>
+          <div className="flex-1" />
+          <button type="button" onClick={onFechar} className="text-[--mike-fg-muted] hover:text-[--mike-fg] transition" title="Fechar (Esc)">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <AutomacaoBot compacto botId={bot.id} botNome={bot.nome} casa={bot.casa} avisar={avisar} hoje={hoje} onMudou={onMudou} />
+      </div>
+    </div>
+  );
+}
+
 function LinhaBot({ bot, expandido, onToggleExpand, onAcao, loadingAcao, onAbrirHistorico, stats, statsLoading, onBaixarCsv, loadingCsv,
-                    onToggleFav, favLoading, modoSelecao, selecionado, onToggleSel, grupo, auto, mostrarSeloAuto, onAbrirAnalise }) {
+                    onToggleFav, favLoading, modoSelecao, selecionado, onToggleSel, grupo, auto, autoDisponivel, autoBloqueio, onAbrirAutomacao }) {
   const { buscarCasa } = usePais();
   const casaCad = buscarCasa(bot.casa);
   const casa = casaCad
@@ -319,7 +355,7 @@ function LinhaBot({ bot, expandido, onToggleExpand, onAcao, loadingAcao, onAbrir
         }}>
           {isAtivo ? <Activity className="w-3 h-3" /> : <Power className="w-3 h-3" />}
           {/* nov/2026: era "Apostando / Automatizar". Bot ligado SIMULA; quem diz se ele
-              aposta de verdade é o selo da automação ao lado (Papel / Real). */}
+              aposta de verdade é o botão de automação ao lado (Automatizar / Papel / Real). */}
           {isAtivo ? 'Simulando' : 'Parado'}
         </div>
 
@@ -333,7 +369,7 @@ function LinhaBot({ bot, expandido, onToggleExpand, onAcao, loadingAcao, onAbrir
           </div>
         )}
 
-        {mostrarSeloAuto && <SeloAutomacao auto={auto} onAbrir={() => onAbrirAnalise(bot.id)} />}
+        {autoDisponivel && <BotaoAutomacao auto={auto} bloqueio={autoBloqueio} onAbrir={() => onAbrirAutomacao(bot)} />}
 
         <span className="text-[11px] text-[--mike-fg-muted] font-mono flex-shrink-0">
           {bot.id.toString().padStart(6, '0')}
@@ -796,18 +832,31 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
   // ============================================================
   // Uma chamada por carga da lista. Com a API antiga (sem as rotas) nada
   // aparece e a lista segue igual; falha de rede também não derruba a tela.
-  const [autoModos, setAutoModos] = useState({ casas: [], itens: {} });
-  const [analiseBotId, setAnaliseBotId] = useState(null);
+  const [autoModos, setAutoModos] = useState({ disponivel: false, casas: [], itens: {}, permissao: null });
+  const [painelAuto, setPainelAuto] = useState(null);       // bot com o painel de automação aberto
+  const [autoSeq, setAutoSeq] = useState(0);                // muda quando algo é gravado no painel: relê os modos
   useEffect(() => {
     let vivo = true;
     automacaoDisponivel().then((tem) => {
       if (!tem || !vivo) return;
       ApiAutomacao.modos()
-        .then((d) => { if (vivo) setAutoModos({ casas: d.casas_com_braco || [], itens: d.itens || {} }); })
+        .then((d) => { if (vivo) setAutoModos({ disponivel: true, casas: d.casas_com_braco || [], itens: d.itens || {}, permissao: d.permissao || null }); })
         .catch(() => {});
     });
     return () => { vivo = false; };
-  }, [bots]);
+  }, [bots, autoSeq]);
+  // Por que o botão de automatizar deste bot fica desabilitado ('' = pode). Bot que já está em papel ou real
+  // nunca fica travado aqui: o painel abre (para ver, pausar ou analisar) e o servidor diz o que dá para mudar.
+  const bloqueioAuto = useCallback((bot) => {
+    const modo = autoModos.itens[String(bot.id)]?.modo || 'desligado';
+    if (modo !== 'desligado') return '';
+    if (!autoModos.casas.includes(bot.casa)) return 'Esta casa ainda não tem automação.';
+    const perm = autoModos.permissao;
+    if (perm && !perm.admin && (!perm.pode_automatizar || !(perm.casas_liberadas || []).includes(bot.casa))) {
+      return 'Peça liberação ao administrador.';
+    }
+    return '';
+  }, [autoModos]);
 
   // ============================================================
   // v50 — FAVORITOS E GRUPOS
@@ -1285,8 +1334,9 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
                 onToggleSel={toggleSel}
                 grupo={(bot.grupo_id != null && visao !== bot.grupo_id) ? grupoPorId[bot.grupo_id] : null}
                 auto={autoModos.itens[String(bot.id)]}
-                mostrarSeloAuto={autoModos.casas.includes(bot.casa)}
-                onAbrirAnalise={setAnaliseBotId}
+                autoDisponivel={autoModos.disponivel}
+                autoBloqueio={bloqueioAuto(bot)}
+                onAbrirAutomacao={setPainelAuto}
               />
             ))}
           </div>
@@ -1374,7 +1424,10 @@ export default function App({ onNavegar: onNavegarExterno } = {}) {
         <ModalHistorico botId={historicoBotId} aberto={!!historicoBotId} onClose={() => setHistoricoBotId(null)} />
       )}
 
-      {analiseBotId && <AnaliseAutomacao botId={analiseBotId} onFechar={() => setAnaliseBotId(null)} />}
+      {painelAuto && (
+        <PainelAutomacao bot={painelAuto} hoje={autoModos.itens[String(painelAuto.id)]} avisar={adicionarToast}
+          onFechar={() => setPainelAuto(null)} onMudou={() => setAutoSeq((n) => n + 1)} />
+      )}
 
       {modoSelecao && (
         <BarraSelecao

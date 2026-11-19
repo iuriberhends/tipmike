@@ -3,13 +3,15 @@
 //
 // Para todo mundo:
 //   • Meu uso: o que o administrador liberou e quanto já está em uso
-//   • Contas das casas (por apelido — nunca login nem senha)
+//   • Contas das casas (apelido, estado e se o acesso está cadastrado;
+//     login e senha são só de escrita e ficam num cofre, nunca na tela)
 //   • Bots com automação ligada (papel ou real), com pausar e análise
 //   • Histórico: quem mudou o quê
 // Só administrador:
 //   • Trava geral: liga/desliga tudo que é real, stake máxima, perda
 //     máxima por dia, perdido hoje
-//   • vê as contas e os bots de todos; cria conta e define o dono
+//   • vê as contas e os bots de todos; cria conta para qualquer dono
+//     (usuário com automação liberada cria a própria, em casa liberada)
 //
 // As regras valem no servidor (routers/automacao.py). Usuário comum
 // recebe só o que é dele; a trava geral nem é pedida para ele.
@@ -26,52 +28,10 @@ import AnaliseAutomacao from '../shared/AnaliseAutomacao.jsx';
 import { corDoModo, fmtDinheiro } from '../shared/AutomacaoBot.jsx';
 import { ApiAdmin, ApiAutomacao } from '../lib/api.js';
 import { usePais } from '../context/PaisContext.jsx';
+// cadastro da conta (e do acesso dela) é um componente só, usado aqui e no painel de automação do bot
+import { CARD, INPUT, Campo, corEstado, fmtData, Modal, ModalConta } from '../shared/ContaCasa.jsx';
 
-const CARD = { backgroundColor: 'rgba(11, 21, 25, 0.6)', border: '0.5px solid rgba(50, 100, 104, 0.4)' };
-const INPUT = { backgroundColor: 'rgba(6, 11, 15, 0.8)', border: '0.5px solid rgba(50, 100, 104, 0.4)', color: '#eef8f6' };
 const LINHA = { borderTop: '0.5px solid rgba(50, 100, 104, 0.25)' };
-const ESTADOS_CONTA = [
-  { value: 'ativa', label: 'Ativa', cor: '#2bcdb9' },
-  { value: 'pausada', label: 'Pausada', cor: '#fbbf24' },
-  { value: 'limitada', label: 'Limitada pela casa', cor: '#fb923c' },
-  { value: 'encerrada', label: 'Encerrada', cor: '#f43f5e' },
-];
-const corEstado = (e) => (ESTADOS_CONTA.find((x) => x.value === e) || ESTADOS_CONTA[0]).cor;
-
-function fmtData(iso) {
-  if (!iso) return '—';
-  try {
-    const d = new Date(iso);
-    return `${d.toLocaleDateString('pt-BR')} ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
-  } catch { return '—'; }
-}
-
-function Modal({ titulo, onFechar, children, largura = 'max-w-md', perigo = false }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(3, 6, 9, 0.78)' }} onClick={onFechar}>
-      <div className={`w-full ${largura} rounded-2xl p-6`} role="dialog" aria-modal="true" aria-label={titulo}
-        style={{ ...CARD, backgroundColor: 'rgba(10, 18, 22, 0.98)', ...(perigo ? { border: '0.5px solid rgba(244, 63, 94, 0.5)' } : {}) }}
-        onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-black">{titulo}</h3>
-          <button type="button" onClick={onFechar} className="text-slate-400 hover:text-slate-100 transition" title="Fechar"><X className="w-4 h-4" /></button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function Campo({ rotulo, children, ajuda }) {
-  return (
-    <div>
-      <label className="block text-[11px] font-semibold text-slate-400 mb-1">{rotulo}</label>
-      {children}
-      {ajuda && <p className="text-[10px] text-slate-500 mt-1 leading-relaxed">{ajuda}</p>}
-    </div>
-  );
-}
-
 function Numero({ rotulo, valor, destaque }) {
   return (
     <div className="rounded-xl px-4 py-3 min-w-[130px]" style={{ backgroundColor: 'rgba(6, 11, 15, 0.6)', border: '0.5px solid rgba(50, 100, 104, 0.3)' }}>
@@ -231,100 +191,6 @@ function TravaGeral({ avisar }) {
   );
 }
 
-// ═════════════════════════ Conta: criar / editar ═════════════════════════
-function ModalConta({ conta, admin, usuarios, casas, onFechar, onGravou, avisar }) {
-  const nova = !conta;
-  const [apelido, setApelido] = useState(conta?.apelido || '');
-  const [casa, setCasa] = useState(conta?.casa || (casas[0]?.codigo || ''));
-  const [dono, setDono] = useState(conta ? String(conta.usuario_id) : '');
-  const [moeda, setMoeda] = useState(conta?.moeda || '');
-  const [estado, setEstado] = useState(conta?.estado || 'ativa');
-  const [obs, setObs] = useState(conta?.observacao || '');
-  const [erro, setErro] = useState('');
-  const [ocupado, setOcupado] = useState(false);
-
-  const gravar = async () => {
-    setErro('');
-    if (admin && apelido.trim().length < 2) { setErro('Dê um apelido de pelo menos 2 letras.'); return; }
-    if (nova && (!casa || !dono || !/^[A-Za-z]{3}$/.test(moeda.trim()))) { setErro('Escolha a casa e o dono, e informe a moeda com 3 letras (PEN, BRL...).'); return; }
-    setOcupado(true);
-    try {
-      let r;
-      if (nova) {
-        r = await ApiAutomacao.criarConta({
-          apelido: apelido.trim(), casa, usuario_id: Number(dono), moeda: moeda.trim().toUpperCase(),
-          estado, observacao: obs.trim() || null,
-        });
-      } else {
-        const corpo = {};
-        if (admin && apelido.trim() !== conta.apelido) corpo.apelido = apelido.trim();
-        if (admin && Number(dono) !== conta.usuario_id) corpo.usuario_id = Number(dono);
-        if (estado !== conta.estado) corpo.estado = estado;
-        if ((obs.trim() || null) !== (conta.observacao || null)) corpo.observacao = obs.trim() || null;
-        if (Object.keys(corpo).length === 0) { onFechar(); return; }
-        r = await ApiAutomacao.editarConta(conta.id, corpo);
-        if (r.bots_desligados?.length) {
-          avisar(`A conta deixou de estar ativa: ${r.bots_desligados.length} bot(s) em real foram desligados (${r.bots_desligados.join(', ')}).`, 'warn');
-        }
-      }
-      onGravou(r);
-    } catch (e) {
-      setErro((e && e.message) || 'Não deu para gravar a conta.');
-    } finally { setOcupado(false); }
-  };
-
-  const campo = 'w-full px-3 py-2 rounded-md text-sm outline-none focus:ring-1 focus:ring-mike-accent/60';
-  return (
-    <Modal titulo={nova ? 'Nova conta de casa' : `Conta — ${conta.apelido}`} onFechar={() => !ocupado && onFechar()}>
-      <div className="flex flex-col gap-3">
-        <Campo rotulo="Apelido" ajuda="Só um nome para reconhecer a conta. Nunca escreva login, senha ou token aqui.">
-          <input value={apelido} onChange={(e) => setApelido(e.target.value)} maxLength={60} autoFocus={nova} disabled={!admin || ocupado}
-            placeholder="ex.: Jokerbet do João" className={campo} style={{ ...INPUT, opacity: admin ? 1 : 0.6 }} />
-        </Campo>
-        <div className="flex gap-3">
-          <div className="flex-1">
-            <Campo rotulo="Casa">
-              <select value={casa} onChange={(e) => setCasa(e.target.value)} disabled={!nova || ocupado} className={campo} style={{ ...INPUT, opacity: nova ? 1 : 0.6 }}>
-                {!nova && !casas.some((c) => c.codigo === casa) && <option value={casa}>{casa}</option>}
-                {casas.map((c) => <option key={c.codigo} value={c.codigo}>{c.nome || c.codigo}</option>)}
-              </select>
-            </Campo>
-          </div>
-          <div className="w-28">
-            <Campo rotulo="Moeda">
-              <input value={moeda} onChange={(e) => setMoeda(e.target.value.toUpperCase())} maxLength={3} disabled={!nova || ocupado}
-                placeholder="PEN" className={campo} style={{ ...INPUT, opacity: nova ? 1 : 0.6 }} />
-            </Campo>
-          </div>
-        </div>
-        {admin && (
-          <Campo rotulo="Dono (usuário)" ajuda={!nova && conta.bots_vinculados > 0 ? `${conta.bots_vinculados} bot(s) usam esta conta: para trocar o dono, tire a conta deles antes.` : undefined}>
-            <select value={dono} onChange={(e) => setDono(e.target.value)} disabled={ocupado || (!nova && conta.bots_vinculados > 0)} className={campo} style={INPUT}>
-              <option value="">escolha o dono</option>
-              {usuarios.map((u) => <option key={u.id} value={u.id}>{u.nome} ({u.email})</option>)}
-            </select>
-          </Campo>
-        )}
-        <Campo rotulo="Estado" ajuda="Só conta ativa aposta em real. Tirar de ativa desliga na hora os bots em real desta conta.">
-          <select value={estado} onChange={(e) => setEstado(e.target.value)} disabled={ocupado} className={campo} style={INPUT}>
-            {ESTADOS_CONTA.map((e) => <option key={e.value} value={e.value}>{e.label}</option>)}
-          </select>
-        </Campo>
-        <Campo rotulo="Observação">
-          <textarea value={obs} onChange={(e) => setObs(e.target.value)} maxLength={500} rows={2} disabled={ocupado} className={campo} style={INPUT} />
-        </Campo>
-        {erro && <p className="text-xs font-semibold" style={{ color: '#fca5a5' }}>{erro}</p>}
-        <button type="button" onClick={gravar} disabled={ocupado}
-          className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-bold transition disabled:opacity-60"
-          style={{ backgroundColor: '#2bcdb9', color: '#060b0f' }}>
-          {ocupado && <Loader2 className="w-4 h-4 animate-spin" />}
-          {nova ? 'Criar conta' : 'Gravar'}
-        </button>
-      </div>
-    </Modal>
-  );
-}
-
 // ═════════════════════════ Tela ═════════════════════════
 export default function Automacao({ onNavegar }) {
   const { casas: casasPais, buscarCasa } = usePais();
@@ -371,8 +237,12 @@ export default function Automacao({ onNavegar }) {
   const casasParaConta = useMemo(() => {
     const comBraco = (r?.casas_com_braco || []).map((c) => ({ codigo: c.codigo, nome: c.nome }));
     const outras = (casasPais || []).filter((c) => !comBraco.some((b) => b.codigo === c.codigo)).map((c) => ({ codigo: c.codigo, nome: c.nome }));
-    return [...comBraco, ...outras];
+    const todas = [...comBraco, ...outras];
+    if (r?.admin) return todas;
+    const liberadas = r?.limites?.casas_liberadas || [];
+    return todas.filter((c) => liberadas.includes(c.codigo));
   }, [r, casasPais]);
+  const podeCriarConta = Boolean(r?.admin || (r?.limites?.pode_automatizar && casasParaConta.length > 0));
 
   const pausarBot = async (b) => {
     setOcupadoBot(b.bot_id);
@@ -435,7 +305,7 @@ export default function Automacao({ onNavegar }) {
               )}
               <p className="text-[11px] text-slate-500 mt-1">
                 Casas que já têm automação: {(r.casas_com_braco || []).length ? r.casas_com_braco.map((c) => c.nome).join(', ') : 'nenhuma no momento'}.
-                Para ligar um bot, abra o bot e use a seção Automação.
+                Para ligar um bot, use o botão de automação dele na lista de bots (ou a seção Automação dentro do bot).
               </p>
             </section>
 
@@ -446,7 +316,7 @@ export default function Automacao({ onNavegar }) {
                 <h2 className="text-sm font-black tracking-tight">Contas das casas</h2>
                 <span className="text-[11px] text-slate-500">{admin ? `${r.contas.length} conta(s), de todos os usuários` : 'as suas contas'} · identificadas por apelido</span>
                 <div className="flex-1" />
-                {admin && (
+                {podeCriarConta && (
                   <button type="button" onClick={() => setModalConta({ nova: true })}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition"
                     style={{ backgroundColor: '#2bcdb9', color: '#060b0f', boxShadow: '0 4px 12px rgba(43, 205, 185, 0.3)' }}>
@@ -456,8 +326,9 @@ export default function Automacao({ onNavegar }) {
               </div>
               {r.contas.length === 0 ? (
                 <EstadoVazio icone={Wallet} titulo="Nenhuma conta ainda"
-                  descricao={admin ? 'Crie a conta e escolha o dono. Só o apelido fica guardado: nada de login ou senha.'
-                    : `Quem cadastra a conta e define o dono é o administrador.${lim.pode_automatizar ? ' Para medir em papel você não precisa de conta.' : ''}`} />
+                  descricao={admin ? 'Crie a conta e escolha o dono. O login e a senha da conta vão para um cofre e nunca aparecem na tela.'
+                    : (podeCriarConta ? 'Crie a sua conta numa casa liberada para você. Para medir em papel não precisa de conta.'
+                      : 'Você ainda não pode criar conta: peça liberação ao administrador.')} />
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
@@ -468,6 +339,7 @@ export default function Automacao({ onNavegar }) {
                         {admin && <th className="py-2 pr-3 font-bold">Dono</th>}
                         <th className="py-2 pr-3 font-bold">Estado</th>
                         <th className="py-2 pr-3 font-bold">Moeda</th>
+                        <th className="py-2 pr-3 font-bold" title="Login e senha da conta, guardados no cofre da máquina do robô. O valor nunca aparece aqui.">Acesso</th>
                         <th className="py-2 pr-3 font-bold text-right">Bots</th>
                         <th className="py-2 pr-3 font-bold text-right" title="Maior stake que a casa já aceitou nesta conta">Maior stake aceita</th>
                         <th className="py-2 pr-3 font-bold text-right" title="Menor stake a que a casa já cortou uma aposta nesta conta">Corte da casa</th>
@@ -486,6 +358,14 @@ export default function Automacao({ onNavegar }) {
                           {admin && <td className="py-2.5 pr-3 text-slate-300">{c.dono_nome || `#${c.usuario_id}`}</td>}
                           <td className="py-2.5 pr-3"><span className="font-bold" style={{ color: corEstado(c.estado) }}>● {c.estado}</span></td>
                           <td className="py-2.5 pr-3 text-slate-400">{c.moeda}</td>
+                          <td className="py-2.5 pr-3">
+                            {c.tem_acesso
+                              ? <span style={{ color: '#5eead4' }} title={`Cadastrado em ${fmtData(c.acesso_em)}${c.acesso_por ? ` por ${c.acesso_por}` : ''}`}>cadastrado</span>
+                              : <span style={{ color: c.acesso_estado === 'ilegivel' ? '#fcd34d' : '#6c8689' }}
+                                  title={c.acesso_estado === 'ilegivel' ? 'Havia acesso, mas o cofre não abriu: cadastre de novo' : 'Sem login e senha cadastrados: a conta não aposta em real'}>
+                                  {c.acesso_estado === 'ilegivel' ? 'cofre não abriu' : 'sem acesso'}
+                                </span>}
+                          </td>
                           <td className="py-2.5 pr-3 text-right text-slate-300">
                             {c.bots_vinculados}{c.bots_real > 0 && <span style={{ color: '#f43f5e' }}> ({c.bots_real} em real)</span>}
                           </td>
@@ -500,7 +380,7 @@ export default function Automacao({ onNavegar }) {
                             <div className="flex justify-end">
                               <button type="button" onClick={() => setModalConta({ conta: c })}
                                 className="p-1.5 rounded-md text-slate-400 hover:text-slate-100 transition"
-                                title={admin ? 'Editar apelido, dono, estado e observação' : 'Mudar o estado ou a observação'}>
+                                title={admin ? 'Editar apelido, dono, estado, observação e acesso' : 'Mudar o estado, a observação ou o acesso'}>
                                 <Pencil className="w-3.5 h-3.5" />
                               </button>
                             </div>

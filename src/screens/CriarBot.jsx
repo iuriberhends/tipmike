@@ -275,6 +275,36 @@ const INDIV_ALVOS = [
 // COMPONENTES BASE
 // ============================================================
 
+// MOMENTO: estágio do jogo que o motor lê do tick. A escala é a mesma (momentoMin / momentoMax), o que muda é o
+// nome de cada estágio. Basquete: 1Q=1, 2Q e intervalo=2, 3Q=3, 4Q e prorrogação=4.
+// Futebol (nov/2026): 1º tempo=1, intervalo=2, 2º tempo=3, prorrogação=4.
+const MOMENTO_BASQUETE_MIN = [
+  { value: '', label: 'comeco do jogo (sem minimo)' },
+  { value: '1', label: '1o quarto' },
+  { value: '2', label: '2o quarto' },
+  { value: '3', label: '3o quarto (2o tempo)' },
+  { value: '4', label: '4o quarto' },
+];
+const MOMENTO_BASQUETE_MAX = [
+  { value: '1', label: '1o quarto (so o comeco)' },
+  { value: '2', label: '1o tempo (1Q+2Q) - recomendado' },
+  { value: '3', label: '3o quarto' },
+  { value: '4', label: '4o quarto / prorrogacao' },
+  { value: '', label: 'fim do jogo (sem maximo)' },
+];
+const MOMENTO_FUTEBOL_MIN = [
+  { value: '', label: 'começo do jogo (sem mínimo)' },
+  { value: '3', label: '2º tempo' },
+];
+const MOMENTO_FUTEBOL_MAX = [
+  { value: '2', label: '1º tempo' },
+  { value: '', label: 'fim do jogo (sem máximo)' },
+];
+// valor gravado fora da lista continua aparecendo (e sendo respeitado)
+const comGravado = (opcoes, valor) => (opcoes.some((o) => o.value === valor)
+  ? opcoes
+  : [...opcoes, { value: valor, label: `estágio ${valor} (gravado no bot)` }]);
+
 function MikeSelect({ value, onChange, options, placeholder = '', disabled = false }) {
   const [aberto, setAberto] = useState(false);
   const [pos, setPos] = useState(null);
@@ -3409,32 +3439,21 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
           <div className="pt-3 mt-1" style={{ borderTop: '0.5px solid rgba(50,100,104,0.25)' }}>
             <label className="inline-flex items-center gap-2 cursor-pointer">
               <input type="checkbox" className="mike-checkbox" checked={momentoAtivo} onChange={(e) => setMomentoAtivo(e.target.checked)} />
-              <span className="text-xs text-[--mike-fg-soft]">Momento: so apostar numa faixa do jogo (ex.: so no comeco, com a linha da casa ainda defasada; ou so do 2o tempo em diante).</span>
+              <span className="text-xs text-[--mike-fg-soft]">{esporte === 'fifa'
+                ? 'Momento: só apostar no 1º tempo ou só no 2º tempo.'
+                : 'Momento: so apostar numa faixa do jogo (ex.: so no comeco, com a linha da casa ainda defasada; ou so do 2o tempo em diante).'}</span>
             </label>
             {momentoAtivo && (
               <div className="flex items-center gap-3 flex-wrap mt-2">
                 <span className="text-xs text-[--mike-fg-soft]">A partir do</span>
                 <div className="w-56">
-                  <MikeSelect value={momentoMin} onChange={setMomentoMin} options={[
-                    { value: '', label: 'comeco do jogo (sem minimo)' },
-                    { value: '1', label: '1o quarto' },
-                    { value: '2', label: '2o quarto' },
-                    { value: '3', label: '3o quarto (2o tempo)' },
-                    { value: '4', label: '4o quarto' },
-                    // valor gravado fora da lista continua aparecendo (e sendo respeitado)
-                    ...(['', '1', '2', '3', '4'].includes(momentoMin) ? [] : [{ value: momentoMin, label: `estagio ${momentoMin} (gravado no bot)` }]),
-                  ]} />
+                  <MikeSelect value={momentoMin} onChange={setMomentoMin}
+                    options={comGravado(esporte === 'fifa' ? MOMENTO_FUTEBOL_MIN : MOMENTO_BASQUETE_MIN, momentoMin)} />
                 </div>
                 <span className="text-xs text-[--mike-fg-soft]">ate o fim do</span>
                 <div className="w-56">
-                  <MikeSelect value={momentoMax} onChange={setMomentoMax} options={[
-                    { value: '1', label: '1o quarto (so o comeco)' },
-                    { value: '2', label: '1o tempo (1Q+2Q) - recomendado' },
-                    { value: '3', label: '3o quarto' },
-                    { value: '4', label: '4o quarto / prorrogacao' },
-                    { value: '', label: 'fim do jogo (sem maximo)' },
-                    ...(['', '1', '2', '3', '4'].includes(momentoMax) ? [] : [{ value: momentoMax, label: `estagio ${momentoMax} (gravado no bot)` }]),
-                  ]} />
+                  <MikeSelect value={momentoMax} onChange={setMomentoMax}
+                    options={comGravado(esporte === 'fifa' ? MOMENTO_FUTEBOL_MAX : MOMENTO_BASQUETE_MAX, momentoMax)} />
                 </div>
               </div>
             )}
@@ -3444,7 +3463,11 @@ export default function App({ botId: botIdProp = null, onSalvar, onCancelar, onN
             {momentoAtivo && momentoMin === '' && momentoMax === '' && (
               <p className="text-[10px] mt-1.5 font-semibold" style={{ color: '#fcd34d' }}>Sem minimo e sem maximo o filtro nao faz nada (o motor trata como desligado).</p>
             )}
-            <p className="text-[10px] text-[--mike-fg-muted] mt-1.5">Lido do estagio do jogo no tick (1Q=1, 2Q e intervalo=2, 3Q=3, 4Q e prorrogacao=4). Comprovado no vivo: apostas do 1o tempo renderam <b>+18,7%</b> vs <b>-7,6%</b> no 2o. So funciona onde o coletor marca o periodo; onde nao marca, o bot com este filtro ligado nao aposta. Grava em filtros.momentoMin / filtros.momentoMax.</p>
+            {esporte === 'fifa' ? (
+              <p className="text-[10px] text-[--mike-fg-muted] mt-1.5">Lido do período que a casa marca no tick (1º tempo, intervalo, 2º tempo). &quot;A partir do 2º tempo&quot; não entra no intervalo; &quot;até o fim do 1º tempo&quot; inclui o intervalo. Casa que não marca o período de um jeito legível (hoje: bet365, que só manda o relógio) fica sem apostar com este filtro ligado. Grava em filtros.momentoMin / filtros.momentoMax.</p>
+            ) : (
+              <p className="text-[10px] text-[--mike-fg-muted] mt-1.5">Lido do estagio do jogo no tick (1Q=1, 2Q e intervalo=2, 3Q=3, 4Q e prorrogacao=4). Comprovado no vivo: apostas do 1o tempo renderam <b>+18,7%</b> vs <b>-7,6%</b> no 2o. So funciona onde o coletor marca o periodo; onde nao marca, o bot com este filtro ligado nao aposta. Grava em filtros.momentoMin / filtros.momentoMax.</p>
+            )}
           </div>
 
           {/* ATROPELO (v16) — taxa de goleada do jogador. Eixo de dois sentidos. */}
