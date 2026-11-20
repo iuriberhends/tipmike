@@ -352,6 +352,8 @@ export const ApiAutomacao = {
   trava:          ()              => api.get('/automacao/trava'),
   mudarTrava:     (body)          => api.put('/automacao/trava', body),
   limitesGlobais: (body)          => api.put('/automacao/limites-globais', body),
+  // só admin: teto de aposta medido em cada casa (medida atual por grupo + histórico das medidas)
+  tetos:          (params)        => api.get('/automacao/tetos', params),
 };
 
 // ─────────── Admin (Fase 5): gestão de usuários e convites ───────────

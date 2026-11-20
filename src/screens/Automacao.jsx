@@ -25,7 +25,7 @@ import {
 import MikeHeader from '../shared/MikeHeader.jsx';
 import { EstadoErro, EstadoVazio } from '../shared/Estados.jsx';
 import AnaliseAutomacao from '../shared/AnaliseAutomacao.jsx';
-import { corDoModo, fmtDinheiro } from '../shared/AutomacaoBot.jsx';
+import { corDoModo, fmtDinheiro, haQuanto } from '../shared/AutomacaoBot.jsx';
 import { ApiAdmin, ApiAutomacao } from '../lib/api.js';
 import { usePais } from '../context/PaisContext.jsx';
 // cadastro da conta (e do acesso dela) é um componente só, usado aqui e no painel de automação do bot
@@ -204,6 +204,8 @@ export default function Automacao({ onNavegar }) {
   const [analiseBot, setAnaliseBot] = useState(null);
   const [ocupadoBot, setOcupadoBot] = useState(null);
   const [apagarConta, setApagarConta] = useState(null);     // { conta, erro, ocupado }
+  const [tetos, setTetos] = useState(null);                 // só admin: { disponivel, atual, historico, total }
+  const [verHistTetos, setVerHistTetos] = useState(false);
   const [toasts, setToasts] = useState([]);
 
   const avisar = useCallback((mensagem, tipo = 'info') => {
@@ -222,6 +224,8 @@ export default function Automacao({ onNavegar }) {
       ApiAutomacao.modos().then((m) => setModos(m.itens || {})).catch(() => setModos({}));
       if (d.admin) {
         ApiAdmin.listarUsuarios({ limit: 200 }).then((u) => setUsuarios(u.items || [])).catch(() => setUsuarios([]));
+        // teto das casas: API antiga não tem a rota (404) e a seção simplesmente não aparece
+        ApiAutomacao.tetos({ limit: 100 }).then((t) => setTetos(t)).catch(() => setTetos(null));
       }
     } catch (e) {
       if (e && e.status === 404) { setEstado('ausente'); return; }
@@ -483,6 +487,103 @@ export default function Automacao({ onNavegar }) {
                 </div>
               )}
             </section>
+
+            {/* ═══════════ TETOS DAS CASAS (só admin) ═══════════ */}
+            {admin && tetos && tetos.disponivel && (
+              <section className="rounded-2xl p-5" style={CARD} data-secao="tetos">
+                <div className="flex flex-wrap items-center gap-3 mb-1">
+                  <ShieldCheck className="w-4 h-4" style={{ color: '#2bcdb9' }} />
+                  <h2 className="text-sm font-black tracking-tight">Tetos das casas</h2>
+                  <span className="text-[11px] text-slate-500">quanto cada casa aceita por aposta, em cada mercado medido · {tetos.total} medida(s)</span>
+                </div>
+                <p className="text-[11px] text-slate-500 mb-4">
+                  Cada linha é a medida mais recente do grupo. Fonte "aposta real" = a casa cortou uma aposta de verdade e disse quanto aceita.
+                  Onde há lucro máximo, a stake máxima muda com a odd: lucro máximo ÷ (odd − 1).
+                </p>
+                {tetos.atual.length === 0 ? (
+                  <p className="text-xs text-slate-500 py-4 text-center">Nenhuma medida ainda.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="text-[10px] uppercase text-slate-500">
+                          <th className="py-2 pr-3 font-bold">Casa</th>
+                          <th className="py-2 pr-3 font-bold">Conta</th>
+                          <th className="py-2 pr-3 font-bold">Liga</th>
+                          <th className="py-2 pr-3 font-bold">Mercado</th>
+                          <th className="py-2 pr-3 font-bold text-right">Odd</th>
+                          <th className="py-2 pr-3 font-bold text-right">Stake máxima</th>
+                          <th className="py-2 pr-3 font-bold text-right">Retorno máximo</th>
+                          <th className="py-2 pr-3 font-bold text-right">Lucro máximo</th>
+                          <th className="py-2 pr-3 font-bold">Fonte</th>
+                          <th className="py-2 pr-3 font-bold">Medido</th>
+                          <th className="py-2 font-bold text-right">Medidas</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {tetos.atual.map((t, i) => (
+                          <tr key={`${t.casa}-${t.conta_id}-${t.liga}-${t.mercado_tipo}-${i}`} style={LINHA}>
+                            <td className="py-2 pr-3 font-semibold">{nomeCasa(t.casa)}</td>
+                            <td className="py-2 pr-3 text-slate-300">{t.conta_apelido || (t.conta_id ? `#${t.conta_id}` : '—')}</td>
+                            <td className="py-2 pr-3 text-slate-300">{t.liga || '—'}</td>
+                            <td className="py-2 pr-3 text-slate-300">{t.mercado || '—'}{t.mercado_tipo ? <span className="text-slate-500"> · tipo {t.mercado_tipo}</span> : null}</td>
+                            <td className="py-2 pr-3 text-right text-slate-300">{t.odd ?? '—'}</td>
+                            <td className="py-2 pr-3 text-right font-bold" style={{ color: '#2bcdb9' }}>{fmtDinheiro(t.stake_max, t.moeda)}</td>
+                            <td className="py-2 pr-3 text-right text-slate-300">{fmtDinheiro(t.retorno_max, t.moeda)}</td>
+                            <td className="py-2 pr-3 text-right text-slate-300">{fmtDinheiro(t.lucro_max, t.moeda)}</td>
+                            <td className="py-2 pr-3 text-slate-300">{t.fonte}</td>
+                            <td className="py-2 pr-3 text-slate-500 whitespace-nowrap" title={fmtData(t.medido_em)}>{haQuanto(t.medido_em)}</td>
+                            <td className="py-2 text-right text-slate-500">{t.medidas}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                {tetos.historico.length > 0 && (
+                  <button type="button" className="mike-btn-ghost mt-3" onClick={() => setVerHistTetos((v) => !v)}>
+                    <History className="w-3.5 h-3.5" />
+                    {verHistTetos ? 'Esconder o histórico das medidas' : `Ver o histórico das medidas (${tetos.historico.length}${tetos.total > tetos.historico.length ? ` de ${tetos.total}` : ''})`}
+                  </button>
+                )}
+                {verHistTetos && (
+                  <div className="overflow-x-auto mt-3" data-bloco="tetos-historico">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="text-[10px] uppercase text-slate-500">
+                          <th className="py-2 pr-3 font-bold">Quando</th>
+                          <th className="py-2 pr-3 font-bold">Casa</th>
+                          <th className="py-2 pr-3 font-bold">Liga</th>
+                          <th className="py-2 pr-3 font-bold">Mercado</th>
+                          <th className="py-2 pr-3 font-bold">Seleção</th>
+                          <th className="py-2 pr-3 font-bold text-right">Odd</th>
+                          <th className="py-2 pr-3 font-bold text-right">Pedido</th>
+                          <th className="py-2 pr-3 font-bold text-right">Stake máxima</th>
+                          <th className="py-2 pr-3 font-bold text-right">Lucro máximo</th>
+                          <th className="py-2 font-bold">Fonte</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {tetos.historico.map((t) => (
+                          <tr key={t.id} style={LINHA}>
+                            <td className="py-2 pr-3 text-slate-500 whitespace-nowrap">{fmtData(t.medido_em)}</td>
+                            <td className="py-2 pr-3 text-slate-300">{nomeCasa(t.casa)}</td>
+                            <td className="py-2 pr-3 text-slate-300">{t.liga || '—'}</td>
+                            <td className="py-2 pr-3 text-slate-300">{t.mercado || '—'}</td>
+                            <td className="py-2 pr-3 text-slate-300">{t.selecao || '—'}</td>
+                            <td className="py-2 pr-3 text-right text-slate-300">{t.odd ?? '—'}</td>
+                            <td className="py-2 pr-3 text-right text-slate-500">{fmtDinheiro(t.stake_pedida, t.moeda)}</td>
+                            <td className="py-2 pr-3 text-right font-bold text-slate-200">{fmtDinheiro(t.stake_max, t.moeda)}</td>
+                            <td className="py-2 pr-3 text-right text-slate-300">{fmtDinheiro(t.lucro_max, t.moeda)}</td>
+                            <td className="py-2 text-slate-300">{t.fonte}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+            )}
 
             {/* ═══════════ HISTÓRICO ═══════════ */}
             <section className="rounded-2xl p-5" style={CARD} data-secao="historico">
