@@ -50,6 +50,29 @@ export const fmtDinheiro = (v, moeda) => (v === null || v === undefined
   ? '—'
   : `${moeda ? `${moeda} ` : ''}${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
 
+// "há 12 minutos", "há 3 horas", "há 2 dias": idade de uma medida do teto da casa
+export function haQuanto(iso) {
+  if (!iso) return '';
+  const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (min < 1) return 'agora há pouco';
+  if (min < 60) return `há ${min} minuto${min === 1 ? '' : 's'}`;
+  const horas = Math.round(min / 60);
+  if (horas < 48) return `há ${horas} hora${horas === 1 ? '' : 's'}`;
+  return `há ${Math.round(horas / 24)} dias`;
+}
+
+// A stake passa do teto medido? Pela stake máxima da medida e, quando há lucro máximo, por stake × (odd − 1).
+export function passaDoTeto(stake, t) {
+  if (!t || stake === null || stake === undefined || !(stake > 0)) return false;
+  if (t.stake_max !== null && t.stake_max !== undefined && stake > Number(t.stake_max) + 1e-9) return true;
+  if (t.lucro_max !== null && t.lucro_max !== undefined && Number(t.odd) > 1) {
+    return stake * (Number(t.odd) - 1) > Number(t.lucro_max) + 0.011;
+  }
+  return false;
+}
+
+const fmtOdd = (v) => (v === null || v === undefined ? '—' : Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 3 }));
+
 function Rotulo({ children, largura = 'w-44' }) {
   return (
     <div className={`${largura} flex-shrink-0`}>
@@ -81,7 +104,7 @@ function linhaUso(rotulo, usado, teto) {
 // ───────────────────────── confirmação do modo real ─────────────────────────
 function ConfirmarReal({ dados, onCancelar, onConfirmar }) {
   const [ciente, setCiente] = useState(false);
-  const { bot, casa, conta, stake, moeda, limites, uso, global: geral, admin } = dados;
+  const { bot, casa, conta, stake, moeda, limites, uso, global: geral, admin, teto: tetoCasa } = dados;
   const linha = (rot, val) => (
     <div className="flex items-baseline justify-between gap-4 py-1.5" style={{ borderBottom: '0.5px solid rgba(50, 100, 104, 0.25)' }}>
       <span className="text-[11px] text-[--mike-fg-muted]">{rot}</span>
@@ -108,6 +131,8 @@ function ConfirmarReal({ dados, onCancelar, onConfirmar }) {
         {linha('Casa', casa)}
         {linha('Conta', conta)}
         {linha('Stake por aposta', fmtDinheiro(stake, moeda))}
+        {tetoCasa !== undefined && linha('Teto medido da casa neste mercado',
+          tetoCasa ? `${fmtDinheiro(tetoCasa.stake_max, tetoCasa.moeda || moeda)} na odd ${fmtOdd(tetoCasa.odd)}` : 'sem medida')}
         {admin
           ? linha('Seu limite', 'administrador: sem limite por usuário')
           : linha('Seu limite de stake', fmtDinheiro(limites?.stake_max, moeda))}
@@ -152,6 +177,7 @@ const AutomacaoBot = forwardRef(function AutomacaoBot({ botId = null, botNome = 
   const [reenvios, setReenvios] = useState('1');
   const [umaPorSelecao, setUmaPorSelecao] = useState(true);
   const [teto, setTeto] = useState('');
+  const [apostarMax, setApostarMax] = useState(false);    // teto da casa: opção desligada de fábrica
 
   const preencher = useCallback((c) => {
     const a = c.automacao || {};
@@ -162,6 +188,7 @@ const AutomacaoBot = forwardRef(function AutomacaoBot({ botId = null, botNome = 
     setReenvios(txt(a.reenvios ?? 1));
     setUmaPorSelecao(a.uma_por_selecao !== false);
     setTeto(txt(a.teto_por_jogo));
+    setApostarMax(a.teto_apostar_max === true);
   }, []);
 
   // sem bot (criação): a casa escolhida na tela decide o contexto
@@ -199,6 +226,11 @@ const AutomacaoBot = forwardRef(function AutomacaoBot({ botId = null, botNome = 
   const lim = ctx?.limites || {};
   const uso = ctx?.uso || { papel: 0, real: 0, bots: 0 };
 
+  // teto da casa: a medida vem no contexto do bot (null = sem medida; ausente = API antiga ou bot ainda não criado);
+  // a opção só é enviada quando o servidor diz que ela existe (API antiga não recebe campo novo)
+  const tetoCasa = ctx?.teto;
+  const opcaoMax = ctx?.teto_opcao_disponivel === true;
+
   const corpo = useMemo(() => ({
     modo,
     conta_id: num(contaId),
@@ -207,7 +239,8 @@ const AutomacaoBot = forwardRef(function AutomacaoBot({ botId = null, botNome = 
     reenvios: num(reenvios) ?? 1,
     uma_por_selecao: umaPorSelecao,
     teto_por_jogo: num(teto),
-  }), [modo, contaId, stake, queda, reenvios, umaPorSelecao, teto]);
+    ...(opcaoMax ? { teto_apostar_max: apostarMax } : {}),
+  }), [modo, contaId, stake, queda, reenvios, umaPorSelecao, teto, opcaoMax, apostarMax]);
 
   const mudou = useMemo(() => {
     if (!ctx) return false;
@@ -218,8 +251,11 @@ const AutomacaoBot = forwardRef(function AutomacaoBot({ botId = null, botNome = 
       || Number(corpo.queda_max_odd_pct) !== Number(a.queda_max_odd_pct ?? 5)
       || Number(corpo.reenvios) !== Number(a.reenvios ?? 1)
       || corpo.uma_por_selecao !== (a.uma_por_selecao !== false)
-      || corpo.teto_por_jogo !== (a.teto_por_jogo ?? null);
-  }, [ctx, corpo]);
+      || corpo.teto_por_jogo !== (a.teto_por_jogo ?? null)
+      || (opcaoMax && corpo.teto_apostar_max !== (a.teto_apostar_max === true));
+  }, [ctx, corpo, opcaoMax]);
+
+  const estouraTeto = corpo.modo !== 'desligado' && passaDoTeto(corpo.stake, tetoCasa);
 
   // o servidor pede confirmação quando o resultado é 'real' e muda modo, stake ou conta
   const precisaConfirmar = corpo.modo === 'real'
@@ -420,6 +456,50 @@ const AutomacaoBot = forwardRef(function AutomacaoBot({ botId = null, botNome = 
           </div>
         </Linha>
 
+        {(tetoCasa !== undefined || ctx.teto_opcao_disponivel !== undefined) && (
+          <Linha compacto={compacto} rotulo="Teto da casa">
+            <div data-bloco="teto-casa">
+              {tetoCasa !== undefined && (tetoCasa ? (
+                <p className="text-xs text-[--mike-fg-soft] leading-relaxed" data-teto="medida">
+                  A casa aceita até <b className="text-[--mike-fg]">{fmtDinheiro(tetoCasa.stake_max, tetoCasa.moeda || moeda)}</b> neste mercado
+                  {' '}(medido {haQuanto(tetoCasa.medido_em)}, {tetoCasa.fonte}).
+                  <span className="text-[--mike-fg-muted]">
+                    {' '}Medida na odd {fmtOdd(tetoCasa.odd)}
+                    {tetoCasa.lucro_max !== null && tetoCasa.lucro_max !== undefined
+                      ? `; lucro máximo ${fmtDinheiro(tetoCasa.lucro_max, tetoCasa.moeda || moeda)}: em odd maior a casa aceita menos`
+                      : ''}
+                    {tetoCasa.mesma_conta === false ? '; medida em outra conta desta casa' : ''}.
+                  </span>
+                </p>
+              ) : (
+                <p className="text-xs text-[--mike-fg-muted]" data-teto="sem-medida">Teto da casa neste mercado: sem medida.</p>
+              ))}
+              {estouraTeto && (
+                <p className="flex items-start gap-1.5 text-[11px] font-semibold mt-1.5" style={{ color: '#fcd34d' }} role="status" data-teto="aviso">
+                  <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-px" />
+                  <span>
+                    A stake {fmtDinheiro(corpo.stake, moeda)} passa do teto medido da casa neste mercado
+                    {' '}({fmtDinheiro(tetoCasa.stake_max, tetoCasa.moeda || moeda)} na odd {fmtOdd(tetoCasa.odd)}).
+                  </span>
+                </p>
+              )}
+              <label className={`inline-flex items-center gap-2 mt-2 ${opcaoMax ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
+                title={opcaoMax ? 'Opção desligada de fábrica' : 'Ainda não disponível neste servidor'}>
+                <input type="checkbox" className="mike-checkbox" checked={opcaoMax && apostarMax} disabled={bloqueado || !opcaoMax}
+                  onChange={(e) => setApostarMax(e.target.checked)} aria-label="Se a stake passar do teto, apostar o máximo que a casa aceita" />
+                <span className="text-xs text-[--mike-fg-soft]">Se a stake passar do teto, apostar o máximo que a casa aceita</span>
+              </label>
+              <p className="text-[10px] text-[--mike-fg-muted] mt-1 leading-relaxed">
+                {!opcaoMax
+                  ? 'Ainda não disponível neste servidor.'
+                  : (apostarMax
+                    ? 'Ligada neste bot.'
+                    : 'Desligada de fábrica. Com ela desligada, nada muda no envio das apostas deste bot.')}
+              </p>
+            </div>
+          </Linha>
+        )}
+
         <Linha compacto={compacto} rotulo="Queda máxima de odd" ajuda="Se a odd da casa cair mais que isso em relação à do sinal, a aposta não é enviada.">
           <div className="flex items-center gap-2">
             <input type="number" min="0" max="99.9" step="0.5" value={queda} onChange={(e) => setQueda(e.target.value)}
@@ -498,7 +578,7 @@ const AutomacaoBot = forwardRef(function AutomacaoBot({ botId = null, botNome = 
         <ConfirmarReal
           dados={{
             bot: botNome || ctx.bot_nome, casa: ctx.casa_nome, conta: conta ? `${conta.apelido} (${conta.moeda})` : '—',
-            stake: corpo.stake, moeda, limites: lim, uso, global: ctx.global, admin: Boolean(lim.admin),
+            stake: corpo.stake, moeda, limites: lim, uso, global: ctx.global, admin: Boolean(lim.admin), teto: tetoCasa,
           }}
           onCancelar={() => responder(false)}
           onConfirmar={() => responder(true)}
